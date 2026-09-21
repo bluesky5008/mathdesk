@@ -1,0 +1,19 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+# node
+node_modules/
+dist/
+# env / secrets
+.env
+.env.*
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# omr scratch outputs
+prototype/omr/synthetic_*.png
+prototype/omr/registered.png
+prototype/omr/*.npy

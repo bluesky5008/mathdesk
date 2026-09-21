@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPEC — mathdesk 구현 아웃라인</title>
+<style>
+:root {
+  --bg:#f6f7fb; --card:#ffffff; --text:#1f2333; --muted:#6b7188; --line:#e3e6ef;
+  --accent:#4f5bd5; --accent-soft:#eceefc; --code-bg:#f0f2f8;
+  --p0:#d94848; --p1:#e08a1e; --p2:#3b8f5c; --open:#8a4fd5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#14161e; --card:#1c1f2a; --text:#e6e8f0; --muted:#9aa0b8; --line:#2c3040;
+    --accent:#8b95ff; --accent-soft:#262a44; --code-bg:#22263a;
+  }
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text);
+  font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  font-size:15px; line-height:1.65; }
+.wrap { max-width:1040px; margin:0 auto; padding:32px 16px 64px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:32px 36px; }
+h1 { font-size:26px; margin:0 0 20px; letter-spacing:-0.01em; }
+h2 { font-size:19px; margin:40px 0 12px; padding-bottom:6px; border-bottom:2px solid var(--accent-soft); }
+h3 { font-size:16px; margin:26px 0 8px; color:var(--accent); }
+p { margin:8px 0; }
+hr { border:0; border-top:1px solid var(--line); margin:32px 0; }
+table { width:100%; border-collapse:collapse; margin:12px 0 18px; font-size:14px; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { background:var(--accent-soft); font-weight:600; white-space:nowrap; }
+tr:nth-child(even) td { background:color-mix(in srgb, var(--card) 92%, var(--line)); }
+code { background:var(--code-bg); padding:1px 5px; border-radius:4px; font-size:13px;
+  font-family:"JetBrains Mono","D2Coding",Consolas,monospace; }
+pre { background:var(--code-bg); border:1px solid var(--line); border-radius:8px; padding:14px 16px;
+  overflow-x:auto; font-size:13px; line-height:1.5; }
+pre code { background:none; padding:0; }
+ul { padding-left:22px; }
+li { margin:3px 0; }
+.badge { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; font-weight:600; color:#fff; }
+.badge.draft { background:var(--accent); }
+.badge.open { background:var(--open); }
+.badge.p0 { background:var(--p0); }
+.badge.p1 { background:var(--p1); }
+.badge.p2 { background:var(--p2); }
+.toc { background:var(--accent-soft); border-radius:8px; padding:12px 18px; margin:16px 0 8px; font-size:14px; }
+.toc ul { margin:4px 0; padding-left:18px; }
+.toc > ul { padding-left:0; list-style:none; }
+.toc a { color:var(--accent); text-decoration:none; }
+.toc a:hover { text-decoration:underline; }
+.meta { color:var(--muted); font-size:13px; margin-top:28px; text-align:right; }
+@media (max-width:640px) { .card { padding:20px 16px; } table { font-size:13px; } th,td { padding:6px; } }
+@media print { body { background:#fff; } .card { border:0; padding:0; } h2 { page-break-after:avoid; } table { page-break-inside:auto; } }
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+<h1 id="spec-mathdesk">SPEC — 수학학원 관리 프로그램 (mathdesk) 구현 아웃라인</h1><div class="toc"><strong>목차</strong>
+<ul>
+<li><a href="#spec-mathdesk">SPEC — 수학학원 관리 프로그램 (mathdesk) 구현 아웃라인</a><ul>
+<li><a href="#1">1. 캡쳐 이미지 분석</a><ul>
+<li><a href="#11-1-002135438png">1.1 화면 ① 종합 대시보드 (002135438.png)</a></li>
+<li><a href="#12-2-002140176png">1.2 화면 ② 일일 수업 &amp; 성적 입력 (002140176.png)</a></li>
+<li><a href="#13-3-002145485png">1.3 화면 ③ 알림문자 미리보기 (002145485.png)</a></li>
+<li><a href="#14-4-002149983png">1.4 화면 ④ 시험지 · 오답 분석 (002149983.png)</a></li>
+<li><a href="#15">1.5 캡쳐에 없지만 사이드바로 존재가 확인된 기능</a></li>
+</ul>
+</li>
+<li><a href="#2">2. 도메인 모델 (초안)</a></li>
+<li><a href="#3">3. 기능 모듈 및 우선순위</a></li>
+<li><a href="#4">4. 아키텍처 방향</a><ul>
+<li><a href="#41">4.1 "로컬 우선 → 웹 전환" 전략</a></li>
+<li><a href="#42">4.2 구성 요소</a></li>
+<li><a href="#43">4.3 화면 구조 (라우트 초안)</a></li>
+</ul>
+</li>
+<li><a href="#5-wf-workflow">5. 개발 단계 (wf-workflow 단계 매핑 초안)</a></li>
+<li><a href="#6">6. 리스크 및 미확인 사항</a></li>
+<li><a href="#7-decision-items">7. 결정 항목 (Decision Items)</a></li>
+<li><a href="#8">8. 결정 항목 상세 검토</a><ul>
+<li><a href="#81-d5-classification-segmentation-llm">8.1 D5 — "학습시킨 classification &amp; segmentation 모델"과 로컬 LLM의 차이</a></li>
+<li><a href="#82-d6-hwp">8.2 D6 — HWP 지원 가능 여부</a></li>
+<li><a href="#83-d8">8.3 D8 — 알리고 + 카카오 동시 구현 시 사전 준비</a></li>
+<li><a href="#84-d10">8.4 D10 — 추론 하드웨어 전략</a></li>
+<li><a href="#85-d11-omr">8.5 D11 — OMR 답안지 양식 분석 및 판독 설계</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>문서 유형</td>
+<td>기획 초안 (Outline Spec)</td>
+</tr>
+<tr>
+<td>프로젝트명</td>
+<td>mathdesk (git 저장소명, 구 pinkmath)</td>
+</tr>
+<tr>
+<td>상태</td>
+<td><span class="badge draft">Draft v0.5</span> 프로젝트명 mathdesk 확정 (D9 대기)</td>
+</tr>
+<tr>
+<td>작성일</td>
+<td>2026-09-22</td>
+</tr>
+<tr>
+<td>입력 자료</td>
+<td><code>assets/capture/KakaoTalk_20260922_0021*.png</code> 4장 (참조 프로그램 "HSY MATH EDUMANAGER" 캡쳐)</td>
+</tr>
+<tr>
+<td>관련 문서</td>
+<td>(후속) SPEC-data-model.md, SPEC-api.md, PLAN-wf-workflow.md</td>
+</tr>
+<tr>
+<td>다음 단계</td>
+<td>결정 항목(§7) 확정 → 데이터 모델 상세 → Claude Code에서 wf-workflow로 구현 착수</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="1">1. 캡쳐 이미지 분석</h2>
+<h3 id="11-1-002135438png">1.1 화면 ① 종합 대시보드 (<code>002135438.png</code>)</h3>
+<p>레이아웃: 좌측 고정 사이드바 + 상단 바 + 본문 카드 그리드.</p>
+<p><strong>사이드바 (정보 구조가 그대로 드러남)</strong></p>
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>메뉴</th>
+<th>비고</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>캠퍼스 선택</td>
+<td>현재 캠퍼스: 전병훈 수학학원 고등관</td>
+<td>다중 캠퍼스 전환 UI (드롭다운)</td>
+</tr>
+<tr>
+<td>ACADEMIC OPERATIONS</td>
+<td>종합 대시보드</td>
+<td>현재 화면</td>
+</tr>
+<tr>
+<td></td>
+<td>학생/반 관리</td>
+<td>학생·클래스 CRUD</td>
+</tr>
+<tr>
+<td></td>
+<td>일일 수업 &amp; 성적 입력</td>
+<td>화면 ②</td>
+</tr>
+<tr>
+<td></td>
+<td>시험지 · 오답 분석</td>
+<td>화면 ④</td>
+</tr>
+<tr>
+<td></td>
+<td>성적 통계 분석</td>
+<td>캡쳐 없음 — 추정 필요</td>
+</tr>
+<tr>
+<td></td>
+<td>발송 내역 &amp; 설정</td>
+<td>문자 발송 로그·설정</td>
+</tr>
+<tr>
+<td></td>
+<td>카카오 알림톡</td>
+<td>카카오 채널 발송</td>
+</tr>
+<tr>
+<td>하단 위젯</td>
+<td>알리고 문자 발송·연결 설정</td>
+<td>잔여 발송량(장문 1,791건 / 단문 5,523건 / 이미지 773건), 잔액 조회 시각, 새로고침</td>
+</tr>
+</tbody>
+</table>
+<p><strong>상단 바</strong>: 날짜(오늘), 반 선택 드롭다운(고2 윤B), 학생 이름 검색, 알림, 도움말, 로그인 사용자(홍성윤 강사).</p>
+<p><strong>본문</strong></p>
+<table>
+<thead>
+<tr>
+<th>영역</th>
+<th>내용</th>
+<th>데이터 출처</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>헤더</td>
+<td>"DIRECTOR COMMAND MODE" 배지, 제목, 요약문("등록된 4개 반 · 47명"), 버튼: 오늘 수업 일괄 입력 / 상담일지 작성 / 다운로드</td>
+<td>반·학생 집계</td>
+</tr>
+<tr>
+<td>KPI 카드 4개</td>
+<td>총 재원생 &amp; 반 현황(47명, 활성 4개 반, 반별 명단 링크) / 선택한 반 등원 현황(4/13명, 출석+지각+조퇴 합산) / 금주 과제 완수율(93.8%, 전주 대비 +2.4%p, 미제출 5건, 재검사 대상 4명) / 주간테스트 종합 평균(82.6점, N=84, MAX 100(4명), MIN 58)</td>
+<td>출결·과제·테스트 집계</td>
+</tr>
+<tr>
+<td>반별 출결 체크</td>
+<td>반·날짜 선택 → 학생별 [출석/지각/결석/조퇴] 토글 + 사유 입력, 하단 [확인]/[편집], 요약 카운트(미확인 9·출석 4·…)</td>
+<td>출결 테이블</td>
+</tr>
+<tr>
+<td>지난 수업 진도 &amp; 과제</td>
+<td>직전 수업일(09-18)의 교시별(1~4교시) 수업 내용, 과제 목록, "수업 기록 보기" 링크</td>
+<td>수업일지 테이블</td>
+</tr>
+</tbody>
+</table>
+<p>관찰 포인트: 출결 상태는 "미확인" 상태가 별도로 존재(입력 전 기본값). 이미 체크한 상태를 다시 누르면 해제. 확인 후 잠금 → 편집으로 해제하는 2단계 저장.</p>
+<h3 id="12-2-002140176png">1.2 화면 ② 일일 수업 &amp; 성적 입력 (<code>002140176.png</code>)</h3>
+<p>두 패널 구조: <strong>좌측 = 반 전체 명단 그리드</strong>, <strong>우측 = 선택 학생/반의 상세 입력</strong>.</p>
+<p><strong>상단 KPI</strong>: 등원 현황(4/13) / 당일 테스트 평균(— , 숫자 점수 입력 0명·100점 기준) / 과제 A+·A(0명) / 출결 확인 필요(9명).</p>
+<p><strong>좌측 명단 그리드 컬럼</strong></p>
+<table>
+<thead>
+<tr>
+<th>컬럼</th>
+<th>입력 방식</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No / 학생 정보</td>
+<td>이름 + 소속 반</td>
+<td>필터 탭: 전체 / 출석 / 지각·결석·조퇴, 이름순 정렬</td>
+</tr>
+<tr>
+<td>출결 상태</td>
+<td>4버튼 토글 + 사유 텍스트</td>
+<td>화면①과 동일 데이터</td>
+</tr>
+<tr>
+<td>이전 과제 재검사</td>
+<td>"직전 B · 09/18" 표시 + [합격/불합격]</td>
+<td>직전 수업 과제 피드백이 B 이하이면 재검사 대상 → 합/불 기록</td>
+</tr>
+<tr>
+<td>과제피드백</td>
+<td>A+ / A / B / C / D / F 6단계</td>
+<td>당일 과제 등급</td>
+</tr>
+<tr>
+<td>테스트</td>
+<td>숫자 입력 + 컬럼 헤더에 테스트명 입력 + [저장]</td>
+<td>당일 테스트 점수(반 단위 테스트명 1개)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>우측 상세 패널</strong> (학생 선택 시)</p>
+<ul>
+<li>학생 헤더: 이름, 반, [문자 복사] [이미지 복사]</li>
+<li>탭: 오늘 진도 &amp; 코멘트 / 학습 히스토리 / 문자 미리보기</li>
+<li>당일 성취도 요약: 당일 테스트(점수 또는 서술형 결과), 과제피드백 등급</li>
+<li>오늘 수업 진도: 1~4교시 textarea (반 단위 공통)</li>
+<li>오늘의 과제: textarea (교재·범위·제출일)</li>
+<li>수업 영상 링크</li>
+<li>"홍성윤T의 첨언": 반 전체 학생에게 공통 전달할 코멘트</li>
+</ul>
+<p>관찰 포인트: 진도/과제/영상/첨언은 <strong>반 단위(수업일 단위)</strong> 데이터, 출결/재검사/피드백/점수는 <strong>학생 단위</strong> 데이터. 상단 안내문 "출결·과제·테스트는 표 아래 저장 · 재검사는 선택 즉시 별도 저장 · 진도와 코멘트는 메모 저장" → 저장 단위가 세 가지로 나뉨.</p>
+<h3 id="13-3-002145485png">1.3 화면 ③ 알림문자 미리보기 (<code>002145485.png</code>)</h3>
+<p>화면②의 "문자 미리보기" 탭 내용으로 추정.</p>
+<ul>
+<li>탭: 문자 보기 / 리포트 보기(카드형 이미지) + [디자인 변경]</li>
+<li>메시지 본문 = 템플릿에 당일 데이터 자동 병합:</li>
+<li>제목(<code>**{학생명} 학습피드백**</code>), 인사말(학원명·강사명), 날짜</li>
+<li>■ 출결 / ■ 수업진도(교시별) / ■ 과제피드백(등급 + 서술 코멘트) / ■ 테스트(시험명, 학생점수, 반평균) / ■ 오늘의 과제 / ■ 수업 영상 링크</li>
+<li>수신 대상: 학생 / 학부모 체크박스(복수 선택)</li>
+<li>액션: 문자 복사 / 이미지 복사 / 리포트 이미지 저장 / 문자 발송</li>
+</ul>
+<p>관찰 포인트: 과제피드백 등급별 서술 문구("숙제는 대부분 완료했으나 …")가 등급에 매핑된 <strong>정형 문구</strong>로 보임 → 등급→문구 템플릿 테이블 필요. 리포트 이미지 = HTML 카드를 이미지로 렌더링(html-to-image 계열).</p>
+<h3 id="14-4-002149983png">1.4 화면 ④ 시험지 · 오답 분석 (<code>002149983.png</code>)</h3>
+<p>"ASSESSMENT &amp; DIAGNOSTIC REPORT". 상단 액션: 분석지 인쇄 / 시험 등록·수정 / 엑셀 다운로드.</p>
+<table>
+<thead>
+<tr>
+<th>영역</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>필터</td>
+<td>날짜, 반(고3 윤A · 화6/토10 · 8명), 저장된 시험 선택(2027학년도 강대모의고사K 9회 수학영역)</td>
+</tr>
+<tr>
+<td>난이도 분류 기준</td>
+<td>하/중/상/최상 (접이식 설명)</td>
+</tr>
+<tr>
+<td>최근 등록한 시험지</td>
+<td>카드 리스트 — 파일명(.hwp), 반, 날짜, "분석 완료" 상태</td>
+</tr>
+<tr>
+<td>시험지 등록</td>
+<td>.hwp 업로드 → "분석 초안" 생성 → 문항 수·유형·난이도 확인 후 확정</td>
+</tr>
+<tr>
+<td>OMR 스캔 PDF 자동 채점</td>
+<td>연결 시험(30문항·100점 만점) 지정 → 학생 여러 명의 OMR을 PDF 1개(≤20MB/30쪽)로 업로드 → 판독 → 원본·학생·답안 확인 → 성적·정답률 반영. 안내문: "현재 ChatGPT 계정의 Codex 사용량을 사용하며 OMR 이미지가 OpenAI로 전송됩니다"</td>
+</tr>
+<tr>
+<td>시험 KPI</td>
+<td>응시 현황(8/8) / 반 평균 성적(63.6, 최고 80·최저 52) / 반 평균 정답률(68.3%) / 집중 해설 문항(9문항, 정답률 40% 미만)</td>
+</tr>
+<tr>
+<td>탭</td>
+<td>시험지 분석지 / 문항별 정오답 / 오답 유형 통계</td>
+</tr>
+<tr>
+<td>난이도 분석표</td>
+<td>카드형 이미지(하 13·중 9·상 6·최상 2) + [이미지 저장], "AI 추정 난이도 · 실제 정답률과 별개"</td>
+</tr>
+<tr>
+<td>시험지 문항 분석 표</td>
+<td>번호 / 단원 / 세부 유형("공통 객관식 10번 — 사차함수의 음의 실근 개수") / 난이도 / 판단 근거(풀이 요지). 일부 문항에 "확인 필요" 배지 + 사용자 선택값(배점 4점) 표시</td>
+</tr>
+</tbody>
+</table>
+<p>관찰 포인트: 이 화면은 <strong>LLM 의존도가 가장 높은 모듈</strong>(시험지 문항 분류·난이도 추정·OMR 판독). 참조 프로그램은 OpenAI를 쓰지만, 우리는 로컬 LLM 연결이 가능한 구조로 추상화해야 함.</p>
+<h3 id="15">1.5 캡쳐에 없지만 사이드바로 존재가 확인된 기능</h3>
+<table>
+<thead>
+<tr>
+<th>기능</th>
+<th>추정 내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>학생/반 관리</td>
+<td>학생 등록(이름, 학교, 학년, 학생·학부모 연락처, 소속 반, 재원 상태), 반 등록(반명, 요일/시간, 담당 강사, 캠퍼스)</td>
+</tr>
+<tr>
+<td>성적 통계 분석</td>
+<td>학생별 시계열(테스트 점수·과제 등급·출결률), 반별 분포, 기간 비교</td>
+</tr>
+<tr>
+<td>발송 내역 &amp; 설정</td>
+<td>발송 로그(수신자, 채널, 상태, 본문), 알리고 API 키·발신번호 설정, 템플릿 관리</td>
+</tr>
+<tr>
+<td>카카오 알림톡</td>
+<td>카카오 비즈메시지 템플릿 발송 (알리고 알림톡 API 경유 가능)</td>
+</tr>
+<tr>
+<td>상담일지</td>
+<td>학생별 상담 기록(날짜, 내용, 후속조치)</td>
+</tr>
+<tr>
+<td>수업 기록 보기</td>
+<td>반별 수업일지 히스토리</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2">2. 도메인 모델 (초안)</h2>
+<pre><code>Campus ─┬─ User(강사/원장, 로그인 계정)
+        ├─ Class ──── ClassSchedule(요일·시간)
+        │     └─ Enrollment ── Student ── Guardian(학부모 연락처)
+        │
+        ├─ ClassSession (반 × 수업일)           ← 반 단위 기록
+        │     ├─ progress[1..4교시], homework, videoLink, teacherNote
+        │     ├─ dailyTest { name, maxScore }
+        │     └─ StudentDailyRecord (× 학생)   ← 학생 단위 기록
+        │           ├─ attendance {status: 미확인|출석|지각|결석|조퇴, reason}
+        │           ├─ homeworkGrade {A+|A|B|C|D|F}
+        │           ├─ recheck {target:boolean, result: 합격|불합격}
+        │           └─ testScore (number | text)
+        │
+        ├─ Exam (시험지)
+        │     ├─ sourceFile(.hwp/.pdf), questionCount, maxScore, status(초안|확정)
+        │     ├─ ExamQuestion[] {no, unit, subType, difficulty, rationale, points, needsReview}
+        │     └─ ExamAttempt (× 학생) {answers[], score, source: OMR|manual}
+        │
+        ├─ ConsultLog (학생 상담일지)
+        ├─ MessageTemplate / GradeComment(등급→문구)
+        ├─ MessageLog {recipient, channel: SMS|LMS|MMS|알림톡, status, body, cost}
+        └─ IntegrationSetting {aligo apiKey, senderNo, kakao channel, llm endpoint}
+</code></pre>
+<p>핵심 규칙
+- 재검사 대상 판정: 직전 세션 homeworkGrade가 B 이하(기준값 설정 가능)이면 다음 세션에서 recheck.target = true.
+- 대시보드 KPI는 모두 위 테이블의 집계 뷰(주간 과제 완수율, 주간 테스트 평균 등) — 별도 저장 불필요.
+- 문자 본문은 <code>ClassSession + StudentDailyRecord + GradeComment</code> 병합 결과로 <strong>렌더 시점에 생성</strong>, 발송 시 MessageLog에 스냅샷 저장.</p>
+<hr />
+<h2 id="3">3. 기능 모듈 및 우선순위</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>모듈</th>
+<th>포함 기능</th>
+<th>우선순위</th>
+<th>LLM 필요</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M0</td>
+<td>인증·기본</td>
+<td>로컬 로그인(단일 계정 → 추후 다계정/역할), 캠퍼스, 설정</td>
+<td><span class="badge p0">P0</span></td>
+<td>—</td>
+</tr>
+<tr>
+<td>M1</td>
+<td>학생/반 관리</td>
+<td>학생·학부모·반·수강 등록, 요일/시간, 재원 상태</td>
+<td><span class="badge p0">P0</span></td>
+<td>—</td>
+</tr>
+<tr>
+<td>M2</td>
+<td>일일 수업 입력</td>
+<td>출결, 진도(교시별), 과제, 과제피드백, 재검사, 당일 테스트, 영상링크, 첨언</td>
+<td><span class="badge p0">P0</span></td>
+<td>—</td>
+</tr>
+<tr>
+<td>M3</td>
+<td>대시보드</td>
+<td>KPI 카드, 반별 출결 체크, 지난 수업 요약</td>
+<td><span class="badge p1">P1</span></td>
+<td>—</td>
+</tr>
+<tr>
+<td>M4</td>
+<td>메시지</td>
+<td>템플릿 병합 미리보기, 텍스트/이미지 복사, 리포트 이미지 저장, 알리고 SMS/LMS 발송, 발송 로그, 잔여량 조회</td>
+<td><span class="badge p1">P1</span></td>
+<td>—</td>
+</tr>
+<tr>
+<td>M5</td>
+<td>성적 통계</td>
+<td>학생·반 시계열, 분포, 기간 비교, 엑셀 내보내기</td>
+<td><span class="badge p2">P2</span></td>
+<td>—</td>
+</tr>
+<tr>
+<td>M6</td>
+<td>시험지 분석</td>
+<td>시험 등록, 문항 메타(단원·유형·난이도) 초안 생성, 확인·수정, 난이도 분석표 이미지</td>
+<td><span class="badge p2">P2</span></td>
+<td>○</td>
+</tr>
+<tr>
+<td>M7</td>
+<td>OMR 채점</td>
+<td>PDF 업로드 → 페이지 분할 → 판독 → 학생 매칭 → 검수 → 성적 반영, 문항별 정오답·오답 유형 통계</td>
+<td><span class="badge p2">P3</span></td>
+<td>○ (Vision)</td>
+</tr>
+<tr>
+<td>M8</td>
+<td>카카오 알림톡</td>
+<td>채널 연동, 승인 템플릿 관리, 발송</td>
+<td><span class="badge p2">P3</span></td>
+<td>—</td>
+</tr>
+<tr>
+<td>M9</td>
+<td>상담일지</td>
+<td>학생별 상담 기록 CRUD</td>
+<td><span class="badge p2">P2</span></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>MVP(로컬 단독 사용) = M0 + M1 + M2 + M3 + M4(복사/이미지까지, 실제 발송은 옵션).</p>
+<hr />
+<h2 id="4">4. 아키텍처 방향</h2>
+<h3 id="41">4.1 "로컬 우선 → 웹 전환" 전략</h3>
+<p>처음부터 <strong>웹 앱 형태로 만들되 localhost에서 띄우는</strong> 방식이 가장 전환 비용이 낮다. 데스크톱 전용 프레임워크(Electron/Tauri)를 쓰면 나중에 웹으로 갈 때 재작업이 생긴다.</p>
+<table>
+<thead>
+<tr>
+<th>단계</th>
+<th>실행 형태</th>
+<th>DB</th>
+<th>인증</th>
+<th>파일 저장</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Phase A (로컬)</td>
+<td><code>docker compose up</code> (api + web + postgres) → <code>http://localhost:포트</code>, 이후 단일 실행파일/설치 패키지</td>
+<td>PostgreSQL (Docker 컨테이너)</td>
+<td>로컬 계정 1개, 세션 쿠키</td>
+<td>로컬 폴더</td>
+</tr>
+<tr>
+<td>Phase B (웹)</td>
+<td>컨테이너 배포(Kubernetes)</td>
+<td>PostgreSQL</td>
+<td>다계정·역할(원장/강사), 캠퍼스 스코프</td>
+<td>오브젝트 스토리지</td>
+</tr>
+</tbody>
+</table>
+<p>DB는 처음부터 PostgreSQL 단일로 고정(SQLite 미고려, D3 확정). 전환을 쉽게 하기 위한 조건: 파일 저장을 스토리지 인터페이스로 추상화, 설정은 환경변수, 마이그레이션은 Alembic으로 처음부터 관리.</p>
+<h3 id="42">4.2 구성 요소</h3>
+<pre><code>[React+Vite SPA] ── REST/JSON ── [FastAPI] ── [PostgreSQL]
+                                     ├── [Storage] (시험지 파일, OMR PDF, 리포트 이미지)
+                                     ├── [Document Ingest] (hwp/hwpx/pdf/image → 텍스트+수식+페이지 이미지)
+                                     ├── [OMR Engine] (OpenCV 기반 판독, 선택적으로 학습 모델 교체)
+                                     ├── [LLM Adapter] (OpenAI 호환 API — 로컬 LLM 우선)
+                                     └── [Messaging Adapter] (알리고: SMS/LMS/MMS + 카카오 알림톡/친구톡)
+</code></pre>
+<ul>
+<li>백엔드는 FastAPI(Python 3.12) + SQLAlchemy 2.0(async) + Alembic. 문서 파싱·OMR·모델 추론이 모두 Python 생태계라 단일 언어로 통합 가능(D2 확정).</li>
+<li>LLM Adapter는 OpenAI 호환 chat/completions 인터페이스로 고정 → 로컬 LLM(vLLM/Ollama 등)과 외부 API를 설정만으로 교체. 문항 분류·난이도·판단 근거 생성은 이 경로.</li>
+<li>OMR은 LLM/VLM이 아니라 OpenCV 템플릿 기반 판독을 기본으로 하고, 판독 결과 검수 화면을 필수로 둔다. 학습된 classification/segmentation 모델은 판독기 인터페이스 뒤에서 교체 가능하게 설계(§8 D5 참조).</li>
+<li>문서 입력은 hwp·hwpx·pdf·이미지 4종 모두 수용(§8 D6 참조).</li>
+</ul>
+<h3 id="43">4.3 화면 구조 (라우트 초안)</h3>
+<table>
+<thead>
+<tr>
+<th>경로</th>
+<th>화면</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/login</code></td>
+<td>로그인</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td>종합 대시보드</td>
+</tr>
+<tr>
+<td><code>/students</code>, <code>/classes</code></td>
+<td>학생/반 관리</td>
+</tr>
+<tr>
+<td><code>/daily?class=&amp;date=</code></td>
+<td>일일 수업 &amp; 성적 입력 (2패널)</td>
+</tr>
+<tr>
+<td><code>/exams</code>, <code>/exams/:id</code></td>
+<td>시험지 · 오답 분석</td>
+</tr>
+<tr>
+<td><code>/stats</code></td>
+<td>성적 통계</td>
+</tr>
+<tr>
+<td><code>/messages</code>, <code>/settings/integrations</code></td>
+<td>발송 내역 &amp; 설정</td>
+</tr>
+<tr>
+<td><code>/kakao</code></td>
+<td>카카오 알림톡</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-wf-workflow">5. 개발 단계 (wf-workflow 단계 매핑 초안)</h2>
+<table>
+<thead>
+<tr>
+<th>단계</th>
+<th>산출물</th>
+<th>완료 기준</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S1 스캐폴딩</td>
+<td>모노레포, API+SPA 골격, SQLite 마이그레이션, 로그인</td>
+<td>로그인 후 빈 대시보드 진입</td>
+</tr>
+<tr>
+<td>S2 마스터 데이터</td>
+<td>M1 학생/반/수강 CRUD, 시드 데이터</td>
+<td>반 4개·학생 47명 등록 시나리오 통과</td>
+</tr>
+<tr>
+<td>S3 일일 입력</td>
+<td>M2 전체(3종 저장 단위), 재검사 규칙</td>
+<td>화면② 재현, 저장/재조회 테스트</td>
+</tr>
+<tr>
+<td>S4 대시보드</td>
+<td>M3 KPI 집계 쿼리, 출결 체크 위젯</td>
+<td>화면① 재현</td>
+</tr>
+<tr>
+<td>S5 메시지</td>
+<td>M4 템플릿 병합, 미리보기, 이미지 렌더, 알리고 발송(샌드박스)</td>
+<td>화면③ 재현, 발송 로그 기록</td>
+</tr>
+<tr>
+<td>S6 통계·상담</td>
+<td>M5, M9</td>
+<td>학생 히스토리 탭 동작</td>
+</tr>
+<tr>
+<td>S7 시험지 분석</td>
+<td>M6 + LLM Adapter</td>
+<td>화면④ 상단·문항 표 재현</td>
+</tr>
+<tr>
+<td>S8 OMR</td>
+<td>M7 판독·검수·반영</td>
+<td>샘플 PDF 8명 채점 시나리오</td>
+</tr>
+<tr>
+<td>S9 웹 전환 준비</td>
+<td>PostgreSQL, 다계정, 컨테이너화</td>
+<td>K8s 배포</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6">6. 리스크 및 미확인 사항</h2>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>내용</th>
+<th>대응</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hwp 파싱</td>
+<td>오픈소스 파서 품질 한계</td>
+<td>PDF 변환 전제, hwp는 후순위</td>
+</tr>
+<tr>
+<td>OMR 판독 정확도</td>
+<td>로컬 Vision 모델 성능 미검증</td>
+<td>검수 UI 필수, 외부 API 폴백 옵션</td>
+</tr>
+<tr>
+<td>알리고 API</td>
+<td>실 발송은 비용 발생, 발신번호 사전등록 필요</td>
+<td>테스트 모드 플래그, 복사 기능으로 MVP 대체</td>
+</tr>
+<tr>
+<td>카카오 알림톡</td>
+<td>템플릿 사전 심사 필요</td>
+<td>P3로 미룸</td>
+</tr>
+<tr>
+<td>성적 통계 화면</td>
+<td>캡쳐 없음</td>
+<td>요구사항 별도 청취</td>
+</tr>
+<tr>
+<td>다중 캠퍼스</td>
+<td>로컬 단계에서 필요 여부 불명</td>
+<td>데이터에 campus_id는 두되 UI는 단일 캠퍼스</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-decision-items">7. 결정 항목 (Decision Items)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>결정 사항</th>
+<th>결정 내용</th>
+<th>근거 / 비고</th>
+<th>상태</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D1</td>
+<td>프론트엔드 스택</td>
+<td>React 18 + Vite + TypeScript, 라우팅 React Router, 상태 TanStack Query</td>
+<td>SPA로 로컬·웹 동일 빌드</td>
+<td><span class="badge p2">확정</span></td>
+</tr>
+<tr>
+<td>D2</td>
+<td>백엔드 스택</td>
+<td>FastAPI (Python 3.12) + SQLAlchemy 2.0 async + Alembic</td>
+<td>문서 파싱(pyhwp·PyMuPDF), OpenCV, 모델 추론(PyTorch/ONNX)이 전부 Python — Node를 쓰면 ML 서비스를 별도로 분리해야 함</td>
+<td><span class="badge p2">확정</span></td>
+</tr>
+<tr>
+<td>D3</td>
+<td>DB</td>
+<td>PostgreSQL 단일 (로컬도 Docker Postgres)</td>
+<td>SQLite 미고려. 로컬 실행 시 Postgres 컨테이너 필요 → D4와 연동</td>
+<td><span class="badge p2">확정</span></td>
+</tr>
+<tr>
+<td>D4</td>
+<td>로컬 배포 형태</td>
+<td>1차 <code>docker compose</code> 스크립트 실행 → 2차 설치 패키지(단일 실행파일 + 내장 Postgres)</td>
+<td>D3 때문에 순수 단일 실행파일은 Postgres 번들링이 필요</td>
+<td><span class="badge p2">확정</span></td>
+</tr>
+<tr>
+<td>D5</td>
+<td>AI 모델 구성</td>
+<td>하이브리드: OMR = OpenCV 템플릿 판독(+선택적 학습 모델), 문항 분석 = LLM(OpenAI 호환 Adapter, 로컬 LLM 우선)</td>
+<td>§8.1 참조</td>
+<td><span class="badge p2">확정(권장안)</span></td>
+</tr>
+<tr>
+<td>D6</td>
+<td>시험지 입력 포맷</td>
+<td>hwp · hwpx · pdf · 이미지 모두 지원</td>
+<td>가능. hwp는 pyhwp로 텍스트·수식 추출, 시각 검수용 렌더링은 한컴 COM(Windows) 또는 LibreOffice+H2Orestart. §8.2 참조</td>
+<td><span class="badge p2">확정</span></td>
+</tr>
+<tr>
+<td>D7</td>
+<td>MVP 범위</td>
+<td>M0~M4 (발송 제외, 복사·이미지 저장까지)</td>
+<td>—</td>
+<td><span class="badge p2">확정</span></td>
+</tr>
+<tr>
+<td>D8</td>
+<td>메시지 채널</td>
+<td>알리고 SMS/LMS/MMS + 카카오 알림톡/친구톡을 한 번에 구현</td>
+<td>알리고가 알림톡 API도 제공 → 어댑터 1개로 두 채널 처리. 카카오 비즈니스 채널·발신프로필·템플릿 심사 사전 준비 필요</td>
+<td><span class="badge p2">확정</span></td>
+</tr>
+<tr>
+<td>D9</td>
+<td>wf-workflow 단계 정의</td>
+<td>§5 초안 그대로 / 재구성</td>
+<td>사용자 확인 필요</td>
+<td><span class="badge open">대기</span></td>
+</tr>
+<tr>
+<td>D10</td>
+<td>추론 하드웨어 전략</td>
+<td>Phase A: 문항 분석 LLM은 외부 API 종량제(OpenAI 호환), OMR·통계·메시지는 CPU. Phase B: 중앙 GPU 1대 공유</td>
+<td>클라이언트 하드웨어 증설 불가 전제. 외부 전송 불가 시 CPU+소형 모델로 폴백(품질 저하 사전 합의). §8.4 참조</td>
+<td>권장안 제시 — 클라이언트 외부 API 허용 여부 확인 대기</td>
+</tr>
+<tr>
+<td>D11</td>
+<td>OMR 답안지 양식</td>
+<td>2027학년도 수능 수학영역 답안지 양식으로 고정 (<code>assets/omr/omr-template-ksat2027-math.png</code>)</td>
+<td>30문항 = 객관식 21(1~15, 23~28) + 단답형 9(16~22, 29~30). §8.5 참조</td>
+<td><span class="badge p2">확정</span></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8">8. 결정 항목 상세 검토</h2>
+<h3 id="81-d5-classification-segmentation-llm">8.1 D5 — "학습시킨 classification &amp; segmentation 모델"과 로컬 LLM의 차이</h3>
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>학습된 분류/분할 모델</th>
+<th>로컬 LLM / VLM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>정체</td>
+<td>특정 작업 전용 비전 모델(CNN, ViT, U-Net, YOLO 등). 라벨링된 데이터로 학습</td>
+<td>범용 언어 모델(Llama, Qwen 등). VLM은 이미지 입력도 받음</td>
+</tr>
+<tr>
+<td>입력→출력</td>
+<td>이미지 → 클래스 라벨 / 픽셀 마스크·바운딩박스</td>
+<td>텍스트(+이미지) → 자유 텍스트</td>
+</tr>
+<tr>
+<td>강점</td>
+<td>빠름, 결정적, 정확도 높음(학습 데이터 범위 안에서), CPU로도 실행</td>
+<td>추론·설명·분류 근거 서술 가능, 학습 데이터 불필요(zero-shot)</td>
+</tr>
+<tr>
+<td>약점</td>
+<td>라벨링 데이터 준비 필요(수백~수천 장), 설명 생성 불가</td>
+<td>느리고 비용 큼, 숫자·마킹 판독은 오판 가능, 비결정적</td>
+</tr>
+<tr>
+<td>우리 프로젝트 적합 작업</td>
+<td>OMR 마킹 판독(마킹/비마킹 분류, 답안 영역 분할), 시험지 문항 영역 분할</td>
+<td>문항의 단원·세부유형·난이도 추정, "판단 근거" 문장 생성, 오답 유형 코멘트</td>
+</tr>
+</tbody>
+</table>
+<p>결론: 둘은 대체 관계가 아니라 <strong>담당 작업이 다르다.</strong> 화면④의 기능을 나누면 다음과 같이 배치된다.</p>
+<table>
+<thead>
+<tr>
+<th>기능</th>
+<th>1차 구현</th>
+<th>고도화 옵션</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OMR 판독</td>
+<td>OpenCV 템플릿 방식 — 정렬 마커로 기울기 보정 → 격자 좌표의 마킹 농도 임계값 판독. 표준 OMR 카드는 학습 없이 95%+ 가능</td>
+<td>마킹 판독기를 학습된 분류 모델(마킹/비마킹/이중마킹)로 교체. 학습 데이터는 운영 중 검수 화면에서 교정된 결과를 축적해 확보</td>
+</tr>
+<tr>
+<td>문항 영역 분할</td>
+<td>PDF 텍스트 레이어 또는 hwp 구조에서 문항 번호 기준 분리</td>
+<td>스캔 이미지용 segmentation 모델(문항 박스 검출)</td>
+</tr>
+<tr>
+<td>문항 분류·난이도·근거</td>
+<td>LLM (OpenAI 호환 Adapter → 로컬 LLM)</td>
+<td>축적된 라벨로 단원·난이도 분류기를 학습해 LLM 호출 전 사전 분류(비용 절감)</td>
+</tr>
+</tbody>
+</table>
+<p>설계 원칙: <code>OmrReader</code>, <code>QuestionSegmenter</code>, <code>QuestionAnalyzer</code> 세 인터페이스를 두고 구현체(OpenCV / 학습 모델 / LLM)를 설정으로 교체. 검수 화면의 교정 결과는 <code>label_corrections</code> 테이블에 저장해 향후 학습 데이터로 재사용한다.</p>
+<h3 id="82-d6-hwp">8.2 D6 — HWP 지원 가능 여부</h3>
+<table>
+<thead>
+<tr>
+<th>포맷</th>
+<th>구조</th>
+<th>처리 방법</th>
+<th>가능 여부</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>.hwp (HWP 5.x)</td>
+<td>OLE 복합문서 + 자체 바이너리 레코드</td>
+<td><code>pyhwp</code>(hwp5txt/hwp5html)로 본문 텍스트, 표, 이미지, 수식 스크립트 추출</td>
+<td>가능 (텍스트·구조 추출)</td>
+</tr>
+<tr>
+<td>.hwpx</td>
+<td>OWPML — zip 안의 XML</td>
+<td>표준 XML 파서로 직접 처리, 수식도 XML 노드</td>
+<td>가능 (가장 쉬움)</td>
+</tr>
+<tr>
+<td>.pdf</td>
+<td>텍스트 레이어 유무에 따라 상이</td>
+<td>PyMuPDF로 텍스트·좌표·페이지 이미지 추출, 텍스트 없으면 OCR</td>
+<td>가능</td>
+</tr>
+<tr>
+<td>이미지 (jpg/png)</td>
+<td>스캔·촬영본</td>
+<td>OCR(수식 포함 시 VLM 또는 수식 OCR) → 텍스트화</td>
+<td>가능 (정확도는 화질 의존)</td>
+</tr>
+</tbody>
+</table>
+<p>hwp 관련 주의점:
+- 수식은 한글 자체 수식 스크립트(예: <code>{a} over {b}</code>, <code>sqrt{x}</code>)로 저장되어 있어 텍스트로 추출은 되지만 LaTeX가 아니다. LLM 입력용으로는 그대로 쓰거나 간단한 변환 규칙을 둔다.
+- 레이아웃까지 보이는 "시각 검수용 이미지"가 필요하면 hwp → PDF 변환이 필요하다. 방법은 (a) Windows에서 한컴오피스 COM 자동화(pywin32, 로컬 단계에서 가능), (b) LibreOffice + H2Orestart 확장(리눅스 컨테이너에서 가능, 복잡한 수식·표 재현율은 한컴보다 낮음). 웹 단계(K8s)에서는 (b) 또는 Windows 변환 워커를 별도로 둔다.
+- 배포 금지 설정·암호가 걸린 hwp는 파싱이 안 된다. 업로드 시 오류로 안내.
+- 수식이 이미지(그림 개체)로 삽입된 시험지는 텍스트 추출이 불가능해 이미지 경로(OCR/VLM)로 폴백한다.</p>
+<p>결론: 4종 모두 지원 가능. 파이프라인은 <code>DocumentIngest(file) → {pages[], blocks[](text|equation|image|table), page_images[]}</code> 공통 구조로 정규화한 뒤 문항 분할·분석으로 넘긴다.</p>
+<h3 id="83-d8">8.3 D8 — 알리고 + 카카오 동시 구현 시 사전 준비</h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>필요 사항</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>알리고 계정</td>
+<td>API key, user_id, 발신번호 사전 등록(통신사 인증)</td>
+</tr>
+<tr>
+<td>카카오 알림톡</td>
+<td>카카오 비즈니스 채널 개설 → 알리고에 발신프로필 연동 → 템플릿 등록·심사(영업일 1~3일). 템플릿 변수(<code>#{학생명}</code> 등) 형식 준수</td>
+</tr>
+<tr>
+<td>친구톡</td>
+<td>채널 친구(수신 동의) 상태에서만 발송 가능, 광고성 문구 규제</td>
+</tr>
+<tr>
+<td>폴백</td>
+<td>알림톡 실패(미친구, 템플릿 불일치) 시 SMS/LMS로 자동 대체 발송 옵션(알리고 API 지원)</td>
+</tr>
+<tr>
+<td>어댑터</td>
+<td><code>MessagingAdapter.send(channel, recipients, template_id|body, vars)</code> 단일 인터페이스, 발송 결과·비용을 <code>MessageLog</code>에 기록</td>
+</tr>
+</tbody>
+</table>
+<h3 id="84-d10">8.4 D10 — 추론 하드웨어 전략</h3>
+<p>LLM이 필요한 작업은 시험지 등록 시 문항 분석 1회(시험지당 5만~10만 토큰, 주 수 회)뿐이며 실시간성이 필요 없는 배치 작업이다. OMR 판독(OpenCV)·통계·메시지는 GPU가 필요 없다.</p>
+<table>
+<thead>
+<tr>
+<th>선택지</th>
+<th>초기 비용</th>
+<th>운영 비용</th>
+<th>품질</th>
+<th>판단</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A. CPU + 7~14B 로컬 모델</td>
+<td>0</td>
+<td>전기료</td>
+<td>낮음~중간 (고3 수학 문항 분류·근거 서술에 부족)</td>
+<td>외부 전송 불가 시 폴백</td>
+</tr>
+<tr>
+<td>B. 소비자 GPU (RTX 3090 24GB 중고 등)</td>
+<td>약 60~100만원</td>
+<td>전기료</td>
+<td>중간~높음</td>
+<td>단일 학원용으로 과투자</td>
+</tr>
+<tr>
+<td>C. Mac mini 통합메모리 48~64GB</td>
+<td>약 200~300만원</td>
+<td>낮음</td>
+<td>중간~높음</td>
+<td>단일 학원용으로 과투자</td>
+</tr>
+<tr>
+<td>D. 외부 LLM API 종량제</td>
+<td>0</td>
+<td>시험지당 수십~수백 원</td>
+<td>높음</td>
+<td><strong>Phase A 권장</strong></td>
+</tr>
+<tr>
+<td>E. 웹 전환 후 중앙 GPU 1대 공유</td>
+<td>서버 1대</td>
+<td>학원 수로 분산</td>
+<td>높음</td>
+<td><strong>Phase B 권장</strong></td>
+</tr>
+</tbody>
+</table>
+<p>개인정보 경계: 시험지 문항에는 학생 정보가 없으므로 외부 API로 보내도 되고, 학생 이름·수험번호가 있는 OMR은 로컬 OpenCV로만 처리한다.</p>
+<h3 id="85-d11-omr">8.5 D11 — OMR 답안지 양식 분석 및 판독 설계</h3>
+<p>입력 양식: 2027학년도 대학수학능력시험 수학영역 답안지(가로형, 분홍색 인쇄). 클라이언트가 이 양식으로 고정함.</p>
+<p><strong>양식 구조</strong></p>
+<table>
+<thead>
+<tr>
+<th>영역</th>
+<th>위치</th>
+<th>구성</th>
+<th>판독 방식</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>타이밍 마크</td>
+<td>상·하·좌·우 가장자리의 검은 사각형 열</td>
+<td>인쇄 위치 고정</td>
+<td>기울기·원근 보정 및 좌표 정합의 기준점</td>
+</tr>
+<tr>
+<td>성명</td>
+<td>좌측 상단</td>
+<td>손글씨</td>
+<td>판독 대상 아님 (수험번호로 학생 매칭, 실패 시 검수 화면에서 수동 선택)</td>
+</tr>
+<tr>
+<td>수험번호</td>
+<td>좌측</td>
+<td>8자리 × 숫자 0~9 마킹</td>
+<td>학원이 학생별 8자리 번호를 부여해 학생 매칭 키로 사용</td>
+</tr>
+<tr>
+<td>문형</td>
+<td>좌측 중앙</td>
+<td>홀수형 / 짝수형</td>
+<td>정답표 변형 선택 (시험당 정답표 2벌 지원)</td>
+</tr>
+<tr>
+<td>공통과목 객관식</td>
+<td>중앙 상단</td>
+<td>1~10, 11~15 (15문항 × 5지)</td>
+<td>단일 마킹, 복수 마킹·무마킹 플래그</td>
+</tr>
+<tr>
+<td>단답형 16~22번</td>
+<td>중앙 하단 및 우측 상단</td>
+<td>문항당 백(1~9)·십(0~9)·일(0~9) 3열</td>
+<td>열별 단일 마킹 → 정수 조합, 백의 자리 무마킹 허용</td>
+</tr>
+<tr>
+<td>선택과목 객관식 23~28</td>
+<td>우측 하단</td>
+<td>6문항 × 5지</td>
+<td>단일 마킹</td>
+</tr>
+<tr>
+<td>단답형 29~30번</td>
+<td>우측</td>
+<td>백·십·일 3열</td>
+<td>단답형과 동일</td>
+</tr>
+<tr>
+<td>결시자 확인·필적 확인·감독관 확인</td>
+<td>좌측</td>
+<td>—</td>
+<td>판독 제외</td>
+</tr>
+</tbody>
+</table>
+<p>합계 30문항 = 객관식 21 + 단답형 9. 배점은 시험 등록 시 문항별 입력(수능 표준 2·3·4점).</p>
+<p><strong>판독 파이프라인 (CPU, OpenCV)</strong></p>
+<table>
+<thead>
+<tr>
+<th>단계</th>
+<th>처리</th>
+<th>비고</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. 페이지 분리</td>
+<td>PDF → 페이지별 이미지(300 DPI 권장)</td>
+<td>촬영본(jpg)도 동일 경로</td>
+</tr>
+<tr>
+<td>2. 색 분리(drop-out)</td>
+<td>RGB의 R 채널만 사용 → 분홍 인쇄는 흰색에 가깝게 사라지고 검은 마킹만 남음</td>
+<td>스캐너의 컬러 드롭아웃과 같은 원리, 별도 학습 불필요</td>
+</tr>
+<tr>
+<td>3. 정합</td>
+<td>타이밍 마크·모서리 마크 검출 → 호모그래피로 기준 템플릿 좌표계에 정렬</td>
+<td>기울기·원근·크기 차이 흡수</td>
+</tr>
+<tr>
+<td>4. 버블 판독</td>
+<td>템플릿 JSON에 정의된 각 버블 중심·반경의 평균 농도 계산 → 행 내 상대 비교 + 절대 임계값으로 마킹 판정</td>
+<td>판정값·신뢰도 저장</td>
+</tr>
+<tr>
+<td>5. 값 조합</td>
+<td>객관식 1~5, 단답형 3열 → 정수, 수험번호 8자리, 문형</td>
+<td>복수 마킹·무마킹·저신뢰는 플래그</td>
+</tr>
+<tr>
+<td>6. 학생 매칭</td>
+<td>수험번호 ↔ 학생 테이블</td>
+<td>미매칭 시 검수 화면에서 수동 지정</td>
+</tr>
+<tr>
+<td>7. 검수</td>
+<td>원본 크롭과 판독 결과를 나란히 표시, 플래그 문항 우선 표시, 교정값은 <code>label_corrections</code>에 저장</td>
+<td>향후 학습 모델 데이터</td>
+</tr>
+<tr>
+<td>8. 채점·반영</td>
+<td>문형별 정답표와 대조 → <code>ExamAttempt</code> 저장, 문항별 정답률 갱신</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>원본 PDF 확인 결과</strong> (<code>assets/omr/omr-template-ksat2027-math.pdf</code>, A4 가로 297×210mm, 내장 이미지 1754×1240 ≈ 150 DPI 스캔본 + OCR 텍스트 레이어)</p>
+<ul>
+<li>수험번호 8자리는 자리마다 마킹 가능한 숫자 범위가 다르다: 1열 1~9, 2열 0~9, 3열 0~5, 4열 0~9, 5열 0~9, 6열 0~9, 7열 0~2, 8열 0~9 (총 68버블). <strong>학원이 학생별 수험번호를 부여할 때 이 범위를 지켜야 하며</strong>, <code>Student.omr_number</code> 저장 시 검증한다.</li>
+<li>4 모서리 마크(정규화 좌표 x 0.0724/0.9276, y 0.0200/0.9690)가 대칭으로 존재해 호모그래피 기준점으로 충분하다. 상단 타이밍 마크 40개는 보조 검증용.</li>
+<li>버블 크기 약 2.2×4.6mm(세로 타원). 인쇄색은 R 채널에서 거의 사라짐을 확인.</li>
+</ul>
+<p><strong>템플릿 및 프로토타입 산출물</strong> (<code>prototype/omr/</code>)</p>
+<table>
+<thead>
+<tr>
+<th>파일</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ksat-2027-math.json</code></td>
+<td>버블 437개(객관식 105 + 단답형 261 + 수험번호 68 + 문형 2 + 결시 1)와 모서리·타이밍 마크의 정규화 좌표. PDF에서 자동 추출, 전 필드 행·열 수 검증 완료</td>
+</tr>
+<tr>
+<td><code>omr_reader.py</code></td>
+<td>판독 참조 구현 — 모서리 마크 검출 → 호모그래피 정합(3508×2480 캔버스) → R 채널 드롭아웃 → 버블 농도 → 필드별 판정(정상/무마킹/복수마킹/저신뢰)</td>
+</tr>
+<tr>
+<td><code>test_omr.py</code></td>
+<td>합성 테스트 — 난수 답안·수험번호를 마킹한 뒤 회전 3°·축소 0.6·원근 왜곡·회색 배경을 적용하고 판독. 30문항·수험번호·문형 전부 일치, 의도된 복수마킹(3번)·무마킹(22번) 플래그 정상</td>
+</tr>
+<tr>
+<td><code>template.py</code>, <code>detect.py</code></td>
+<td>템플릿 JSON 생성 스크립트(양식 변경 시 재실행)</td>
+</tr>
+<tr>
+<td><code>template_overlay.png</code></td>
+<td>템플릿 좌표를 원본 위에 겹친 검수 이미지</td>
+</tr>
+</tbody>
+</table>
+<p>남은 검증: 실제 학생 마킹 스캔본(사인펜 농도, 지우개 자국, 스캐너별 밝기 차이)으로 임계값(<code>abs_th=70</code>, <code>rel=0.5</code>)을 보정해야 한다. 합성 테스트는 판독 로직과 정합이 맞는지만 보장한다.</p>
+<p><strong>데이터 모델 추가</strong>: <code>Student.omr_number</code> (8자리, 유니크, 자리별 범위 검증), <code>Exam.answer_key_odd / answer_key_even</code>, <code>ExamAttempt.form_type</code>, <code>ExamAttempt.flags[]</code>, <code>OmrScan { file, page_no, status, matched_student_id }</code>.</p>
+<div class="meta">mathdesk · SPEC-mathdesk-outline · 2026-09-22 · 원본: docs/SPEC-mathdesk-outline.md</div>
+</div></div>
+</body>
+</html>

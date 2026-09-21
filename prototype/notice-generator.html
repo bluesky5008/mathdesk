@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>학부모 공지 생성기</title>
+<style>
+  :root {
+    --teal: #0d3b44; --teal-100: #ccfbf1; --teal-200: #99f6e4; --teal-800: #115e59;
+    --yellow: #f59e0b; --yellow-400: #fbbf24;
+    --bg: #f3f4f6; --card: #ffffff; --line: #e5e7eb; --line-2: #f3f4f6;
+    --text: #1f2937; --text-2: #374151; --muted: #4b5563; --muted-2: #6b7280; --muted-3: #9ca3af;
+    --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb; --gray-800: #1f2937;
+    --red-50: #fef2f2; --red-200: #fecaca; --red-600: #dc2626;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column;
+    -webkit-font-smoothing: antialiased; line-height: 1.5;
+  }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: #f1f1f1; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  /* ---------- 헤더 ---------- */
+  .header {
+    background: var(--teal); color: #fff; padding: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .header-inner { max-width: 80rem; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; width: 100%; }
+  .brand-mark { width: 40px; height: 40px; background: var(--yellow); color: var(--teal); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; flex-shrink: 0; }
+  .brand h1 { font-size: 18px; margin: 0; letter-spacing: .02em; }
+  .brand p { margin: 0; font-size: 10px; color: var(--teal-200); }
+  .btn-print {
+    width: 100%; background: var(--yellow); color: var(--teal); font-weight: 700; padding: 8px 16px; border: 0; border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.1); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; font-size: 14px; transition: background .15s;
+  }
+  .btn-print:hover { background: var(--yellow-400); }
+  .btn-print svg { width: 20px; height: 20px; }
+
+  /* ---------- 레이아웃 ---------- */
+  main { flex-grow: 1; padding: 16px; max-width: 80rem; margin: 0 auto; width: 100%; }
+  .grid-main { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  .panel { background: var(--card); border-radius: var(--radius); box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1); padding: 20px; }
+  .panel-form { border-top: 4px solid var(--yellow); height: fit-content; }
+  .panel-form h2 { font-size: 18px; color: var(--teal); border-bottom: 2px solid var(--line-2); padding-bottom: 8px; margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
+  .panel-form h2 svg { width: 20px; height: 20px; color: var(--yellow); }
+
+  /* ---------- 폼 ---------- */
+  form { display: flex; flex-direction: column; gap: 16px; }
+  .row-2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  input[type=text], textarea {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 14px; color: var(--text); background: #fff;
+  }
+  textarea { resize: none; }
+  input:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px #0d9488; border-color: transparent; }
+  .hint { margin-top: 16px; padding: 12px; background: #f0fdfa; border: 1px solid var(--teal-100); border-radius: 6px; }
+  .hint p { margin: 0; font-size: 12px; color: var(--teal-800); display: flex; align-items: flex-start; gap: 4px; }
+  .hint svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  /* ---------- 출력 ---------- */
+  .output-col { display: flex; flex-direction: column; gap: 24px; }
+  .tpl-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .tpl { background: var(--card); border-radius: var(--radius); box-shadow: 0 4px 6px -1px rgba(0,0,0,.1); padding: 16px; display: flex; flex-direction: column; border: 1px solid var(--line-2); }
+  .tpl-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+  .tpl-head h3 { margin: 0; font-size: 14px; color: var(--text-2); }
+  .btn-copy {
+    font: inherit; font-size: 12px; background: var(--gray-100); color: var(--text-2); padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer;
+    min-width: 85px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; transition: background .15s;
+  }
+  .btn-copy:hover { background: var(--gray-200); }
+  .btn-copy.done { background: var(--teal-100); color: var(--teal-800); border-color: #5eead4; font-weight: 700; }
+  .out { background: var(--gray-50); border: 1px solid var(--line); border-radius: 6px; padding: 12px; font-size: 14px; white-space: pre-wrap; flex-grow: 1; overflow: auto; min-height: 160px; word-break: break-word; }
+  .warn { margin-top: 16px; font-size: 16px; color: var(--red-600); font-weight: 700; text-align: center; padding: 0 8px 8px; }
+
+  /* ---------- 모바일 카드 ---------- */
+  .card-wrap { margin-top: 24px; overflow: hidden; }
+  .card-wrap > h3 { margin: 0 0 16px; text-align: center; color: var(--text-2); border-bottom: 1px solid var(--line); padding-bottom: 8px; font-size: 16px; }
+  .card-center { display: flex; justify-content: center; }
+  .device {
+    width: 375px; max-width: 100%; background: #f8f9fa; border: 4px solid var(--gray-800); border-radius: 2.5rem; overflow: hidden; position: relative; min-height: 600px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
+  }
+  .card-head { background: var(--teal); color: #fff; padding: 20px 20px 40px; position: relative; border-radius: 0 0 40px 40px; text-align: center; }
+  .card-academy { display: inline-block; padding: 4px 12px; background: rgba(255,255,255,.2); border-radius: 999px; font-size: 12px; font-weight: 600; margin-bottom: 12px; letter-spacing: .02em; max-width: 100%; word-break: break-word; }
+  .card-head h2 { font-size: 18px; margin: 0 0 4px; line-height: 1.35; word-break: break-word; }
+  .card-class { margin: 0; color: var(--teal-200); font-size: 14px; font-weight: 500; }
+  .card-badge { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); width: 64px; height: 64px; background: var(--yellow); border-radius: 50%; border: 4px solid #f8f9fa; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1); }
+  .card-badge svg { width: 32px; height: 32px; color: var(--teal); }
+  .card-body { padding: 40px 20px 20px; margin-top: 8px; display: flex; flex-direction: column; gap: 16px; color: var(--text-2); }
+  .cb { background: #fff; padding: 16px; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); border: 1px solid var(--line-2); }
+  .cb-info { display: flex; flex-direction: column; gap: 16px; }
+  .cb-row { display: flex; align-items: flex-start; gap: 12px; }
+  .cb-icon { width: 32px; height: 32px; border-radius: 50%; background: rgba(13,59,68,.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
+  .cb-label { font-size: 12px; color: var(--muted-2); font-weight: 600; margin: 0 0 2px; }
+  .cb-val { font-size: 14px; font-weight: 700; color: var(--text); margin: 0; word-break: break-word; }
+  .cb-text { font-size: 14px; margin: 0; line-height: 1.6; word-break: break-word; }
+  .cb-materials { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); padding: 16px; border-radius: 16px; }
+  .cb-materials .cb-label { color: var(--teal); font-weight: 700; display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+  .cb-materials svg { width: 16px; height: 16px; }
+  .cb-req { background: var(--red-50); border: 1px solid var(--red-200); padding: 16px; border-radius: 16px; }
+  .cb-req .cb-label { color: var(--red-600); font-weight: 700; margin-bottom: 4px; }
+  .cb-strong { font-weight: 500; }
+  .card-foot { text-align: center; padding-bottom: 24px; font-size: 10px; color: var(--muted-3); font-weight: 600; letter-spacing: .1em; }
+
+  /* ---------- 반응형 ---------- */
+  @media (min-width: 640px) {
+    .brand { width: auto; } .btn-print { width: auto; }
+    .row-2 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (min-width: 768px) {
+    .header { padding: 16px 24px; } main { padding: 24px; }
+    .brand h1 { font-size: 20px; } .brand p { font-size: 12px; }
+    .tpl-grid { grid-template-columns: 1fr 1fr; } .tpl.span-2 { grid-column: span 2; }
+    .tpl { padding: 20px; } .out { padding: 16px; } .tpl-head h3 { font-size: 16px; } .warn { font-size: 18px; }
+    .card-head { padding: 24px 24px 40px; } .card-head h2 { font-size: 20px; } .card-body { padding: 40px 24px 24px; }
+  }
+  @media (min-width: 1024px) {
+    .grid-main { grid-template-columns: repeat(12, 1fr); }
+    .panel-form { grid-column: span 4; } .output-col { grid-column: span 8; }
+  }
+
+  /* ---------- 인쇄 ---------- */
+  @media print {
+    body { background: #fff; }
+    .no-print { display: none !important; }
+    .tpl, .card-wrap { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .page-break { page-break-before: always; }
+    .device { transform: scale(.9); transform-origin: top center; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header no-print">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-mark">MD</div>
+      <div>
+        <h1>학부모 공지 생성기</h1>
+        <p>입력하면 공지문 3종과 모바일 카드가 실시간으로 만들어집니다</p>
+      </div>
+    </div>
+    <button class="btn-print" onclick="window.print()">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/></svg>
+      인쇄 / PDF 저장
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="grid-main">
+
+    <!-- 왼쪽: 입력 폼 -->
+    <section class="panel panel-form no-print">
+      <h2>
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+        공지 정보 입력
+      </h2>
+      <form id="noticeForm" onsubmit="return false">
+        <div class="row-2">
+          <div><label for="teacher">선생님 이름</label><input type="text" id="teacher" value="오인성"></div>
+          <div><label for="subject">과목</label><input type="text" id="subject" value="수학"></div>
+        </div>
+        <div class="row-2">
+          <div><label for="academy">학원/모임명</label><input type="text" id="academy" value="전병훈 수학학원"></div>
+          <div><label for="targetClass">대상 반</label><input type="text" id="targetClass" value="3학년·A반"></div>
+        </div>
+        <div><label for="noticeTitle">공지 제목</label><input type="text" id="noticeTitle" value="미적분 유튜브 1강의 수강"></div>
+        <div><label for="datetime">일시</label><input type="text" id="datetime" value="2026년 9월 30일"></div>
+        <div><label for="content">행사/수업 내용</label><textarea id="content" rows="2">미적분 1강의 수강 후 문제집 2단원까지 풀기</textarea></div>
+        <div><label for="materials">준비물</label><input type="text" id="materials" value="문제집"></div>
+        <div><label for="parentReq">학부모님께 요청할 내용</label><textarea id="parentReq" rows="2">추석 연휴 기간에 보충 날짜 확인해주세요.</textarea></div>
+      </form>
+      <div class="hint">
+        <p>
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          입력하는 즉시 우측 템플릿에 실시간 반영되며, 빈칸은 [확인 필요]로 자동 표시됩니다.
+        </p>
+      </div>
+    </section>
+
+    <!-- 오른쪽: 출력 -->
+    <section class="output-col">
+      <div class="tpl-grid">
+        <div class="tpl">
+          <div class="tpl-head no-print">
+            <h3>① 기본 공지문</h3>
+            <button class="btn-copy" onclick="copyText('out-basic', this)">📋 복사</button>
+          </div>
+          <div class="out" id="out-basic"></div>
+        </div>
+        <div class="tpl">
+          <div class="tpl-head no-print">
+            <h3>② 짧은 카카오톡형</h3>
+            <button class="btn-copy" onclick="copyText('out-short', this)">📋 복사</button>
+          </div>
+          <div class="out" id="out-short"></div>
+        </div>
+        <div class="tpl span-2">
+          <div class="tpl-head no-print">
+            <h3>③ 친근한 말투형</h3>
+            <button class="btn-copy" onclick="copyText('out-friendly', this)">📋 복사</button>
+          </div>
+          <div class="out" id="out-friendly" style="min-height:140px"></div>
+        </div>
+      </div>
+
+      <div class="warn">발송 전 반드시 교사의 최종 확인이 필요합니다.</div>
+
+      <!-- 모바일 카드 미리보기 -->
+      <div class="panel card-wrap page-break">
+        <h3 class="no-print">📱 모바일 뷰 카드 미리보기</h3>
+        <div class="card-center">
+          <div class="device">
+            <div class="card-head">
+              <div class="card-academy" id="card-academy">학원명</div>
+              <h2 id="card-title">안내 제목</h2>
+              <p class="card-class" id="card-class">대상 반</p>
+              <div class="card-badge">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="cb cb-info">
+                <div class="cb-row">
+                  <div class="cb-icon">🗓️</div>
+                  <div><p class="cb-label">일시</p><p class="cb-val" id="card-date">일정</p></div>
+                </div>
+                <div class="cb-row">
+                  <div class="cb-icon">👩‍🏫</div>
+                  <div><p class="cb-label">담당 선생님</p><p class="cb-val" id="card-teacher">선생님</p></div>
+                </div>
+              </div>
+              <div class="cb">
+                <p class="cb-label" style="margin-bottom:8px">📋 상세 내용</p>
+                <p class="cb-text" id="card-content">내용</p>
+              </div>
+              <div class="cb-materials">
+                <p class="cb-label">
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                  준비물
+                </p>
+                <p class="cb-text cb-strong" id="card-materials">준비물</p>
+              </div>
+              <div class="cb-req">
+                <p class="cb-label">📢 학부모님 확인 요청</p>
+                <p class="cb-text cb-strong" id="card-parent-req">요청사항</p>
+              </div>
+            </div>
+            <div class="card-foot">MATHDESK</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const inputs = ['teacher','subject','academy','targetClass','noticeTitle','datetime','content','materials','parentReq'].map($);
+  const EMPTY = '[확인 필요]';
+  const v = (id) => $(id).value.trim() || EMPTY;
+
+  function updatePreviews() {
+    const t = v('teacher'), s = v('subject'), a = v('academy'), c = v('targetClass'),
+          title = v('noticeTitle'), d = v('datetime'), con = v('content'), m = v('materials'), p = v('parentReq');
+
+    $('out-basic').textContent =
+`[${a}] ${title} 안내
+- 담당 강사: ${t} 선생님 (${s})
+- 대상 반: ${c}
+- 일시: ${d}
+- 수업/행사 내용: ${con}
+- 준비물: ${m}
+- 학부모님 안내 사항: ${p}`;
+
+    $('out-short').textContent =
+`[${a} - ${s} ${t}T]
+📢 ${c} ${title} 안내
+
+- 일시: ${d}
+- 내용: ${con}
+- 준비물: ${m}
+- 학부모님 확인 요청: ${p}`;
+
+    $('out-friendly').textContent =
+`안녕하세요! ${a} ${c} ${s} 담당 ${t} 선생님입니다. 😊
+우리 학생들의 '${title}' 관련하여 안내해 드립니다.
+
+다가오는 ${d}에 일정이 진행될 예정입니다. 학생들은 ${con}. 잊지 말고 **${m}**을(를) 준비할 수 있도록 지도 부탁드립니다! ✍️
+
+더불어 학부모님들께 한 가지 당부의 말씀 드립니다. ${p} 항상 최선을 다해 지도하겠습니다. 감사합니다! 🙏`;
+
+    $('card-academy').textContent = a;
+    $('card-title').textContent = title;
+    $('card-class').textContent = c;
+    $('card-date').textContent = d;
+    $('card-teacher').textContent = `${t} 선생님 (${s})`;
+    $('card-content').textContent = con;
+    $('card-materials').textContent = m;
+    $('card-parent-req').textContent = p;
+  }
+
+  inputs.forEach(el => el.addEventListener('input', updatePreviews));
+  updatePreviews();
+
+  async function copyText(id, btn) {
+    const text = $(id).innerText;
+    const original = btn.innerHTML;
+    const feedback = (label, ok) => {
+      btn.innerHTML = label; btn.classList.toggle('done', ok);
+      setTimeout(() => { btn.innerHTML = original; btn.classList.remove('done'); }, 2000);
+    };
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (!ok) throw new Error('execCommand failed');
+      }
+      feedback('✅ 복사 완료', true);
+    } catch (err) {
+      console.error('복사 실패:', err);
+      feedback('❌ 실패', false);
+    }
+  }
+</script>
+</body>
+</html>
