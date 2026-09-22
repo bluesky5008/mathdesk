@@ -11,6 +11,7 @@ from .auth import ensure_initial_director, router as auth_router
 from .daily import router as daily_router
 from .db import create_engine
 from .masterdata import router as masterdata_router
+from .messaging import router as messaging_router
 from .stats import router as stats_router
 from .users import router as users_router
 
@@ -47,6 +48,7 @@ def create_app(web_dist: Path | str | None = None) -> FastAPI:
     app.include_router(masterdata_router)
     app.include_router(daily_router)
     app.include_router(stats_router)
+    app.include_router(messaging_router)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
