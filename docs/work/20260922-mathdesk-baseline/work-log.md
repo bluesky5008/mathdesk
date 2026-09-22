@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: 요구사항·설계 승인과 구현 계획 수립까지 완료했다. 코드 구현은 아직 시작하지 않았다(TASK-01~39 전부 `pending`).
-- 다음 행동: [TASK-02 모노레포 스캐폴딩](../../plan.md#task-02-모노레포-스캐폴딩과-실행-환경)을 `in-progress`로 바꾸고 API 헬스 엔드포인트 통합 테스트(Red)부터 작성한다.
+- 현재 결론 또는 상태: 기준선 승인·계획 수립에 이어 TASK-02(스캐폴딩)를 완료했다. `docker compose up`으로 api·web·postgres 3개 컨테이너가 기동하고 헬스 엔드포인트가 동작한다.
+- 다음 행동: [TASK-03 스키마 1차·마이그레이션·시드](../../plan.md#task-03-스키마-1차마이그레이션시드) — 빈 DB에서 `upgrade head` → `downgrade base` 왕복 테스트(Red)부터 작성한다.
 
 ## 문서 연결
 
@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: 없음
-- 마지막 완료 작업: 없음 (계획 수립까지만 완료)
+- 진행 중인 작업: [TASK-03 스키마 1차·마이그레이션·시드](../../plan.md#task-03-스키마-1차마이그레이션시드) (미착수, 상태만 `in-progress`)
+- 마지막 완료 작업: [TASK-02 모노레포 스캐폴딩과 실행 환경](../../plan.md#task-02-모노레포-스캐폴딩과-실행-환경) (2026-09-22 09:58)
 - 차단 요인: 없음
 
 ## 수행 기록
@@ -56,29 +56,53 @@
   - 코드 검증은 없음 — 구현 미착수.
 - 결과: 계획 수립 완료. 구현 미착수.
 
+### 2026-09-22 — TASK-02 모노레포 스캐폴딩과 실행 환경
+
+- 수행 내용
+  - TDD Red: `apps/api/tests/test_health.py`에 `GET /api/health` → 200 `{"status":"ok"}`를 기대하는 통합 테스트를 먼저 작성하고 실행해 `ModuleNotFoundError: No module named 'mathdesk.main'`로 의도한 실패를 확인했다.
+  - Green: `apps/api/src/mathdesk/main.py`에 FastAPI 앱과 헬스 엔드포인트만 구현했다.
+  - `apps/web`에 React 19 + Vite + TypeScript 최소 SPA를 손으로 구성했다(API 상태 표시 1화면).
+  - `compose.yaml`과 api·web Dockerfile로 api + web + postgres 3개 서비스를 구성했다.
+- 변경 파일: `apps/api/{pyproject.toml,uv.lock,Dockerfile,.dockerignore,src/mathdesk/{__init__,main}.py,tests/test_health.py}`, `apps/web/{package.json,package-lock.json,tsconfig.json,vite.config.ts,index.html,Dockerfile,.dockerignore,src/{main,App}.tsx}`, `compose.yaml`, `README.md`, `.gitignore`
+- 발견 사항
+  - 호스트의 8000 포트를 다른 Docker 컨테이너가 이미 점유하고 있어 api 컨테이너 기동이 실패했다. 호스트 포트를 `API_PORT`(기본 8080)·`WEB_PORT`(기본 5173) 환경변수로 노출해 해소했다.
+  - Vite 설정에서 `process.env`를 쓰려면 `@types/node`가 필요해 devDependency 1건을 추가했다.
+  - 시스템 Python이 3.9라 `uv`로 3.12 가상환경을 만들어 사용한다. 저장소는 `uv.lock`으로 버전을 고정한다.
+- 결정과 이유
+  - Vite 공식 템플릿 생성기 대신 최소 파일만 손으로 작성했다. 템플릿은 로고·데모 카운터·린트 설정 등 기준선이 요구하지 않는 보일러플레이트를 포함한다(결정 사다리 1단계).
+  - 이 작업에서는 DB 연결 설정(`DATABASE_URL`)을 추가하지 않았다. 사용처가 TASK-03에서 처음 생기므로 지금 넣으면 미사용 설정이 된다. postgres 서비스 자체는 완료 조건이 요구하므로 포함했다.
+  - 라우팅(React Router)과 서버 상태(TanStack Query)는 화면이 생기는 TASK-08부터 도입한다.
+  - `POSTGRES_PASSWORD`는 로컬 기동성을 위해 기본값을 두되 5432를 호스트에 게시하지 않고 README에 `.env` 재정의를 안내했다.
+- 실행한 검증
+  - `uv run pytest -q` — 최초 실행 `1 error`(의도한 Red, 모듈 없음) → 구현 후 `1 passed`.
+  - `npm run build` — `tsc -b && vite build` 성공(28 modules, dist 생성). 최초 실행은 `process` 타입 누락으로 실패 후 `@types/node` 추가로 통과.
+  - `docker compose up -d --build` → `docker compose ps`에서 api·postgres·web 3개 `running`.
+  - `curl http://localhost:8080/api/health` → `{"status":"ok"}`, `curl http://localhost:5173/api/health`(웹 개발 서버 프록시 경유) → `{"status":"ok"}`.
+- 결과: TASK-02 완료. 완료 조건(3개 컨테이너 기동 + API 테스트 1회 성공 + 웹 빌드 1회 성공) 전항 충족.
+
 ## 설계와 달라진 점
 
 없음. 현재까지 승인된 설계를 벗어난 구현 선택이 없다.
 
 ## 미완료 항목
 
-- TASK-01~TASK-39 전체 (`pending`)
-- 검증 VER-01~VER-24 전체 (미수행)
+- TASK-01(자식 3건 잔여), TASK-03~TASK-39
+- 검증 VER-01~VER-24 전체 (미수행 — TASK-02는 인수 조건에 직접 대응하는 VER 항목이 없는 기반 작업)
 - [Q-02·Q-03·Q-08](../../requirements.md#가정과-미해결-질문) 미해소 — TASK-19·TASK-34·TASK-37의 실발송·실스캔 검증이 제한된다
 
 ## 재개 지점
 
-- 다음 작업: [TASK-02 모노레포 스캐폴딩과 실행 환경](../../plan.md#task-02-모노레포-스캐폴딩과-실행-환경)
-- 먼저 확인할 사항: Docker 기동 가능 여부, [계획 트리](../../plan.md#계획-트리)의 현재 상태
-- 필요한 명령 또는 파일: `docker compose up` (TASK-02에서 생성), [PLAN-mathdesk](../../plan.md)
+- 다음 작업: [TASK-03 스키마 1차·마이그레이션·시드](../../plan.md#task-03-스키마-1차마이그레이션시드)
+- 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 스택 기동 여부
+- 필요한 명령 또는 파일: `docker compose up -d --build`, `cd apps/api && uv run pytest`, [설계 데이터 모델](../../design.md#데이터-모델)
 
 ## 인계
 
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 승인, ADR-001~007, 구현 계획과 검증 계획
-- 미완료 항목: TASK-01~TASK-39 전체
+- 완료된 항목: 기준선 승인, ADR-001~007, 구현 계획과 검증 계획, TASK-02 스캐폴딩
+- 미완료 항목: TASK-01(자식 3건), TASK-03~TASK-39
 - 차단 요인: 없음
-- 다음 행동: TASK-02를 `in-progress`로 바꾸고 API 헬스 엔드포인트 통합 테스트(Red)부터 작성한다
+- 다음 행동: TASK-03의 왕복 마이그레이션 테스트(Red)를 먼저 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.

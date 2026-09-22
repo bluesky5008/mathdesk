@@ -4,7 +4,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 상태 | 요구사항·설계 기준선 `v1` 승인 완료 (2026-09-22) · 구현 계획 수립 예정 |
+| 상태 | 기준선 `v1` 승인 완료 · 구현 진행 중 ([계획](docs/plan.md)) |
 | 스택 | React 18 + Vite + TypeScript / FastAPI (Python 3.12) + SQLAlchemy 2.0 + Alembic / PostgreSQL |
 | 배포 | Phase A: 로컬 `docker compose` → Phase B: Kubernetes |
 | 요구사항 | [`docs/requirements.md`](docs/requirements.md) |
@@ -15,6 +15,9 @@
 ## 폴더 구조
 
 ```
+apps/api/      FastAPI 서버 (Python 3.12)
+apps/web/      React 18 + Vite + TypeScript SPA
+compose.yaml   Phase A 로컬 실행 (api + web + postgres)
 docs/          요구사항·설계·결정 기준선 문서
   requirements.md  현행 요구사항 (FR/NFR/AC)
   design.md        현행 설계 (DES-01~22)
@@ -28,6 +31,24 @@ assets/omr/    OMR 답안지 원본 (2027학년도 수능 수학영역 양식 PD
 assets/capture/ 참조 프로그램 화면 캡쳐 4장 (요구사항 출처)
 ```
 
+## 로컬 실행 (Phase A)
+
+```bash
+docker compose up -d --build     # api + web + postgres
+open http://localhost:5173       # 웹 (API 상태 표시)
+curl http://localhost:8080/api/health
+docker compose down
+```
+
+호스트 포트가 겹치면 `API_PORT`·`WEB_PORT`로 바꾼다(기본 8080·5173). `POSTGRES_PASSWORD`는 로컬 개발 기본값이 있으므로 실사용 전 `.env`로 덮어쓴다.
+
+API 테스트와 웹 빌드는 컨테이너 없이도 실행할 수 있다.
+
+```bash
+cd apps/api && uv sync --group dev && uv run pytest
+cd apps/web && npm install && npm run build
+```
+
 ## OMR 프로토타입 실행
 
 ```bash
@@ -39,4 +60,4 @@ python omr_reader.py ksat-2027-math.json <scan.png>   # 실제 스캔 판독
 
 ## 다음 단계
 
-[`docs/requirements.md`](docs/requirements.md)와 [`docs/design.md`](docs/design.md)가 기준선 `v1`로 승인되었다. 다음은 wf-implement로 구현 계획을 수립하고 M0~M4부터 구현한다.
+기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. 현재 TASK-02(스캐폴딩) 완료, 다음은 TASK-03(스키마 1차·마이그레이션).

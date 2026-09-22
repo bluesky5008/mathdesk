@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: 작업 39건을 두 사이클(사이클 1 = MVP M0~M4, 사이클 2 = 확장 M5~M9)로 분할했다. 전체 `pending`이며 착수 지점은 TASK-02다.
-- 다음 행동: [TASK-02 스캐폴딩](#task-02-모노레포-스캐폴딩과-실행-환경)부터 시작한다.
+- 현재 결론 또는 상태: 작업 39건 중 TASK-02(스캐폴딩)를 완료했다. TASK-01은 자식 3건이 남아 진행 중이다.
+- 다음 행동: [TASK-03 스키마 1차·마이그레이션·시드](#task-03-스키마-1차마이그레이션시드)를 시작한다.
 
 ## 문서 연결
 
@@ -48,12 +48,12 @@
 <!-- generated -->
 
 ```text
-mathdesk 구현 (기준선 v1, 작업 20260922-mathdesk-baseline)     pending (0/39)
+mathdesk 구현 (기준선 v1, 작업 20260922-mathdesk-baseline)     in-progress (1/39)
 │
-├─ 사이클 1 — MVP (M0~M4) ........................... pending (0/22)
-│  ├─ [ ] TASK-01 M0 기반 (분해 4)
-│  │   ├─ [ ] TASK-02 모노레포 스캐폴딩과 실행 환경
-│  │   ├─ [ ] TASK-03 스키마 1차·마이그레이션·시드 .... depends: TASK-02
+├─ 사이클 1 — MVP (M0~M4) ........................... in-progress (1/22)
+│  ├─ [▶] TASK-01 M0 기반 (분해 4, 1/4)
+│  │   ├─ [✓] TASK-02 모노레포 스캐폴딩과 실행 환경 ... 2026-09-22 09:58
+│  │   ├─ [▶] TASK-03 스키마 1차·마이그레이션·시드 .... depends: TASK-02
 │  │   ├─ [ ] TASK-04 인증과 세션 .................... depends: TASK-03
 │  │   └─ [ ] TASK-05 권한·캠퍼스 스코프 강제 ........ depends: TASK-04
 │  ├─ [ ] TASK-06 M1 학생/반 관리 (분해 2) ........... depends: TASK-05
@@ -98,10 +98,10 @@ mathdesk 구현 (기준선 v1, 작업 20260922-mathdesk-baseline)     pending (0
 
 ```mermaid
 flowchart TD
-    C1["사이클 1 — MVP (M0~M4)"]:::todo
-    C1 --> T01["TASK-01 M0 기반"]:::todo
-    T01 --> T02["TASK-02 스캐폴딩"]:::todo
-    T01 --> T03["TASK-03 스키마 1차·마이그레이션"]:::todo
+    C1["사이클 1 — MVP (M0~M4)"]:::active
+    C1 --> T01["TASK-01 M0 기반"]:::active
+    T01 --> T02["TASK-02 스캐폴딩"]:::done
+    T01 --> T03["TASK-03 스키마 1차·마이그레이션"]:::active
     T01 --> T04["TASK-04 인증·세션"]:::todo
     T01 --> T05["TASK-05 권한·캠퍼스 스코프"]:::todo
     C1 --> T06["TASK-06 M1 학생/반 관리"]:::todo
@@ -177,7 +177,7 @@ flowchart TD
 
 ### TASK-01: M0 기반
 
-- 상태: pending
+- 상태: in-progress
 - 상위: 없음
 - 목표: 애플리케이션이 기동하고 로그인·권한 검사가 동작하는 최소 골격을 만든다.
 - 관련 요구사항과 설계: [FR-01~FR-04](./requirements.md#기능-요구사항), [DES-01~DES-03](./design.md#컴포넌트와-책임), [DES-21](./design.md#컴포넌트와-책임)
@@ -189,7 +189,8 @@ flowchart TD
 
 ### TASK-02: 모노레포 스캐폴딩과 실행 환경
 
-- 상태: pending
+- 상태: completed
+- 완료: 2026-09-22 09:58
 - 상위: TASK-01
 - 목표: `apps/api`(FastAPI) + `apps/web`(React·Vite·TS) + `docker compose`(api·web·postgres) 골격과 테스트 하네스를 만든다.
 - 관련 요구사항과 설계: [NFR-08](./requirements.md#비기능-요구사항), [NFR-12](./requirements.md#비기능-요구사항), [DES-01·DES-02](./design.md#컴포넌트와-책임), [ADR-001](./work/20260922-mathdesk-baseline/ADR-001-기술-스택과-실행-형태.md)
@@ -201,7 +202,7 @@ flowchart TD
 
 ### TASK-03: 스키마 1차·마이그레이션·시드
 
-- 상태: pending
+- 상태: in-progress
 - 상위: TASK-01
 - 목표: M0~M4 범위 테이블(캠퍼스·사용자·학생·보호자·반·시간표·수강·수업 세션·진도·학생 일일 기록·등급 문구·메시지 템플릿·발송 로그·연동 설정·감사 로그)을 Alembic 리비전으로 만든다.
 - 관련 요구사항과 설계: [NFR-09](./requirements.md#비기능-요구사항), [DES-21](./design.md#컴포넌트와-책임), [데이터 모델](./design.md#데이터-모델), [ADR-002](./work/20260922-mathdesk-baseline/ADR-002-PostgreSQL-단일-저장소.md)

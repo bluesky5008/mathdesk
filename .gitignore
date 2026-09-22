@@ -17,3 +17,4 @@ Thumbs.db
 prototype/omr/synthetic_*.png
 prototype/omr/registered.png
 prototype/omr/*.npy
+*.tsbuildinfo
