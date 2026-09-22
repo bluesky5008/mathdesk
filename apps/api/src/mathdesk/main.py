@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from .auth import ensure_initial_director, router as auth_router
 from .db import create_engine
+from .users import router as users_router
 
 
 @asynccontextmanager
@@ -18,6 +19,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="mathdesk API", lifespan=lifespan)
 app.include_router(auth_router)
+app.include_router(users_router)
 
 
 @app.get("/api/health")

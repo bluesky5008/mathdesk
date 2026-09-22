@@ -87,3 +87,65 @@ def migrated_database(empty_database, alembic):
     alembic(empty_database, "upgrade", "head")
     os.environ["DATABASE_URL"] = empty_database
     return empty_database
+
+
+PASSWORD = "sup3r-secret-pw"
+
+
+async def _create_world(database_url: str) -> dict[str, int]:
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from mathdesk.models import AppUser, AppUserCampus, Campus
+    from mathdesk.security import hash_password
+
+    engine = create_async_engine(database_url)
+    ids: dict[str, int] = {}
+    async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+        for key, name in (("campus_a", "고등관"), ("campus_b", "중등관")):
+            campus = Campus(name=name)
+            session.add(campus)
+            await session.flush()
+            ids[key] = campus.id
+
+        for login_id, role, campus_key in (
+            ("director_a", "director", "campus_a"),
+            ("teacher_a", "teacher", "campus_a"),
+            ("director_b", "director", "campus_b"),
+        ):
+            user = AppUser(
+                login_id=login_id,
+                password_hash=hash_password(PASSWORD),
+                display_name=login_id,
+                role=role,
+            )
+            session.add(user)
+            await session.flush()
+            session.add(AppUserCampus(user_id=user.id, campus_id=ids[campus_key]))
+            ids[login_id] = user.id
+        await session.commit()
+    await engine.dispose()
+    return ids
+
+
+@pytest.fixture
+def world(migrated_database) -> dict[str, int]:
+    return asyncio.run(_create_world(migrated_database))
+
+
+@pytest.fixture
+def api(world):
+    from fastapi.testclient import TestClient
+
+    from mathdesk.main import app
+
+    with TestClient(app) as client:
+
+        def sign_in(login_id: str) -> None:
+            response = client.post(
+                "/api/auth/login", json={"login_id": login_id, "password": PASSWORD}
+            )
+            assert response.status_code == 200
+
+        client.sign_in = sign_in  # type: ignore[attr-defined]
+        client.ids = world  # type: ignore[attr-defined]
+        yield client
