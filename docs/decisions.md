@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 저장소 전역의 ADR·DCR을 한곳에서 조망하고 다음 일련번호를 발행할 기준을 제공한다.
-- 현재 결론 또는 상태: ADR 8건과 DCR 1건이 모두 `approved`다. 기준선은 `v2`이며 마지막 발행 번호는 ADR-008, DCR-001.
-- 다음 행동: 없음. 새 ADR·DCR이 생기면 이 등록부를 같은 변경에서 갱신한다.
+- 현재 결론 또는 상태: ADR 8건과 DCR 1건이 `approved`이고, ADR-009와 DCR-002가 `awaiting-approval`이다. 유효 기준선은 `v2`이며 마지막 발행 번호는 ADR-009, DCR-002.
+- 다음 행동: [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)의 사용자 재승인을 받는다.
 
 ## 문서 연결
 
@@ -33,12 +33,14 @@
 | ADR-006 | adr | OMR 양식 고정과 템플릿 판독 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/ADR-006](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) | ADR-003 관련 |
 | ADR-007 | adr | 인증·권한 모델 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/ADR-007](./work/20260922-mathdesk-baseline/ADR-007-인증-권한-모델.md) | — |
 | ADR-008 | adr | 테스트 운영 노출 구성 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md) | ADR-001 보완, DCR-001 |
+| ADR-009 | adr | LLM 공급자 추상화와 Claude 연결 | awaiting-approval | 2026-09-22 | [work/20260922-mathdesk-baseline/ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md) | ADR-003 결정 2 부분 대체, DCR-002 |
 | DCR-001 | dcr | 테스트 운영 환경 노출 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) | ADR-008 |
+| DCR-002 | dcr | M6 LLM 공급자 중립화와 Claude 연결 | awaiting-approval | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) | ADR-009 |
 
 ## 번호 발행 규칙
 
 - ADR·DCR 번호는 저장소 전역 일련번호다. 새 번호는 이 등록부의 마지막 번호 다음 번호로 발행한다.
-- 다음 ADR 번호: `ADR-009`. 다음 DCR 번호: `DCR-002`.
+- 다음 ADR 번호: `ADR-010`. 다음 DCR 번호: `DCR-003`.
 - 개별 ADR·DCR 파일이 정본이며 이 등록부는 목록이다. 불일치하면 파일에 맞춰 등록부를 수정한다.
 
 ## 아웃라인 결정 항목과의 대응
@@ -49,7 +51,7 @@
 |---|---|
 | D1 프론트엔드 스택, D2 백엔드 스택, D4 로컬 배포 형태 | [ADR-001](./work/20260922-mathdesk-baseline/ADR-001-기술-스택과-실행-형태.md) |
 | D3 DB | [ADR-002](./work/20260922-mathdesk-baseline/ADR-002-PostgreSQL-단일-저장소.md) |
-| D5 AI 모델 구성, D10 추론 하드웨어 전략 | [ADR-003](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md) |
+| D5 AI 모델 구성, D10 추론 하드웨어 전략 | [ADR-003](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md) · [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)(공급자 결정) |
 | D6 시험지 입력 포맷 | [ADR-004](./work/20260922-mathdesk-baseline/ADR-004-문서-입력-정규화-파이프라인.md) |
 | D8 메시지 채널 | [ADR-005](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md) |
 | D11 OMR 답안지 양식 | [ADR-006](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) |

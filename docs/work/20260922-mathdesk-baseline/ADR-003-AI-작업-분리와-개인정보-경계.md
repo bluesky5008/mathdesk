@@ -6,7 +6,7 @@
 > 기준선: `N/A — ADR은 기준선 번호를 발행하지 않음`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-22`
-> 관련 문서: [REQ-mathdesk: 요구사항](../../requirements.md), [DESIGN-mathdesk: 설계](../../design.md), [ADR-006: OMR 양식 고정과 템플릿 판독](./ADR-006-OMR-양식-고정과-템플릿-판독.md), [결정 등록부](../../decisions.md)
+> 관련 문서: [REQ-mathdesk: 요구사항](../../requirements.md), [DESIGN-mathdesk: 설계](../../design.md), [ADR-006: OMR 양식 고정과 템플릿 판독](./ADR-006-OMR-양식-고정과-템플릿-판독.md), [ADR-009: LLM 공급자 추상화와 Claude 연결](./ADR-009-LLM-공급자-추상화와-Claude-연결.md), [결정 등록부](../../decisions.md)
 
 ## 요약
 
@@ -71,7 +71,7 @@
 ## 대체 관계
 
 - 대체 대상 ADR: 없음
-- 대체 ADR: 없음
+- 대체 ADR: [ADR-009](./ADR-009-LLM-공급자-추상화와-Claude-연결.md)가 **결정 2만 부분 대체**(제안 중, [DCR-002](./DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) 승인 대기). 승인되면 `LlmAdapter`의 OpenAI 호환 고정이 공급자 중립 계약으로 바뀐다. 결정 1·3·4·5와 개인정보 경계 판단은 유효하며 이 ADR은 `approved`를 유지한다.
 
 ## 승인 기록
 
