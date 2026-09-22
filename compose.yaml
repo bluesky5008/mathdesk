@@ -3,7 +3,8 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: mathdesk
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mathdesk}
+      # 로컬 전용 고정값. 테스트 운영 비밀번호(.env)와 섞이지 않게 변수를 쓰지 않는다.
+      POSTGRES_PASSWORD: mathdesk
       POSTGRES_DB: mathdesk
     ports:
       - "${POSTGRES_PORT:-55432}:5432"
@@ -18,7 +19,7 @@ services:
   api:
     build: ./apps/api
     environment:
-      DATABASE_URL: postgresql+asyncpg://mathdesk:${POSTGRES_PASSWORD:-mathdesk}@postgres:5432/mathdesk
+      DATABASE_URL: postgresql+asyncpg://mathdesk:mathdesk@postgres:5432/mathdesk
       # 비워 두면 초기 원장 계정을 만들지 않는다. .env에서 지정한다.
       MATHDESK_INITIAL_ADMIN_ID: ${MATHDESK_INITIAL_ADMIN_ID:-}
       MATHDESK_INITIAL_ADMIN_PASSWORD: ${MATHDESK_INITIAL_ADMIN_PASSWORD:-}

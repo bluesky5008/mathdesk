@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: 작업 42건 중 TASK-02~TASK-12·TASK-40·TASK-41을 완료했다. `mathdesk.yongs-wiki.com`이 실제로 동작하며 AC-28·AC-29가 통과했다. TASK-42는 재부팅 자동 기동 조건만 남아 진행 중이다.
-- 다음 행동: [TASK-42](#task-42-mathdesk-터널-등록과-노출-검증)의 자동 기동 조건(사용자 확인 대기)을 마무리하고 [TASK-14 KPI 집계 API](#task-14-kpi-집계-api)로 돌아온다.
+- 현재 결론 또는 상태: 작업 42건 중 TASK-02~TASK-12·TASK-40·TASK-41·TASK-42를 완료했다. `mathdesk.yongs-wiki.com`이 동작하고 자동 기동까지 구성되었다.
+- 다음 행동: [TASK-14 KPI 집계 API](#task-14-kpi-집계-api)를 시작한다.
 
 ## 문서 연결
 
@@ -48,7 +48,7 @@
 <!-- generated -->
 
 ```text
-mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progress (13/42)
+mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progress (14/42)
 │
 ├─ 사이클 1 — MVP (M0~M4) ........................... in-progress (11/23)
 │  ├─ [▶] TASK-01 M0 기반 (분해 5, 4/5)
@@ -75,10 +75,10 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │  ├─ [ ] TASK-21 MVP 통합·인수 검증 ................. depends: TASK-08, 12, 15, 20
 │  └─ [ ] TASK-22 ★ MVP 사이클 완료 승인 ............. depends: TASK-21
 │
-├─ 테스트 운영 노출 (DCR-001) ....................... in-progress (2/3)
+├─ 테스트 운영 노출 (DCR-001) ....................... completed (3/3)
 │  ├─ [✓] TASK-40 로그인 시도 제한 .................. 2026-09-22 14:31
 │  ├─ [✓] TASK-41 단일 오리진 테스트 운영 서빙 ...... 2026-09-22 14:44
-│  └─ [▶] TASK-42 mathdesk 터널 등록과 노출 검증 .... depends: TASK-41
+│  └─ [✓] TASK-42 mathdesk 터널 등록과 노출 검증 .... 2026-09-22 15:26
 │
 └─ 사이클 2 — 확장 (M5~M9) .......................... pending (0/17)
    ├─ [ ] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... depends: TASK-03
@@ -146,10 +146,10 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    OPS["테스트 운영 노출 (DCR-001)"]:::active
+    OPS["테스트 운영 노출 (DCR-001)"]:::done
     OPS --> T40["TASK-40 로그인 시도 제한"]:::done
     OPS --> T41["TASK-41 단일 오리진 서빙·Secure 쿠키"]:::done
-    OPS --> T42["TASK-42 터널·DNS 등록"]:::active
+    OPS --> T42["TASK-42 터널·DNS 등록"]:::done
     T40 -. depends .-> T41
     T41 -. depends .-> T42
     classDef done fill:#c8e6c9,stroke:#2e7d32
@@ -290,7 +290,8 @@ flowchart TD
 
 ### TASK-42: mathdesk 터널 등록과 노출 검증
 
-- 상태: in-progress
+- 상태: completed
+- 완료: 2026-09-22 15:26
 - 상위: 없음
 - 목표: 전용 Cloudflare 터널 `mathdesk`와 DNS 라우트, launchd 서비스를 만들어 `mathdesk.yongs-wiki.com`을 연결하고 AC-28을 실제 도메인에서 검증한다.
 - 관련 요구사항과 설계: [AC-28](./requirements.md#인수-조건), [DES-23](./design.md#컴포넌트와-책임), [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)
@@ -298,7 +299,7 @@ flowchart TD
 - 의존성: TASK-41
 - 위험: 외부·비가역 작업이다. 터널·DNS 생성은 사용자 계정에 자원을 만든다(사용자 요청으로 승인됨). 기존 home-wiki 서비스에 영향을 주지 않도록 별도 터널을 쓴다
 - 검증 방법: 공개 도메인에서 로그인 → 쿠키 속성 확인 → 로그아웃 후 401. 기존 `yongs-wiki.com` 정상 응답 확인
-- 완료 조건: [AC-28](./requirements.md#인수-조건) 통과, 재부팅 후 자동 기동, 롤백 절차 문서화
+- 완료 조건: [AC-28](./requirements.md#인수-조건) 통과, 로그인 시 자동 기동(launchd 에이전트 + Docker AutoStart), 롤백 절차 문서화
 
 ### TASK-06: M1 학생/반 관리
 

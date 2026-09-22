@@ -53,7 +53,21 @@ cloudflared tunnel delete mathdesk                   # 터널 제거
 
 세 가지를 제거하면 흔적이 남지 않는다. `yongs-wiki.com`은 어느 단계에서도 영향받지 않는다.
 
+## 자동 기동
+
+Docker Desktop의 `AutoStart`를 켜고(로그인 시 Docker 시작), launchd 에이전트가 엔진이 준비되면 스택을 올린다.
+
+```bash
+cp ops/com.mathdesk.testops.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mathdesk.testops.plist
+launchctl list | grep mathdesk
+```
+
+해제는 `launchctl bootout gui/$(id -u)/com.mathdesk.testops`.
+
+`restart: unless-stopped`만으로는 부족하다. 이 환경에서 Docker Desktop을 재시작하면 정책이 있어도 컨테이너가 복구되지 않는 것을 실측했다. 로그는 `~/Library/Logs/mathdesk/testops.log`.
+
 ## 알려진 제약
 
-- 재부팅 후 자동 기동은 Docker Desktop이 로그인 시 시작되어야 성립한다. 현재 `AutoStart`가 꺼져 있어 수동 기동이 필요하다. 설정에서 "Start Docker Desktop when you sign in"을 켜면 `restart: unless-stopped`가 나머지를 처리한다.
-- 접근 통제는 앱 로그인뿐이다. 로그인 시도 제한(연속 10회 → 3분 잠금)이 적용되어 있으며, 더 강한 통제가 필요하면 터널 앞단에 Cloudflare Access를 둔다.
+- 접근 통제는 앱 로그인뿐이고, 현재 자격 증명은 `director`/`director`다. **가안 단계의 의도된 선택이며 실제 데이터를 넣기 전에 반드시 교체한다.** 더 강한 통제가 필요하면 터널 앞단에 Cloudflare Access를 둔다.
+- 저장소 루트의 `.env`는 테스트 운영 전용이다. 개발용 `compose.yaml`은 DB 비밀번호를 고정값으로 두어 두 스택이 섞이지 않게 했다.
