@@ -4,15 +4,23 @@
 
 | 항목 | 내용 |
 |---|---|
-| 상태 | 기획 단계 (Draft v0.5) |
+| 상태 | 요구사항·설계 기준선 `v1` 승인 완료 (2026-09-22) · 구현 계획 수립 예정 |
 | 스택 | React 18 + Vite + TypeScript / FastAPI (Python 3.12) + SQLAlchemy 2.0 + Alembic / PostgreSQL |
 | 배포 | Phase A: 로컬 `docker compose` → Phase B: Kubernetes |
-| 기획 문서 | [`docs/SPEC-mathdesk-outline.md`](docs/SPEC-mathdesk-outline.md) ([HTML](docs/SPEC-mathdesk-outline.html)) |
+| 요구사항 | [`docs/requirements.md`](docs/requirements.md) |
+| 설계 | [`docs/design.md`](docs/design.md) |
+| 설계 결정 | [`docs/decisions.md`](docs/decisions.md) (ADR-001~007) |
+| 기획 아웃라인 | [`docs/SPEC-mathdesk-outline.md`](docs/SPEC-mathdesk-outline.md) ([HTML](docs/SPEC-mathdesk-outline.html)) |
 
 ## 폴더 구조
 
 ```
-docs/          기획·설계 문서 (SPEC-*)
+docs/          요구사항·설계·결정 기준선 문서
+  requirements.md  현행 요구사항 (FR/NFR/AC)
+  design.md        현행 설계 (DES-01~22)
+  decisions.md     결정 등록부
+  work/<작업-ID>/  작업별 ADR·DCR
+  SPEC-mathdesk-outline.md  최초 기획 아웃라인 (선행 명세)
 prototype/     검증용 프로토타입
   notice-generator.html   학부모 공지 생성기 (M4 메시지 템플릿 병합의 출발점)
   omr/                    OMR 템플릿 추출·판독 참조 구현 (ksat-2027-math.json, omr_reader.py, test_omr.py)
@@ -31,4 +39,4 @@ python omr_reader.py ksat-2027-math.json <scan.png>   # 실제 스캔 판독
 
 ## 다음 단계
 
-결정 항목은 스펙 §7 참조. D9(wf-workflow 단계 정의) 확정 후 데이터 모델 상세 → API 스펙 → Claude Code에서 구현 착수.
+[`docs/requirements.md`](docs/requirements.md)와 [`docs/design.md`](docs/design.md)가 기준선 `v1`로 승인되었다. 다음은 wf-implement로 구현 계획을 수립하고 M0~M4부터 구현한다.

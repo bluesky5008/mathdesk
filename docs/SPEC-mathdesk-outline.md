@@ -7,8 +7,8 @@
 | 상태 | Draft v0.5 — 프로젝트명 mathdesk 확정 (D9 대기) |
 | 작성일 | 2026-09-22 |
 | 입력 자료 | `assets/capture/KakaoTalk_20260922_0021*.png` 4장 (참조 프로그램 "HSY MATH EDUMANAGER" 캡쳐) |
-| 관련 문서 | (후속) SPEC-data-model.md, SPEC-api.md, PLAN-wf-workflow.md |
-| 다음 단계 | 결정 항목(§7) 확정 → 데이터 모델 상세 → Claude Code에서 wf-workflow로 구현 착수 |
+| 관련 문서 | [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md) |
+| 다음 단계 | 이 아웃라인은 2026-09-22에 [REQ-mathdesk](./requirements.md)·[DESIGN-mathdesk](./design.md)로 구체화되었다. 결정 항목 §7의 ADR 승격 대응은 [결정 등록부](./decisions.md#아웃라인-결정-항목과의-대응) 참조 |
 
 ---
 
