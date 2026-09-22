@@ -6,6 +6,7 @@ import { LoginForm } from './LoginForm'
 import { ClassesPage } from './pages/ClassesPage'
 import { DailyPage } from './pages/DailyPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { MessagesPage } from './pages/MessagesPage'
 import { StudentsPage } from './pages/StudentsPage'
 
 export function App() {
@@ -33,6 +34,7 @@ export function App() {
           <Link to="/">종합 대시보드</Link>
           <Link to="/daily">일일 수업 &amp; 성적 입력</Link>
           <Link to="/students">학생/반 관리</Link>
+          <Link to="/messages">알림문자</Link>
         </nav>
         <span>
           {user.display_name} ({user.role})
@@ -51,6 +53,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/daily" element={<DailyPage />} />
+          <Route path="/messages" element={<MessagesPage />} />
           <Route
             path="/students"
             element={

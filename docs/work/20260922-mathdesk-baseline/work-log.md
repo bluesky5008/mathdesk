@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: M4 메시지의 발송 어댑터(TASK-19)까지 완료했다. 화면(TASK-20)만 끝내면 MVP 구현이 완료된다.
-- 다음 행동: [TASK-20 메시지 화면](../../plan.md#task-20-메시지-화면) — 수신 대상 미선택 시 발송 버튼 비활성 컴포넌트 테스트(Red)부터 작성한다.
+- 현재 결론 또는 상태: **MVP(M0~M4) 구현이 끝났다.** 남은 사이클 1 작업은 통합 검증(TASK-21)과 완료 승인(TASK-22)이다.
+- 다음 행동: [TASK-21 MVP 통합·인수 검증](../../plan.md#task-21-mvp-통합인수-검증) — AC-01~AC-18 전항과 NFR-01·NFR-02 측정을 수행한다.
 
 ## 문서 연결
 
@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-20 메시지 화면](../../plan.md#task-20-메시지-화면) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-19 MessagingAdapter·발송 로그](../../plan.md#task-19-messagingadapter발송-로그) (2026-09-22 18:41)
+- 진행 중인 작업: [TASK-21 MVP 통합·인수 검증](../../plan.md#task-21-mvp-통합인수-검증) (미착수, 상태만 `in-progress`)
+- 마지막 완료 작업: [TASK-20 메시지 화면](../../plan.md#task-20-메시지-화면) (2026-09-22 19:12)
 - 차단 요인: 없음. 다만 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시가 남아 있어 사용자 퍼지가 필요하다(최대 4시간 후 자동 만료). [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
 
 ## 수행 기록
@@ -380,6 +380,25 @@
   - 실발송 경로는 [Q-02](../../requirements.md#가정과-미해결-질문)(알리고 계정·발신번호) 미해소로 **미검증**이다.
 - 결과: TASK-19 완료. AC-17·AC-18(VER-13) 통과. 실발송 미검증은 그대로 남는다.
 
+### 2026-09-22 — TASK-20 메시지 화면 (TASK-16 완료, MVP 구현 완료)
+
+- 수행 내용
+  - TDD Red: 병합 본문 표시, 수신 대상 미선택 시 발송 비활성, 선택한 대상으로 발송, 리포트 탭 이미지, 문자 복사를 먼저 작성해 import 실패로 확인했다.
+  - Green: `api.ts`에 미리보기·발송·로그·리포트 URL을 추가하고 `MessagesPage.tsx`(문자/리포트 탭, 수신 대상 체크박스, 복사·저장·발송, 발송 내역)를 구현해 `/messages` 라우트에 연결했다.
+- 변경 파일: `apps/web/src/api.ts`, `apps/web/src/pages/{MessagesPage.tsx,MessagesPage.test.tsx}`, `apps/web/src/App.tsx`
+- 발견 사항
+  - 학생 선택 `<select>`의 라벨과 수신 대상 체크박스 라벨이 모두 "학생"이라 접근성 조회가 모호해졌다. 선택 라벨을 "학생 선택"으로 바꿔 해소했다 — 화면에서도 이쪽이 명확하다.
+  - 미리보기가 도착하기 전에는 복사 버튼이 비활성이라, 테스트가 본문 도착을 기다리도록 고쳤다(제품 결함이 아니라 테스트 타이밍 문제).
+- 결정과 이유
+  - 탭은 `role="tablist"`/`role="tab"`으로 노출했다. 접근성 조회가 버튼과 구분된다.
+  - 발송 버튼은 수신 대상이 하나도 없으면 비활성이다. 빈 발송 요청을 서버에서 422로 막고 있지만 화면에서 먼저 거른다.
+  - 리포트 이미지는 `<img src>`로 직접 참조한다. 쿠키가 함께 나가므로 별도 처리 없이 인증된 이미지가 표시된다.
+- 실행한 검증
+  - `npm test` — 최초 import 실패(의도한 Red) → 구현 후 `7 files, 20 tests passed`.
+  - `npm run build` 성공, `uv run pytest -q` `77 passed`(회귀 없음).
+  - 테스트 운영 재배포 후 `https://mathdesk.yongs-wiki.com/messages` 200.
+- 결과: TASK-20 완료, 이로써 TASK-16(M4 메시지)과 **MVP(M0~M4) 구현 전체**가 끝났다. 남은 것은 통합 검증과 완료 승인이다.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -390,7 +409,7 @@
 
 ## 미완료 항목
 
-- TASK-16(자식 1건 잔여: TASK-20), TASK-21~TASK-39
+- TASK-21~TASK-39
 - 알리고 실발송 경로 미검증([Q-02](../../requirements.md#가정과-미해결-질문))
 - 구 경로 `/api/messages/report.png`의 Cloudflare 엣지 캐시 잔존 — 퍼지 또는 TTL 만료 대기
 - VER-01~VER-10·VER-25·VER-26·VER-27 통과
@@ -403,7 +422,7 @@
 
 ## 재개 지점
 
-- 다음 작업: [TASK-20 메시지 화면](../../plan.md#task-20-메시지-화면)
+- 다음 작업: [TASK-21 MVP 통합·인수 검증](../../plan.md#task-21-mvp-통합인수-검증)
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
 - 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
@@ -412,8 +431,8 @@
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, TASK-02~TASK-15, TASK-17~TASK-19, TASK-40~TASK-42
-- 미완료 항목: TASK-16(TASK-20), TASK-21~TASK-39
+- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, MVP 구현 전체(TASK-02~TASK-20), TASK-40~TASK-42
+- 미완료 항목: TASK-21~TASK-39
 - 차단 요인: 없음
-- 다음 행동: TASK-20의 컴포넌트 테스트(Red)를 작성한다
+- 다음 행동: TASK-21의 AC-01~AC-18 전항 검증과 NFR-01·NFR-02 측정을 수행한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.

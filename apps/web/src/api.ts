@@ -194,3 +194,50 @@ export type Dashboard = {
 export function fetchDashboard(classId: number, date: string): Promise<Dashboard> {
   return request<Dashboard>(`/dashboard?class_id=${classId}&date=${date}`)
 }
+
+export type SendResult = {
+  recipient_phone: string
+  recipient_type: string
+  status: string
+  result_code: string | null
+  error: string | null
+}
+
+export type MessageLog = {
+  id: number
+  student_id: number | null
+  recipient_type: string
+  recipient_phone: string
+  channel: string
+  status: string
+  body_snapshot: string
+  is_test: boolean
+  requested_at: string
+  result_code: string | null
+  error: string | null
+}
+
+export function fetchMessagePreview(sessionId: number, studentId: number): Promise<{ body: string }> {
+  return request<{ body: string }>(
+    `/messages/preview?session_id=${sessionId}&student_id=${studentId}`,
+  )
+}
+
+export function reportImageUrl(sessionId: number, studentId: number): string {
+  return `/api/messages/report-image?session_id=${sessionId}&student_id=${studentId}`
+}
+
+export function sendMessage(
+  sessionId: number,
+  studentId: number,
+  recipients: string[],
+): Promise<{ channel: string; results: SendResult[] }> {
+  return request<{ channel: string; results: SendResult[] }>('/messages/send', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId, student_id: studentId, recipients }),
+  })
+}
+
+export function fetchMessageLogs(): Promise<MessageLog[]> {
+  return request<MessageLog[]>('/messages/logs')
+}
