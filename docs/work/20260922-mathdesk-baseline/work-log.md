@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: TASK-02~TASK-05·TASK-07을 완료했다. 인증·스코프 위에 학생·보호자·반·시간표·수강 등록 API가 올라갔고 AC-01·AC-03·AC-04가 통과한다.
-- 다음 행동: [TASK-08 마스터 데이터 화면](../../plan.md#task-08-마스터-데이터-화면) — 수험번호 범위 위반 시 서버 오류를 사용자 메시지로 표시하는 컴포넌트 테스트(Red)부터 작성한다.
+- 현재 결론 또는 상태: TASK-02~TASK-08을 완료했다(TASK-40 제외). 학생/반 관리가 API와 화면에서 동작하고 AC-01·AC-03·AC-04·AC-05가 통과한다.
+- 다음 행동: [TASK-10 일일 기록 API (3 저장 단위)](../../plan.md#task-10-일일-기록-api-3-저장-단위) — AC-11(저장 단위 독립)과 AC-12(반 평균)를 테스트(Red)로 먼저 작성한다.
 
 ## 문서 연결
 
@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-08 마스터 데이터 화면](../../plan.md#task-08-마스터-데이터-화면) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-07 마스터 데이터 API](../../plan.md#task-07-마스터-데이터-api) (2026-09-22 11:36)
+- 진행 중인 작업: [TASK-10 일일 기록 API (3 저장 단위)](../../plan.md#task-10-일일-기록-api-3-저장-단위) (미착수, 상태만 `in-progress`)
+- 마지막 완료 작업: [TASK-08 마스터 데이터 화면](../../plan.md#task-08-마스터-데이터-화면) (2026-09-22 12:34)
 - 차단 요인: 없음. [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
 
 ## 수행 기록
@@ -163,6 +163,27 @@
   - 시드된 개발 DB e2e(`curl`): 학생 47명, 반 4개(각 시간표 1건), 범위 위반 수험번호 `18600001` → 422, `2026-04-01` 기준 1반 수강생 8명.
 - 결과: TASK-07 완료. AC-04(VER-03) 통과, 완료 조건의 날짜 기준 소속 조회 통과. AC-02의 반 소유권 차원이 이 작업에서 검증되었고, 일일 학생 기록 API 대상 검증은 TASK-10에 남는다.
 
+### 2026-09-22 — TASK-08 마스터 데이터 화면 (TASK-06 완료)
+
+- 수행 내용
+  - 웹 테스트 하네스를 붙였다(vitest + jsdom + Testing Library, `npm test`).
+  - TDD Red: `StudentsPage.test.tsx`에 목록 렌더와 "수험번호 범위 위반 시 서버 메시지 표시"를 먼저 작성해 `Failed to resolve import "./StudentsPage"`로 의도한 실패를 확인했다.
+  - Green: `api.ts`를 서버 오류 메시지를 예외로 전달하는 클라이언트로 확장하고 `StudentsPage`·`ClassesPage`를 구현했다. React Router와 TanStack Query를 이 시점에 도입했다.
+  - AC-05 렌더 테스트(`Roster.test.tsx`)와 시간표 문자열 포맷 테스트를 추가했다.
+- 변경 파일: `apps/web/{package.json,package-lock.json,vite.config.ts,tsconfig.json}`, `apps/web/src/{api.ts,App.tsx,main.tsx}`, `apps/web/src/pages/{StudentsPage,ClassesPage}.tsx`, `apps/web/src/pages/*.test.tsx`, `apps/web/src/test/setup.ts`
+- 발견 사항
+  - `vite.config.ts`에 `test` 블록을 두려면 `defineConfig`를 `vitest/config`에서 가져와야 한다. `vite`에서 가져오면 타입 오류로 빌드가 실패한다.
+- 결정과 이유
+  - 서버의 `detail` 문구를 그대로 화면에 표시한다. 수험번호 자리별 범위 같은 규칙을 클라이언트에 복제하면 서버와 어긋날 수 있고, 서버 메시지가 이미 사용자용 한국어다.
+  - 학생과 반 화면을 한 라우트(`/students`)에 함께 두었다. 참조 화면의 메뉴가 "학생/반 관리" 하나이고, 지금 분리할 이유가 없다.
+  - AC-05는 47명·4반 응답을 주입한 렌더 테스트로 검증했다. 실제 브라우저 육안 확인은 계획의 자동화 제외 항목으로 남긴다.
+- 실행한 검증
+  - `npm test` — 컴포넌트 테스트 최초 import 실패(의도한 Red) → 구현 후 `3 files, 5 tests passed`.
+  - `npm run build` — `defineConfig` 출처 수정 후 성공.
+  - `uv run pytest -q` — `26 passed` (회귀 없음).
+  - 실행 스택: `http://localhost:5173/students` 200, 개발 서버 프록시 경유 `/api/students`가 시드 47명 반환.
+- 결과: TASK-08 완료, 이로써 TASK-06(M1 학생/반 관리)도 완료. AC-05(VER-04) 통과.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -172,25 +193,26 @@
 
 ## 미완료 항목
 
-- TASK-01(자식 1건 잔여: TASK-40), TASK-06(자식 1건 잔여: TASK-08), TASK-09~TASK-39
-- VER-01(AC-01)·VER-03(AC-04) 통과. VER-02(AC-02·AC-03)는 AC-03 통과, AC-02는 반 소유권까지 통과했고 일일 기록 API 대상 검증만 TASK-10에 남음
+- TASK-01(자식 1건 잔여: TASK-40), TASK-09~TASK-39
+- VER-01(AC-01)·VER-03(AC-04)·VER-04(AC-05) 통과. VER-02는 AC-03 통과, AC-02는 반 소유권까지 통과했고 일일 기록 API 대상 검증만 TASK-10에 남음
+- AC-05의 실제 브라우저 육안 확인은 미수행(자동화 제외 항목, 사용자 확인 필요)
 - VER-23(마이그레이션 왕복)은 TASK-03에서 1차 확보. 나머지 VER 항목은 미수행
 - 로그인 시도 제한 임계값·잠금 시간 미결정 (TASK-40)
 - [Q-02·Q-03·Q-08](../../requirements.md#가정과-미해결-질문) 미해소 — TASK-19·TASK-34·TASK-37의 실발송·실스캔 검증이 제한된다
 
 ## 재개 지점
 
-- 다음 작업: [TASK-08 마스터 데이터 화면](../../plan.md#task-08-마스터-데이터-화면)
+- 다음 작업: [TASK-10 일일 기록 API (3 저장 단위)](../../plan.md#task-10-일일-기록-api-3-저장-단위)
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
-- 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, [설계 DES-03 상세](../../design.md#des-03-상세)의 권한 매트릭스
+- 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
 ## 인계
 
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 승인, ADR-001~007, 계획, TASK-02~TASK-05, TASK-07
-- 미완료 항목: TASK-01(TASK-40), TASK-06(TASK-08), TASK-09~TASK-39
+- 완료된 항목: 기준선 승인, ADR-001~007, 계획, TASK-02~TASK-08
+- 미완료 항목: TASK-01(TASK-40), TASK-09~TASK-39
 - 차단 요인: 없음
-- 다음 행동: TASK-08의 컴포넌트 테스트(Red)를 먼저 작성한다
+- 다음 행동: TASK-10의 AC-11·AC-12 테스트(Red)를 먼저 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.

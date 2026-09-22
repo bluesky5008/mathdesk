@@ -58,7 +58,7 @@ API 테스트와 웹 빌드는 컨테이너 없이도 실행할 수 있다. 마�
 
 ```bash
 cd apps/api && uv sync --group dev && uv run pytest
-cd apps/web && npm install && npm run build
+cd apps/web && npm install && npm test && npm run build
 ```
 
 ## OMR 프로토타입 실행
@@ -72,4 +72,4 @@ python omr_reader.py ksat-2027-math.json <scan.png>   # 실제 스캔 판독
 
 ## 다음 단계
 
-기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. 현재 TASK-07(마스터 데이터 API)까지 완료, 다음은 TASK-08(마스터 데이터 화면).
+기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. 현재 TASK-08(학생/반 관리 화면)까지 완료, 다음은 TASK-10(일일 기록 API).
