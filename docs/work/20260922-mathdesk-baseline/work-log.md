@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: M4 메시지의 렌더러와 리포트 이미지(TASK-17·18)까지 완료했다. 구현 중 CDN이 인증된 리포트 이미지를 캐시해 무인증 열람이 가능했던 사고를 발견해 수정했다.
-- 다음 행동: [TASK-19 MessagingAdapter·발송 로그](../../plan.md#task-19-messagingadapter발송-로그) — AC-17·AC-18을 가짜 어댑터 통합 테스트(Red)로 먼저 작성한다.
+- 현재 결론 또는 상태: M4 메시지의 발송 어댑터(TASK-19)까지 완료했다. 화면(TASK-20)만 끝내면 MVP 구현이 완료된다.
+- 다음 행동: [TASK-20 메시지 화면](../../plan.md#task-20-메시지-화면) — 수신 대상 미선택 시 발송 버튼 비활성 컴포넌트 테스트(Red)부터 작성한다.
 
 ## 문서 연결
 
@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-19 MessagingAdapter·발송 로그](../../plan.md#task-19-messagingadapter발송-로그) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-18 리포트 이미지와 복사](../../plan.md#task-18-리포트-이미지와-복사) (2026-09-22 18:05)
+- 진행 중인 작업: [TASK-20 메시지 화면](../../plan.md#task-20-메시지-화면) (미착수, 상태만 `in-progress`)
+- 마지막 완료 작업: [TASK-19 MessagingAdapter·발송 로그](../../plan.md#task-19-messagingadapter발송-로그) (2026-09-22 18:41)
 - 차단 요인: 없음. 다만 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시가 남아 있어 사용자 퍼지가 필요하다(최대 4시간 후 자동 만료). [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
 
 ## 수행 기록
@@ -362,6 +362,24 @@
   - 오리진에서 구 경로는 404다. 남아 있는 200 응답은 Cloudflare 엣지의 잔여 캐시다.
 - 결과: TASK-18 완료. AC-16(VER-12) 통과. 잔여 위험: 구 경로의 엣지 캐시 — 사용자 퍼지 또는 TTL 만료(최대 4시간) 필요.
 
+### 2026-09-22 — TASK-19 MessagingAdapter와 발송 로그
+
+- 수행 내용
+  - TDD Red: 테스트 모드 무통신 발송, 로그 스냅샷 불변(AC-18), 장문 LMS 전환, 학생·학부모 동시 수신, 연락처 없음 422, 잔여량 조회를 먼저 작성해 `6 failed`로 확인했다.
+  - Green: `messaging_adapter.py`(`MessagingAdapter` 계약, `TestModeMessaging`, `AligoMessaging`, 채널 선택)와 `POST /api/messages/send`·`GET /api/messages/logs`·`GET /api/messages/balance`를 구현했다.
+- 변경 파일: `apps/api/src/mathdesk/{messaging_adapter,messaging}.py`, `apps/api/tests/test_message_send.py`
+- 결정과 이유
+  - **테스트 모드가 기본값**이고 실발송은 `MATHDESK_MESSAGING_MODE=live`와 알리고 자격 증명 3개가 모두 있을 때만 선택된다. 설정이 빠진 채 실발송으로 넘어가 과금되는 사고를 막는다.
+  - 외부 미통신을 **HTTP 호출 자체를 막고 검증**한다. `httpx.AsyncClient.post/get`을 예외로 바꿔 두고 테스트 모드 발송이 성공하는지 본다. 어댑터 구현을 믿는 대신 경계를 직접 확인하는 방식이다(AC-17).
+  - 채널은 본문을 EUC-KR로 인코딩한 바이트 길이 90을 기준으로 SMS/LMS를 고른다(알리고 기준). 첨부가 있으면 MMS다.
+  - 본문 스냅샷은 발송 시점 렌더 결과를 그대로 저장한다. 이후 수업 기록이 바뀌어도 로그는 변하지 않는다(AC-18).
+  - 알림톡→SMS 폴백은 [TASK-37](../../plan.md#task-37-m8-카카오-알림톡)의 몫이라 여기서는 문자 채널만 다뤘다.
+- 실행한 검증
+  - `uv run pytest -q` — 발송 테스트 최초 `6 failed`(의도한 Red) → 구현 후 전체 `77 passed`.
+  - 공개 도메인 e2e: 테스트 모드 발송이 `channel=lms`, `status=test`로 응답하고 로그에 수신자·채널·상태·스냅샷이 남았다. 잔여량은 `mode=test`로 반환된다.
+  - 실발송 경로는 [Q-02](../../requirements.md#가정과-미해결-질문)(알리고 계정·발신번호) 미해소로 **미검증**이다.
+- 결과: TASK-19 완료. AC-17·AC-18(VER-13) 통과. 실발송 미검증은 그대로 남는다.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -372,7 +390,8 @@
 
 ## 미완료 항목
 
-- TASK-16(자식 2건 잔여: TASK-19·20), TASK-21~TASK-39
+- TASK-16(자식 1건 잔여: TASK-20), TASK-21~TASK-39
+- 알리고 실발송 경로 미검증([Q-02](../../requirements.md#가정과-미해결-질문))
 - 구 경로 `/api/messages/report.png`의 Cloudflare 엣지 캐시 잔존 — 퍼지 또는 TTL 만료 대기
 - VER-01~VER-10·VER-25·VER-26·VER-27 통과
 - 실제 재부팅에서의 자동 기동은 미검증(사용자 재부팅 시 확인)
@@ -384,7 +403,7 @@
 
 ## 재개 지점
 
-- 다음 작업: [TASK-19 MessagingAdapter·발송 로그](../../plan.md#task-19-messagingadapter발송-로그)
+- 다음 작업: [TASK-20 메시지 화면](../../plan.md#task-20-메시지-화면)
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
 - 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
@@ -393,8 +412,8 @@
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, TASK-02~TASK-15, TASK-17, TASK-18, TASK-40~TASK-42
-- 미완료 항목: TASK-16(TASK-19·20), TASK-21~TASK-39
+- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, TASK-02~TASK-15, TASK-17~TASK-19, TASK-40~TASK-42
+- 미완료 항목: TASK-16(TASK-20), TASK-21~TASK-39
 - 차단 요인: 없음
-- 다음 행동: TASK-19의 AC-17·AC-18 통합 테스트(Red)를 작성한다
+- 다음 행동: TASK-20의 컴포넌트 테스트(Red)를 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.

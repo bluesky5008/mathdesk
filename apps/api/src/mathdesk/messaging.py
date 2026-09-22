@@ -9,9 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .daily import _session_for_write, _enrolled_students
 from .db import get_session
+from .messaging_adapter import Recipient, build_adapter, choose_channel
 from .models import (
     AppUser,
     Campus,
+    Guardian,
+    MessageLog,
     ClassSession,
     ClassSessionProgress,
     GradeComment,
@@ -101,6 +104,39 @@ class GradeCommentsIn(BaseModel):
 
 class PreviewOut(BaseModel):
     body: str
+
+
+class SendIn(BaseModel):
+    session_id: int
+    student_id: int
+    recipients: list[str] = Field(min_length=1)
+
+
+class SendResultOut(BaseModel):
+    recipient_phone: str
+    recipient_type: str
+    status: str
+    result_code: str | None = None
+    error: str | None = None
+
+
+class SendOut(BaseModel):
+    channel: str
+    results: list[SendResultOut]
+
+
+class MessageLogOut(BaseModel):
+    id: int
+    student_id: int | None
+    recipient_type: str
+    recipient_phone: str
+    channel: str
+    status: str
+    body_snapshot: str
+    is_test: bool
+    requested_at: str
+    result_code: str | None
+    error: str | None
 
 
 def _format_score(value: Decimal | None, text: str | None) -> str | None:
@@ -219,3 +255,102 @@ async def report_image(
 
     context = await _context(session_id, student_id, scope, session)
     return Response(render_report_png(context), media_type="image/png")
+
+
+async def _recipients_for(
+    session: AsyncSession, student: Student, kinds: list[str]
+) -> list[Recipient]:
+    recipients: list[Recipient] = []
+    if "student" in kinds and student.phone:
+        recipients.append(Recipient(phone=student.phone, kind="student"))
+    if "guardian" in kinds:
+        guardians = await session.scalars(
+            select(Guardian).where(
+                Guardian.student_id == student.id, Guardian.is_notify_target
+            )
+        )
+        recipients.extend(
+            Recipient(phone=guardian.phone, kind="guardian")
+            for guardian in guardians
+            if guardian.phone
+        )
+    return recipients
+
+
+@router.post("/send")
+async def send_message(payload: SendIn, scope: CurrentScope, session: Db) -> SendOut:
+    context = await _context(payload.session_id, payload.student_id, scope, session)
+    student = await session.get(Student, payload.student_id)
+    recipients = await _recipients_for(session, student, payload.recipients)
+    if not recipients:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "보낼 수 있는 연락처가 없습니다."
+        )
+
+    body = render_daily_message(context)
+    channel = choose_channel(body)
+    adapter = build_adapter()
+    results = await adapter.send(channel, recipients, body)
+
+    for result in results:
+        session.add(
+            MessageLog(
+                campus_id=scope.campus_id,
+                student_id=payload.student_id,
+                recipient_type=result.recipient_type,
+                recipient_phone=result.recipient_phone,
+                channel=channel,
+                status=result.status,
+                body_snapshot=body,
+                cost_unit=result.cost_unit,
+                is_test=result.status == "test",
+                result_code=result.result_code,
+                error=result.error,
+            )
+        )
+    await session.commit()
+
+    return SendOut(
+        channel=channel,
+        results=[
+            SendResultOut(
+                recipient_phone=result.recipient_phone,
+                recipient_type=result.recipient_type,
+                status=result.status,
+                result_code=result.result_code,
+                error=result.error,
+            )
+            for result in results
+        ],
+    )
+
+
+@router.get("/logs")
+async def list_logs(scope: CurrentScope, session: Db, limit: int = 50) -> list[MessageLogOut]:
+    rows = await session.scalars(
+        select(MessageLog)
+        .where(MessageLog.campus_id == scope.campus_id)
+        .order_by(MessageLog.id.desc())
+        .limit(limit)
+    )
+    return [
+        MessageLogOut(
+            id=row.id,
+            student_id=row.student_id,
+            recipient_type=row.recipient_type,
+            recipient_phone=row.recipient_phone,
+            channel=row.channel,
+            status=row.status,
+            body_snapshot=row.body_snapshot,
+            is_test=row.is_test,
+            requested_at=row.requested_at.isoformat(),
+            result_code=row.result_code,
+            error=row.error,
+        )
+        for row in rows
+    ]
+
+
+@router.get("/balance")
+async def balance(scope: CurrentScope) -> dict:
+    return vars(await build_adapter().balance())

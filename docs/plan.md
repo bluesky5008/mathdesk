@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: 작업 42건 중 19건을 완료했다. M4 메시지는 발송 어댑터(TASK-19)와 화면(TASK-20)이 남았다.
-- 다음 행동: [TASK-19 MessagingAdapter·발송 로그](#task-19-messagingadapter발송-로그)를 시작한다.
+- 현재 결론 또는 상태: 작업 42건 중 20건을 완료했다. M4 메시지는 화면(TASK-20)만 남았고 그러면 MVP 구현이 끝난다.
+- 다음 행동: [TASK-20 메시지 화면](#task-20-메시지-화면)을 시작한다.
 
 ## 문서 연결
 
@@ -48,9 +48,9 @@
 <!-- generated -->
 
 ```text
-mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progress (19/42)
+mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progress (20/42)
 │
-├─ 사이클 1 — MVP (M0~M4) ........................... in-progress (16/23)
+├─ 사이클 1 — MVP (M0~M4) ........................... in-progress (17/23)
 │  ├─ [▶] TASK-01 M0 기반 (분해 5, 4/5)
 │  │   ├─ [✓] TASK-02 모노레포 스캐폴딩과 실행 환경 ... 2026-09-22 09:58
 │  │   ├─ [✓] TASK-03 스키마 1차·마이그레이션·시드 .... 2026-09-22 10:26
@@ -67,11 +67,11 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │  ├─ [✓] TASK-13 M3 대시보드 (분해 2, 2/2) .......... 2026-09-22 16:31
 │  │   ├─ [✓] TASK-14 KPI 집계 API ................... 2026-09-22 16:02
 │  │   └─ [✓] TASK-15 대시보드 화면 .................. 2026-09-22 16:31
-│  ├─ [▶] TASK-16 M4 메시지 (분해 4, 2/4) ............ depends: TASK-10
+│  ├─ [▶] TASK-16 M4 메시지 (분해 4, 3/4) ............ depends: TASK-10
 │  │   ├─ [✓] TASK-17 메시지 렌더러와 등급 문구 ...... 2026-09-22 17:03
 │  │   ├─ [✓] TASK-18 리포트 이미지와 복사 ........... 2026-09-22 18:05
-│  │   ├─ [▶] TASK-19 MessagingAdapter·발송 로그 ..... depends: TASK-03
-│  │   └─ [ ] TASK-20 메시지 화면 .................... depends: TASK-17~19
+│  │   ├─ [✓] TASK-19 MessagingAdapter·발송 로그 ..... 2026-09-22 18:41
+│  │   └─ [▶] TASK-20 메시지 화면 .................... depends: TASK-17~19
 │  ├─ [ ] TASK-21 MVP 통합·인수 검증 ................. depends: TASK-08, 12, 15, 20
 │  └─ [ ] TASK-22 ★ MVP 사이클 완료 승인 ............. depends: TASK-21
 │
@@ -124,8 +124,8 @@ flowchart TD
     C1 --> T16["TASK-16 M4 메시지"]:::active
     T16 --> T17["TASK-17 메시지 렌더러·등급 문구"]:::done
     T16 --> T18["TASK-18 리포트 이미지·복사"]:::done
-    T16 --> T19["TASK-19 MessagingAdapter·발송 로그"]:::active
-    T16 --> T20["TASK-20 메시지 화면"]:::todo
+    T16 --> T19["TASK-19 MessagingAdapter·발송 로그"]:::done
+    T16 --> T20["TASK-20 메시지 화면"]:::active
     C1 --> T21["TASK-21 MVP 통합·인수 검증"]:::todo
     C1 --> T22[["★ TASK-22 MVP 사이클 완료 승인"]]:::gate
     T02 -. depends .-> T03
@@ -471,7 +471,8 @@ flowchart TD
 
 ### TASK-19: MessagingAdapter·발송 로그
 
-- 상태: in-progress
+- 상태: completed
+- 완료: 2026-09-22 18:41
 - 상위: TASK-16
 - 목표: 단일 발송 계약과 알리고 구현·테스트 모드 구현, 발송 로그 스냅샷, 잔여 발송 가능량 조회를 구현한다. 기본값은 테스트 모드다.
 - 관련 요구사항과 설계: [FR-23](./requirements.md#fr-23-상세), [DES-09·DES-19](./design.md#컴포넌트와-책임), [ADR-005](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md)
@@ -483,7 +484,7 @@ flowchart TD
 
 ### TASK-20: 메시지 화면
 
-- 상태: pending
+- 상태: in-progress
 - 상위: TASK-16
 - 목표: 문자 보기·리포트 보기 탭, 수신 대상 체크박스, 복사·저장·발송 액션과 발송 내역 화면을 구현한다.
 - 관련 요구사항과 설계: [FR-18~FR-23](./requirements.md#fr-18-상세), [DES-01](./design.md#컴포넌트와-책임)
