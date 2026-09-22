@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: TASK-02~TASK-12와 테스트 운영 노출 3건(TASK-40·41·42)을 완료했다. `https://mathdesk.yongs-wiki.com`이 동작하고 로그인 시 자동 기동까지 구성되었다.
-- 다음 행동: [TASK-14 KPI 집계 API](../../plan.md#task-14-kpi-집계-api) — AC-07·AC-13을 고정 시드 집계 단위 테스트(Red)로 먼저 작성한다.
+- 현재 결론 또는 상태: TASK-02~TASK-12, 테스트 운영 노출 3건, TASK-14(대시보드 KPI 집계)를 완료했다. AC-07·AC-13이 통과했다.
+- 다음 행동: [TASK-15 대시보드 화면](../../plan.md#task-15-대시보드-화면) — 출결 위젯의 확정·편집 전환 컴포넌트 테스트(Red)부터 작성한다.
 
 ## 문서 연결
 
@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-14 KPI 집계 API](../../plan.md#task-14-kpi-집계-api) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-42 mathdesk 터널 등록과 노출 검증](../../plan.md#task-42-mathdesk-터널-등록과-노출-검증) (2026-09-22 15:26)
+- 진행 중인 작업: [TASK-15 대시보드 화면](../../plan.md#task-15-대시보드-화면) (미착수, 상태만 `in-progress`)
+- 마지막 완료 작업: [TASK-14 KPI 집계 API](../../plan.md#task-14-kpi-집계-api) (2026-09-22 16:02)
 - 차단 요인: 없음. [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
 
 ## 수행 기록
@@ -285,6 +285,26 @@
   - 다른 서비스 무영향: `https://yongs-wiki.com/` 200, `herongs-backend` 복구 확인.
 - 결과: TASK-42 완료. 실제 재부팅 검증은 수행하지 않았다(사용자 장비 재부팅을 임의로 하지 않음). 에이전트 동작은 kickstart로 대체 검증했다.
 
+### 2026-09-22 — TASK-14 대시보드 KPI 집계 API
+
+- 수행 내용
+  - TDD Red: `tests/test_dashboard.py`에 캠퍼스 집계, 등원 현황(AC-07), 금주 완수율과 전주 대비(AC-13), 재검사 대상 인원, 주간 테스트 N·MAX·MIN, 표본 없음 처리, 지난 수업 요약을 먼저 작성해 `7 failed`로 의도한 실패를 확인했다.
+  - Green: `stats.py`에 `GET /api/dashboard`를 구현하고 `main.py`에 배선했다.
+- 변경 파일: `apps/api/src/mathdesk/{stats,main}.py`, `apps/api/tests/test_dashboard.py`
+- 발견 사항
+  - 개발 스택 DB에 `9c040c3bb194`(로그인 잠금 컬럼) 리비전이 적용되지 않아 개발 API가 기동 실패했다. 테스트 운영 이미지는 기동 시 `alembic upgrade head`를 돌리지만 개발용 이미지는 돌리지 않는다. 수동 적용으로 해소했고 README에 절차가 이미 있다.
+- 결정과 이유
+  - 주간 범위는 월요일 시작으로 계산한다(`date - weekday()` ~ +6일).
+  - 완수 기준 등급은 `MATHDESK_HOMEWORK_PASS_GRADE`(기본 `B`)로 노출했다. [Q-07](../../requirements.md#가정과-미해결-질문)이 설정값을 전제한다.
+  - **미제출은 등급 `F`로 해석했다.** 요구사항은 "미제출 건수"만 말하고 데이터 모델에 별도 필드가 없다. 6단계 등급의 최하위인 `F`를 미제출로 보는 것이 가장 자연스럽다. 실운영에서 다르게 쓰면 조정이 필요하다 — 사용자 확인 대상으로 남긴다.
+  - 재검사 대상 인원은 금주 각 세션에 대해 조회 시 계산을 반복하고 학생 단위로 중복을 제거한다. 저장하지 않는 원칙([TASK-11](../../plan.md#task-11-출결-확정재검사-판정))을 유지했다.
+  - 표본이 없으면 0이 아니라 `null`을 반환한다(FR-15 상세의 `—` 표기).
+  - 지난 수업 요약(FR-17)을 같은 응답에 담았다. 화면 하나가 쓰는 데이터를 한 번에 주는 편이 왕복을 줄인다.
+- 실행한 검증
+  - `uv run pytest -q` — 대시보드 테스트 최초 `7 failed`(의도한 Red) → 구현 후 전체 `53 passed`.
+  - 시드 DB e2e: 재원생 47·활성 4반, 등원 1/8, 완수율 100%·재검사 대상 1명, 테스트 평균 71.7(N=3, MAX 78, MIN 65), 지난 수업 2026-09-16.
+- 결과: TASK-14 완료. AC-07(VER-06)·AC-13(VER-10) 통과.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -295,8 +315,9 @@
 
 ## 미완료 항목
 
-- TASK-13~TASK-39
-- VER-01~VER-05·VER-07·VER-08·VER-09·VER-25·VER-26·VER-27 통과. VER-06(AC-07)은 대시보드(TASK-14·15)에서 최종 판정
+- TASK-13(자식 1건 잔여: TASK-15), TASK-16~TASK-39
+- VER-01~VER-10·VER-25·VER-26·VER-27 통과
+- 미제출 판정을 등급 `F`로 해석 — 실운영 기준 확인 필요
 - 실제 재부팅에서의 자동 기동은 미검증(사용자 재부팅 시 확인)
 - 테스트 운영 자격 증명이 `director`/`director` — 배포 이관 단계에서 교체하기로 합의된 의도된 상태
 - AC-05의 실제 브라우저 육안 확인은 미수행(자동화 제외 항목, 사용자 확인 필요)
@@ -306,7 +327,7 @@
 
 ## 재개 지점
 
-- 다음 작업: [TASK-14 KPI 집계 API](../../plan.md#task-14-kpi-집계-api)
+- 다음 작업: [TASK-15 대시보드 화면](../../plan.md#task-15-대시보드-화면)
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
 - 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
@@ -315,8 +336,8 @@
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, TASK-02~TASK-12, TASK-40~TASK-42
-- 미완료 항목: TASK-13~TASK-39
+- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, TASK-02~TASK-12, TASK-14, TASK-40~TASK-42
+- 미완료 항목: TASK-13(TASK-15), TASK-16~TASK-39
 - 차단 요인: 없음
-- 다음 행동: TASK-14의 AC-07·AC-13 집계 단위 테스트(Red)를 작성한다
+- 다음 행동: TASK-15의 컴포넌트 테스트(Red)를 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
