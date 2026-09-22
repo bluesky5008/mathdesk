@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 저장소 전역의 ADR·DCR을 한곳에서 조망하고 다음 일련번호를 발행할 기준을 제공한다.
-- 현재 결론 또는 상태: ADR 7건이 `approved`이고, ADR-008과 DCR-001이 기준선 `v2` 재승인을 기다린다. 마지막 발행 번호는 ADR-008, DCR-001.
-- 다음 행동: DCR-001 재승인 결과를 ADR-008·DCR-001 상태에 반영한다.
+- 현재 결론 또는 상태: ADR 8건과 DCR 1건이 모두 `approved`다. 기준선은 `v2`이며 마지막 발행 번호는 ADR-008, DCR-001.
+- 다음 행동: 없음. 새 ADR·DCR이 생기면 이 등록부를 같은 변경에서 갱신한다.
 
 ## 문서 연결
 
@@ -32,8 +32,8 @@
 | ADR-005 | adr | 메시징 어댑터 단일화 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/ADR-005](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md) | — |
 | ADR-006 | adr | OMR 양식 고정과 템플릿 판독 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/ADR-006](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) | ADR-003 관련 |
 | ADR-007 | adr | 인증·권한 모델 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/ADR-007](./work/20260922-mathdesk-baseline/ADR-007-인증-권한-모델.md) | — |
-| ADR-008 | adr | 테스트 운영 노출 구성 | proposed | 2026-09-22 | [work/20260922-mathdesk-baseline/ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md) | ADR-001 보완, DCR-001 |
-| DCR-001 | dcr | 테스트 운영 환경 노출 | awaiting-approval | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) | ADR-008 |
+| ADR-008 | adr | 테스트 운영 노출 구성 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md) | ADR-001 보완, DCR-001 |
+| DCR-001 | dcr | 테스트 운영 환경 노출 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) | ADR-008 |
 
 ## 번호 발행 규칙
 

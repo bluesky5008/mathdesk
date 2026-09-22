@@ -72,4 +72,4 @@ python omr_reader.py ksat-2027-math.json <scan.png>   # 실제 스캔 판독
 
 ## 다음 단계
 
-기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. 현재 TASK-12(일일 입력 화면)까지 완료 — M0~M2 동작. 다음은 TASK-14(대시보드 KPI 집계).
+기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. 현재 TASK-12(일일 입력 화면)까지 완료 — M0~M2 동작. 기준선 v2(DCR-001)로 테스트 운영 노출 작업(TASK-40~42)이 우선이다.

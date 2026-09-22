@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v1`
+> 기준선: `v2`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-22`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: 작업 40건 중 TASK-02~TASK-12를 완료했다(TASK-40 제외). M2 일일 수업 입력까지 API와 화면이 모두 동작한다.
-- 다음 행동: [TASK-14 KPI 집계 API](#task-14-kpi-집계-api)를 시작한다. TASK-40은 임계값 확정 후 착수한다.
+- 현재 결론 또는 상태: 작업 42건 중 TASK-02~TASK-12를 완료했다. [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) 승인으로 기준선이 `v2`가 되었고 테스트 운영 노출 작업 3건(TASK-40·41·42)이 우선 순위로 들어왔다.
+- 다음 행동: [TASK-40 로그인 시도 제한](#task-40-로그인-시도-제한) → TASK-41 → TASK-42 순으로 테스트 운영 노출을 끝낸 뒤 [TASK-14](#task-14-kpi-집계-api)로 돌아온다.
 
 ## 문서 연결
 
@@ -25,9 +25,9 @@
 
 ## 기준선
 
-- 관련 요구사항: [REQ-mathdesk](./requirements.md) 기준선 `v1` (2026-09-22 승인)
-- 관련 설계: [DESIGN-mathdesk](./design.md) 기준선 `v1` (2026-09-22 승인)
-- 관련 ADR·DCR: [ADR-001~ADR-007](./decisions.md#등록부) (`approved`), DCR 없음
+- 관련 요구사항: [REQ-mathdesk](./requirements.md) 기준선 `v2` (2026-09-22 재승인)
+- 관련 설계: [DESIGN-mathdesk](./design.md) 기준선 `v2` (2026-09-22 재승인)
+- 관련 ADR·DCR: [ADR-001~ADR-008](./decisions.md#등록부) (`approved`), [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) (`approved`, 기준선 v2)
 
 ## 작업 정의
 
@@ -48,7 +48,7 @@
 <!-- generated -->
 
 ```text
-mathdesk 구현 (기준선 v1, 작업 20260922-mathdesk-baseline)     in-progress (11/40)
+mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progress (11/42)
 │
 ├─ 사이클 1 — MVP (M0~M4) ........................... in-progress (11/23)
 │  ├─ [▶] TASK-01 M0 기반 (분해 5, 4/5)
@@ -56,7 +56,7 @@ mathdesk 구현 (기준선 v1, 작업 20260922-mathdesk-baseline)     in-progres
 │  │   ├─ [✓] TASK-03 스키마 1차·마이그레이션·시드 .... 2026-09-22 10:26
 │  │   ├─ [✓] TASK-04 인증과 세션 .................... 2026-09-22 10:53
 │  │   ├─ [✓] TASK-05 권한·캠퍼스 스코프 강제 ........ 2026-09-22 11:14
-│  │   └─ [ ] TASK-40 로그인 시도 제한 ............... depends: TASK-04
+│  │   └─ [▶] TASK-40 로그인 시도 제한 ............... depends: TASK-04
 │  ├─ [✓] TASK-06 M1 학생/반 관리 (분해 2, 2/2) ...... 2026-09-22 12:34
 │  │   ├─ [✓] TASK-07 마스터 데이터 API .............. 2026-09-22 11:36
 │  │   └─ [✓] TASK-08 마스터 데이터 화면 ............. 2026-09-22 12:34
@@ -74,6 +74,11 @@ mathdesk 구현 (기준선 v1, 작업 20260922-mathdesk-baseline)     in-progres
 │  │   └─ [ ] TASK-20 메시지 화면 .................... depends: TASK-17~19
 │  ├─ [ ] TASK-21 MVP 통합·인수 검증 ................. depends: TASK-08, 12, 15, 20
 │  └─ [ ] TASK-22 ★ MVP 사이클 완료 승인 ............. depends: TASK-21
+│
+├─ 테스트 운영 노출 (DCR-001) ....................... in-progress (0/3)
+│  ├─ [▶] TASK-40 로그인 시도 제한 .................. (TASK-01 분해, 노출 선행 조건)
+│  ├─ [ ] TASK-41 단일 오리진 테스트 운영 서빙 ...... depends: TASK-40
+│  └─ [ ] TASK-42 mathdesk 터널 등록과 노출 검증 .... depends: TASK-41
 │
 └─ 사이클 2 — 확장 (M5~M9) .......................... pending (0/17)
    ├─ [ ] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... depends: TASK-03
@@ -131,6 +136,22 @@ flowchart TD
     T10 -. depends .-> T14
     T10 -. depends .-> T17
     T21 -. depends .-> T22
+    classDef done fill:#c8e6c9,stroke:#2e7d32
+    classDef active fill:#fff9c4,stroke:#f9a825
+    classDef todo fill:#eceff1,stroke:#90a4ae
+    classDef gate fill:#ffcdd2,stroke:#c62828
+```
+
+테스트 운영 노출 (노드 4)
+
+```mermaid
+flowchart TD
+    OPS["테스트 운영 노출 (DCR-001)"]:::active
+    OPS --> T40["TASK-40 로그인 시도 제한"]:::active
+    OPS --> T41["TASK-41 단일 오리진 서빙·Secure 쿠키"]:::todo
+    OPS --> T42["TASK-42 터널·DNS·launchd 등록"]:::todo
+    T40 -. depends .-> T41
+    T41 -. depends .-> T42
     classDef done fill:#c8e6c9,stroke:#2e7d32
     classDef active fill:#fff9c4,stroke:#f9a825
     classDef todo fill:#eceff1,stroke:#90a4ae
@@ -243,15 +264,39 @@ flowchart TD
 
 ### TASK-40: 로그인 시도 제한
 
-- 상태: pending
+- 상태: in-progress
 - 상위: TASK-01
-- 목표: 설계 [보안과 품질 속성](./design.md#보안과-품질-속성)의 "로그인 실패 지연·시도 제한" 중 시도 제한을 구현한다. TASK-04에서 실패 지연(계정 유무와 무관한 동일 검증 비용)만 구현했다.
-- 관련 요구사항과 설계: [NFR-06](./requirements.md#비기능-요구사항), [DES-03](./design.md#des-03-상세)
-- 변경 대상: `apps/api/src/mathdesk/auth.py`, 시도 기록 저장소
+- 목표: 연속 로그인 실패가 임계 횟수에 이르면 일정 시간 잠근다. TASK-04에서 실패 지연(계정 유무와 무관한 동일 검증 비용)만 구현했다. 공개 노출([DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md))의 선행 조건이다.
+- 관련 요구사항과 설계: [NFR-06](./requirements.md#비기능-요구사항), [AC-29](./requirements.md#인수-조건), [DES-03](./design.md#des-03-상세), [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)
+- 변경 대상: `apps/api/src/mathdesk/auth.py`, 시도 기록 저장소, 마이그레이션
 - 의존성: TASK-04
-- 위험: 임계값·잠금 시간이 기준선에 명시되지 않았다. 사용자 확인 없이 정하면 실사용자가 잠길 수 있다
-- 검증 방법: 선행 테스트 — 임계 횟수 연속 실패 후 올바른 비밀번호도 잠금 기간 동안 거부되는 통합 테스트
-- 완료 조건: 임계값·잠금 시간을 사용자와 확정하고 설정값으로 노출, 잠금·해제가 감사 로그에 기록됨
+- 위험: 잠금이 과하면 실사용자가 막힌다. 기본값은 연속 10회·3분이며 설정값으로 노출한다
+- 검증 방법: 선행 테스트 — [AC-29](./requirements.md#인수-조건)를 통합 테스트로 전환(임계 횟수 실패 후 올바른 비밀번호 거부, 잠금 경과 후 허용, 감사 로그 기록)
+- 완료 조건: AC-29 통과, 임계값·잠금 시간이 환경변수로 조정 가능하고 잠금 사건이 감사 로그에 남는다
+
+### TASK-41: 단일 오리진 테스트 운영 서빙
+
+- 상태: pending
+- 상위: 없음
+- 목표: 웹 정적 빌드를 API가 SPA fallback으로 서빙하는 테스트 운영 이미지와 compose 구성을 만들고, `Secure` 쿠키와 노출 표면 축소를 설정으로 제어한다.
+- 관련 요구사항과 설계: [NFR-06·NFR-08·NFR-17](./requirements.md#비기능-요구사항), [AC-28](./requirements.md#인수-조건), [DES-23](./design.md#컴포넌트와-책임), [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)
+- 변경 대상: 테스트 운영용 Dockerfile·compose 오버레이, `apps/api/src/mathdesk/{main,auth}.py`, `.env` 예시, README
+- 의존성: TASK-40
+- 위험: 정적 서빙 경로가 `/api`를 가리면 API가 막힌다. 라우팅 순서를 테스트로 고정한다
+- 검증 방법: 선행 테스트 — 정적 fallback이 `/api/*`를 가로채지 않고, `MATHDESK_COOKIE_SECURE=true`에서 쿠키에 `Secure`가 붙는 통합 테스트
+- 완료 조건: 단일 포트에서 웹과 API가 함께 응답하고, 노출 구성에서 postgres·API 호스트 포트가 게시되지 않으며, 개발용 기본 비밀번호가 쓰이지 않는다
+
+### TASK-42: mathdesk 터널 등록과 노출 검증
+
+- 상태: pending
+- 상위: 없음
+- 목표: 전용 Cloudflare 터널 `mathdesk`와 DNS 라우트, launchd 서비스를 만들어 `mathdesk.yongs-wiki.com`을 연결하고 AC-28을 실제 도메인에서 검증한다.
+- 관련 요구사항과 설계: [AC-28](./requirements.md#인수-조건), [DES-23](./design.md#컴포넌트와-책임), [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)
+- 변경 대상: `ops/` (터널 설정·launchd plist·운영 문서). 기존 `homewiki` 터널 설정은 수정하지 않는다
+- 의존성: TASK-41
+- 위험: 외부·비가역 작업이다. 터널·DNS 생성은 사용자 계정에 자원을 만든다(사용자 요청으로 승인됨). 기존 home-wiki 서비스에 영향을 주지 않도록 별도 터널을 쓴다
+- 검증 방법: 공개 도메인에서 로그인 → 쿠키 속성 확인 → 로그아웃 후 401. 기존 `yongs-wiki.com` 정상 응답 확인
+- 완료 조건: [AC-28](./requirements.md#인수-조건) 통과, 재부팅 후 자동 기동, 롤백 절차 문서화
 
 ### TASK-06: M1 학생/반 관리
 
@@ -702,6 +747,9 @@ flowchart TD
 | VER-22 | NFR-03 | TASK-34 | 30쪽 PDF 판독 시간 측정 |
 | VER-23 | NFR-09 | TASK-03, TASK-23 | `upgrade head` → `downgrade base` 왕복 |
 | VER-24 | NFR-11 | TASK-38 | 백업·복원 1회 수행 |
+| VER-25 | AC-28 | TASK-42 | 공개 도메인 로그인 → 쿠키 `Secure`·`HttpOnly` 확인 → 로그아웃 후 401 |
+| VER-26 | AC-29 | TASK-40 | 임계 횟수 실패 후 거부, 잠금 경과 후 허용, 감사 로그 확인 |
+| VER-27 | NFR-17 | TASK-41 | 노출 구성의 호스트 포트 게시 목록과 기본 비밀번호 미사용 확인 |
 
 자동화하지 않는 시나리오 검증: 화면 ①~④의 시각적 재현 확인(TASK-15·TASK-12·TASK-20·TASK-32)과 실발송·실스캔 검증(Q-02·Q-03·Q-08 해소 시점까지 보류).
 
@@ -715,11 +763,11 @@ flowchart TD
 
 ## 인계
 
-- 다음 단계 또는 워크플로우: wf-implement 구현 — [TASK-02 스캐폴딩](#task-02-모노레포-스캐폴딩과-실행-환경)
-- 시작 조건: 충족됨 — 기준선 `v1` 승인 완료(2026-09-22), 저장소 상태 확인 완료
+- 다음 단계 또는 워크플로우: wf-implement 구현 — [TASK-40 로그인 시도 제한](#task-40-로그인-시도-제한)
+- 시작 조건: 충족됨 — 기준선 `v2` 재승인 완료(2026-09-22)
 - 입력 문서와 기준선: [REQ-mathdesk](./requirements.md) `v1`, [DESIGN-mathdesk](./design.md) `v1`, [ADR-001~007](./decisions.md#등록부)
-- 완료된 항목: 계획 수립(작업 39건, 계획 트리, 검증 계획 VER-01~24)
-- 미완료 항목: TASK-01~TASK-39 전체
+- 완료된 항목: 계획 수립(작업 42건, 계획 트리, 검증 계획 VER-01~27), TASK-02~TASK-12 구현
+- 미완료 항목: TASK-40·41·42(테스트 운영 노출), TASK-13~TASK-39
 - 차단 요인: 없음. [Q-02·Q-03·Q-08](./requirements.md#가정과-미해결-질문)은 TASK-19·TASK-34·TASK-37의 검증 범위를 제한하지만 착수를 막지 않는다
-- 다음 행동: TASK-02를 `in-progress`로 바꾸고 API 헬스 엔드포인트 통합 테스트(Red)부터 작성한다
+- 다음 행동: TASK-40의 AC-29 통합 테스트(Red)부터 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.

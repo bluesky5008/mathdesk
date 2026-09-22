@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v1`
+> 기준선: `v2`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-22`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -11,7 +11,7 @@
 ## 요약
 
 - 목적: [REQ-mathdesk](./requirements.md)의 기능·비기능 요구사항을 만족하는 시스템 구조, 데이터 모델, 인터페이스 계약, 동작 흐름과 검증 전략을 정의한다.
-- 현재 결론 또는 상태: React SPA + FastAPI + PostgreSQL 단일 백엔드로 구성하고, 외부 의존(메시징·LLM·스토리지·OMR 판독·문서 파싱)을 5개 어댑터 인터페이스 뒤에 둔다. 컴포넌트 22개와 테이블 24개, REST 계약, OMR·메시지·시험지 흐름을 정의했다. 2026-09-22 사용자 승인으로 기준선 `v1`이 발행되었고 ADR-001~ADR-007이 `approved`로 전이되었다.
+- 현재 결론 또는 상태: React SPA + FastAPI + PostgreSQL 단일 백엔드로 구성하고, 외부 의존(메시징·LLM·스토리지·OMR 판독·문서 파싱)을 5개 어댑터 인터페이스 뒤에 둔다. 컴포넌트 22개와 테이블 24개, REST 계약, OMR·메시지·시험지 흐름을 정의했다. 기준선 `v1` 승인 후 [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md)로 테스트 운영 노출 구성이 추가되어 기준선 `v2`가 유효하다.
 - 다음 행동: wf-implement 스킬로 구현 계획을 수립한다. M0~M4를 선행 단계로 분할한다.
 
 ## 문서 연결
@@ -26,7 +26,9 @@
 | input | decision | [ADR-005: 메시징 어댑터 단일화](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md) | document | DES-09 |
 | input | decision | [ADR-006: OMR 양식 고정과 템플릿 판독](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) | document | DES-15, DES-16, DES-17 |
 | input | decision | [ADR-007: 인증·권한 모델](./work/20260922-mathdesk-baseline/ADR-007-인증-권한-모델.md) | document | DES-03 |
-| output | decision | [결정 등록부](./decisions.md) | ADR-001~ADR-007 | 결정 전체 목록 |
+| input | decision | [ADR-008: 테스트 운영 노출 구성](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md) | document | DES-03, DES-23 |
+| input | change | [DCR-001: 테스트 운영 환경 노출](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) | DES-03, DES-23 | 기준선 v2로 올린 설계 변경 |
+| output | decision | [결정 등록부](./decisions.md) | ADR-001~ADR-008, DCR-001 | 결정 전체 목록 |
 | output | implementation | [PLAN-mathdesk: 구현 계획](./plan.md) | TASK-01~TASK-39 | 이 설계를 구현하는 계획 |
 
 ## 설계 목표와 제약
@@ -67,12 +69,24 @@
                         └──────────────┘
 ```
 
+테스트 운영(Phase A′)에서는 위 구조 앞에 외부 노출 경계가 하나 붙는다.
+
+```text
+인터넷 ── HTTPS ── Cloudflare ── cloudflared 터널 `mathdesk`
+                                      └── http://localhost:8090
+                                            [API 컨테이너]
+                                              ├── /api/*  REST
+                                              └── /*      웹 정적 빌드(SPA fallback)
+                                                    └── [postgres] 호스트 게시 없음
+```
+
 경계 규칙
 
 1. SPA는 DB·외부 API에 직접 접근하지 않고 모든 요청을 FastAPI를 경유한다.
 2. 외부 네트워크로 나가는 호출은 `MessagingAdapter`와 `LlmAdapter` 두 곳뿐이다. `OmrReader`와 `DocumentIngest`는 로컬 실행만 수행한다(NFR-04).
 3. 파일은 DB에 저장하지 않고 `StorageAdapter`를 통해 저장하며 DB에는 `stored_file` 메타데이터만 둔다.
 4. 도메인 규칙은 service 계층에만 두고 라우터와 리포지토리에 분산시키지 않는다.
+5. 테스트 운영에서 외부로 열린 경로는 터널 하나뿐이며 웹과 API는 같은 오리진을 공유한다. 개발용 Vite 서버는 노출하지 않는다.
 
 ## 컴포넌트와 책임
 
@@ -100,6 +114,7 @@
 | DES-20 | 설정·시크릿 관리 | 연동 설정 저장(민감값 암호화), 환경변수 우선순위, 연결 상태 점검 |
 | DES-21 | 스키마 마이그레이션 | Alembic 리비전과 시드 데이터 스크립트 |
 | DES-22 | 내보내기 | 통계·시험 결과 엑셀 생성, 난이도 분석표·리포트 이미지 파일 생성 |
+| DES-23 | 테스트 운영 서빙 | 웹 정적 빌드를 API가 SPA fallback으로 서빙하고, `Secure` 쿠키와 노출 표면 축소를 설정으로 제어한다. 외부 경로는 cloudflared 터널 하나다 |
 
 #### DES-03 상세
 
@@ -288,7 +303,7 @@ class OmrReader(Protocol):
 
 | 항목 | 설계 |
 |---|---|
-| 인증 | Argon2id 해시, 서버 세션, 로그인 실패 지연·시도 제한 |
+| 인증 | Argon2id 해시, 서버 세션, 로그인 실패 지연(계정 유무와 무관한 동일 검증 비용)과 시도 제한(기본 연속 10회 실패 → 3분 잠금, 설정값). 쿠키의 `Secure`는 `MATHDESK_COOKIE_SECURE`로 제어하며 HTTPS 노출 구성에서 `true` |
 | 권한 | 라우터 의존성으로 `CurrentScope` 주입, 리포지토리 기반 클래스가 `campus_id` 필터를 강제, 권한 거부는 감사 로그 기록 |
 | 개인정보 | 외부 전송 화이트리스트(문항 텍스트·이미지). OMR 원본과 학생 식별 정보는 로컬 처리. 업로드 파일은 캠퍼스 스코프 키로 저장 |
 | 비밀 정보 | 환경변수 우선, DB 저장 시 대칭키 암호화. 응답과 로그에서 마스킹 |
@@ -296,6 +311,7 @@ class OmrReader(Protocol):
 | 자원 | OMR 판독은 페이지 단위 스트리밍 처리로 메모리 상한을 유지, 업로드 20MB·30쪽 제한 |
 | 관측성 | 구조화 JSON 로그(요청 ID 포함), `message_log`·`llm_call_log`·`audit_log` 도메인 기록 |
 | 가용성 | Phase A 단일 노드. 백그라운드 작업은 재시작 시 `queued` 상태부터 재개 가능하게 상태를 DB에 둔다 |
+| 노출 표면 | 테스트 운영에서 postgres·API 호스트 포트를 게시하지 않고 터널만 외부 경로로 둔다. 개발용 기본 비밀번호를 쓰지 않으며 합성 데이터만 보관한다(NFR-17) |
 | 유지보수성 | 어댑터 경계 5개, 모듈별 패키지 분리(`auth`, `masterdata`, `daily`, `stats`, `messaging`, `exams`, `omr`) |
 
 ## 마이그레이션과 롤백
@@ -305,6 +321,8 @@ class OmrReader(Protocol):
 - 각 리비전은 `downgrade`를 제공한다. 파괴적 변경(컬럼 삭제)은 두 단계(사용 중단 → 삭제)로 나눈다.
 - Phase A→B 전환: DB는 `pg_dump`/`pg_restore`, 파일은 `StorageAdapter` 구현 교체와 일괄 복사, 설정은 환경변수 교체로 수행한다. 애플리케이션 이미지는 동일하다.
 - 롤백: 애플리케이션은 이전 이미지 태그로 되돌리고, 스키마는 해당 리비전으로 `downgrade` 후 복원한다.
+- 테스트 운영(Phase A′) 기동: 테스트 운영 compose로 빌드·기동 → `cloudflared tunnel create mathdesk` → DNS 라우트 → launchd 등록. 기존 `homewiki` 터널 설정은 수정하지 않는다.
+- 테스트 운영 롤백: launchd 서비스 해제 → DNS 레코드 삭제 → 컨테이너 중지. 배포처를 옮길 때도 이 3개만 제거하면 된다.
 
 ## 검증 전략
 
@@ -323,6 +341,9 @@ class OmrReader(Protocol):
 | AC-27 (외부 전송 경계) | 외부 HTTP 호출을 차단한 환경에서 OMR·메시지 경로 실행, `LlmAdapter` 호출 카운터 0 확인 |
 | NFR-01~NFR-03 | 시드 데이터 규모에서 응답 시간 측정 스크립트 |
 | NFR-09 | 빈 DB `upgrade head` → `downgrade base` 왕복 테스트 |
+| AC-28 (VER-25) | 공개 도메인에서 로그인 후 `Set-Cookie`의 `Secure`·`HttpOnly` 확인, 로그아웃 후 보호 경로 401 |
+| AC-29 (VER-26) | 임계 횟수 연속 실패 후 올바른 비밀번호 거부, 잠금 시간 경과 후 허용, 감사 로그 확인 |
+| NFR-17 (VER-27) | 노출 구성의 호스트 포트 게시 목록 확인, 기본 비밀번호 미사용 확인 |
 
 ## 대안과 결정
 
@@ -335,6 +356,7 @@ class OmrReader(Protocol):
 | 메시징 | 알리고 단일 어댑터로 SMS·알림톡 통합 | 채널별 SDK 분리는 폴백 구현이 복잡해짐 | [ADR-005](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md) |
 | OMR | 수능 양식 고정 + 템플릿 좌표 판독 | 범용 OMR 인식은 정확도·개발량 모두 불리 | [ADR-006](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) |
 | 인증·권한 | Phase A부터 다계정·역할·캠퍼스 스코프 | 단일 계정 후 도입은 전 API 재작업 유발 | [ADR-007](./work/20260922-mathdesk-baseline/ADR-007-인증-권한-모델.md) |
+| 테스트 운영 노출 | 전용 터널 + 단일 오리진 API 서빙 + 앱 로그인 | 기존 터널 공유는 home-wiki 순단, 교차 오리진은 `SameSite=None`·CORS 필요, 개발 서버 노출은 운영 부적합 | [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md) |
 
 ADR로 분리하지 않은 설계 판단
 
@@ -379,6 +401,7 @@ ADR로 분리하지 않은 설계 판단
 | [FR-32~FR-36](./requirements.md#fr-33-상세) | [DES-15](#컴포넌트와-책임), [DES-16](#컴포넌트와-책임), [DES-17](#컴포넌트와-책임) | [AC-24, AC-25](./requirements.md#인수-조건) |
 | [NFR-04](./requirements.md#nfr-04-상세) | [DES-13](#컴포넌트와-책임), [DES-14](#컴포넌트와-책임), [DES-15](#컴포넌트와-책임) | [AC-27](./requirements.md#인수-조건) |
 | [NFR-08~NFR-11](./requirements.md#비기능-요구사항) | [DES-10](#컴포넌트와-책임), [DES-19](#컴포넌트와-책임), [DES-21](#컴포넌트와-책임) | — |
+| [NFR-06](./requirements.md#비기능-요구사항), [NFR-17](./requirements.md#비기능-요구사항) | [DES-03](#des-03-상세), [DES-23](#컴포넌트와-책임) | [AC-28, AC-29](./requirements.md#인수-조건) |
 
 작업(`TASK-NN`)과 검증(`VER-NN`) 연결은 승인 후 wf-implement 스킬 계획 수립 시점에 추가한다.
 
@@ -395,6 +418,8 @@ ADR로 분리하지 않은 설계 판단
 | 제외 범위 | 없음. [Q-09~Q-11](#가정과-미해결-질문)은 승인 범위에 포함되며, 해소 결과가 승인된 설계를 바꾸면 DCR로 처리한다 |
 | 후속 상태 변경 | [REQ-mathdesk](./requirements.md) 동시 승인, ADR-001~ADR-007 → `approved` |
 
+기준선 `v2` (2026-09-22): [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) 재승인으로 테스트 운영 노출 경계(DES-23)와 보안 속성이 반영되었고 [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)이 `approved`로 전이되었다.
+
 ## 변경 이력
 
 | 날짜 | 변경 | 근거 | 상태 또는 기준선 | 작성자·승인자 |
@@ -402,6 +427,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-09-22 | 최초 작성 — 컴포넌트 22개, 테이블 24개, REST 계약, 흐름·검증 전략 정의 | [REQ-mathdesk](./requirements.md), ADR-001~ADR-007 | draft → awaiting-approval | Claude / 승인자 미정 |
 | 2026-09-22 | 사용자 승인 — 기준선 `v1` 발행, ADR-001~007 approved | 대화형 승인 관문 응답 `승인` | awaiting-approval → approved, 기준선 v1 | Claude / 사용자 |
 | 2026-09-22 | 구현 계획 문서 링크 추가 (기준선 의미 변경 없는 역방향 링크 보완) | [PLAN-mathdesk](./plan.md) 생성 | approved 유지, 기준선 v1 | Claude |
+| 2026-09-22 | 테스트 운영 노출 경계·DES-23·보안 속성 추가 | [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md), [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md) | approved 유지, 기준선 v1 → v2 | Claude / 사용자 |
 
 ## 인계
 
