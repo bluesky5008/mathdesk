@@ -27,6 +27,7 @@
 | input | decision | [ADR-006: OMR 양식 고정과 템플릿 판독](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) | document | DES-15, DES-16, DES-17 |
 | input | decision | [ADR-007: 인증·권한 모델](./work/20260922-mathdesk-baseline/ADR-007-인증-권한-모델.md) | document | DES-03 |
 | output | decision | [결정 등록부](./decisions.md) | ADR-001~ADR-007 | 결정 전체 목록 |
+| output | implementation | [PLAN-mathdesk: 구현 계획](./plan.md) | TASK-01~TASK-39 | 이 설계를 구현하는 계획 |
 
 ## 설계 목표와 제약
 
@@ -400,6 +401,7 @@ ADR로 분리하지 않은 설계 판단
 |---|---|---|---|---|
 | 2026-09-22 | 최초 작성 — 컴포넌트 22개, 테이블 24개, REST 계약, 흐름·검증 전략 정의 | [REQ-mathdesk](./requirements.md), ADR-001~ADR-007 | draft → awaiting-approval | Claude / 승인자 미정 |
 | 2026-09-22 | 사용자 승인 — 기준선 `v1` 발행, ADR-001~007 approved | 대화형 승인 관문 응답 `승인` | awaiting-approval → approved, 기준선 v1 | Claude / 사용자 |
+| 2026-09-22 | 구현 계획 문서 링크 추가 (기준선 의미 변경 없는 역방향 링크 보완) | [PLAN-mathdesk](./plan.md) 생성 | approved 유지, 기준선 v1 | Claude |
 
 ## 인계
 
@@ -407,6 +409,6 @@ ADR로 분리하지 않은 설계 판단
 - 시작 조건: 충족됨 — [REQ-mathdesk](./requirements.md)와 이 문서가 `approved`이고 기준선 `v1`이 2026-09-22에 발행되었다
 - 입력 문서와 기준선: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md)
 - 완료된 항목: 요구사항 도출, 설계 결정 7건, 컴포넌트·데이터·인터페이스 정의, 검증 전략
-- 미완료 항목: 구현 계획(`docs/plan.md`), 작업 분해, 검증 실행
+- 미완료 항목: 검증 실행. 구현 계획과 작업 분해는 [PLAN-mathdesk](./plan.md)에서 완료
 - 차단 요인: 없음. 다만 [Q-02·Q-03·Q-08](./requirements.md#가정과-미해결-질문)은 M4·M8·OMR의 실검증 범위를 제한할 수 있다
-- 다음 행동: 승인 후 M0~M4를 선행 단계로 하는 구현 계획을 수립한다
+- 다음 행동: [PLAN-mathdesk](./plan.md)의 TASK-02부터 구현한다
