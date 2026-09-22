@@ -1,0 +1,66 @@
+/*
+ * 웹 스타일 진입점. 토큰의 정의는 여기가 아니라 tokens.css에 있고(NFR-18),
+ * 이 파일은 그 값을 Tailwind 테마 이름에 연결하는 역할만 한다.
+ * `inline`이므로 유틸리티가 --md-* 변수를 그대로 참조해 다크 모드 덮어쓰기가 살아 있다.
+ */
+@import 'tailwindcss';
+@import './tokens.css';
+
+@theme inline {
+  --color-bg: var(--md-color-bg);
+  --color-surface: var(--md-color-surface);
+  --color-fg: var(--md-color-fg);
+  --color-muted-fg: var(--md-color-muted-fg);
+  --color-border: var(--md-color-border);
+  --color-accent: var(--md-color-accent);
+  --color-brand: var(--md-color-brand);
+  --color-brand-fg: var(--md-color-brand-fg);
+  --color-ring: var(--md-color-ring);
+  --color-success: var(--md-color-success);
+  --color-warning: var(--md-color-warning);
+  --color-danger: var(--md-color-danger);
+
+  --font-sans: var(--md-font-sans);
+  --font-mono: var(--md-font-mono);
+
+  --text-xs: var(--md-text-xs);
+  --text-sm: var(--md-text-sm);
+  --text-base: var(--md-text-base);
+  --text-lg: var(--md-text-lg);
+  --text-xl: var(--md-text-xl);
+  --text-2xl: var(--md-text-2xl);
+  --text-3xl: var(--md-text-3xl);
+
+  --leading-tight: var(--md-leading-tight);
+  --leading-normal: var(--md-leading-normal);
+
+  /* 간격 유틸리티 전체(p-1, gap-4 …)가 토큰의 4px 리듬에서 파생된다 */
+  --spacing: var(--md-space-1);
+
+  --radius-sm: var(--md-radius-sm);
+  --radius-md: var(--md-radius-md);
+  --radius-lg: var(--md-radius-lg);
+  --radius-full: var(--md-radius-full);
+
+  --shadow-sm: var(--md-shadow-sm);
+  --shadow-md: var(--md-shadow-md);
+  --shadow-lg: var(--md-shadow-lg);
+}
+
+@layer base {
+  /* 테두리 기본색을 토큰으로 두어 화면마다 border-border를 반복하지 않는다 */
+  *,
+  ::after,
+  ::before {
+    border-color: var(--md-color-border);
+  }
+
+  body {
+    background-color: var(--md-color-bg);
+    color: var(--md-color-fg);
+    font-family: var(--md-font-sans);
+    font-size: var(--md-text-base);
+    line-height: var(--md-leading-normal);
+    -webkit-font-smoothing: antialiased;
+  }
+}

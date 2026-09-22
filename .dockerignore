@@ -1,0 +1,11 @@
+# Dockerfile.testops는 저장소 루트를 빌드 컨텍스트로 쓴다. apps/web/.dockerignore는
+# 컨텍스트 루트가 아니어서 적용되지 않으므로 여기서 제외 대상을 정한다.
+# dist/를 빼지 않으면 Tailwind가 이전 빌드 산출물까지 스캔해 CSS가 불어난다.
+**/node_modules/
+**/dist/
+**/.venv/
+**/__pycache__/
+*.tsbuildinfo
+.git/
+.env
+.env.*

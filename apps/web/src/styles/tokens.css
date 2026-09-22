@@ -1,0 +1,76 @@
+/*
+ * mathdesk 디자인 토큰 — 단일 소스 (NFR-18 / AC-31, DES-24)
+ *
+ * 프레임워크에 묶이지 않은 순수 CSS 변수만 둔다. 웹은 app.css의 Tailwind 테마가
+ * 이 값을 읽고, 리포트 카드 템플릿(ADR-011)은 이 파일을 <style>에 그대로 인라인한다.
+ * 따라서 전처리 지시어를 쓰지 않고 외부 파일을 참조하지 않는다.
+ *
+ * 브랜드 색(FR-40)은 --md-color-brand를 런타임에 덮어써서 반영한다.
+ */
+
+:root {
+  /* 색 — 의미 기반. 원색 팔레트를 화면에서 직접 쓰지 않는다 */
+  --md-color-bg: oklch(0.985 0.002 260);
+  --md-color-surface: oklch(1 0 0);
+  --md-color-fg: oklch(0.21 0.02 260);
+  --md-color-muted-fg: oklch(0.55 0.015 260);
+  --md-color-border: oklch(0.91 0.005 260);
+  --md-color-accent: oklch(0.96 0.008 260);
+
+  --md-color-brand: oklch(0.52 0.16 258);
+  --md-color-brand-fg: oklch(0.99 0 0);
+  --md-color-ring: var(--md-color-brand);
+
+  --md-color-success: oklch(0.58 0.13 155);
+  --md-color-warning: oklch(0.72 0.15 75);
+  --md-color-danger: oklch(0.56 0.19 25);
+
+  /* 타이포 — 1.125~1.25 비율의 좁은 스케일. 업무 도구는 밀도가 우선이다 */
+  --md-font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  --md-font-mono: 'SF Mono', 'JetBrains Mono', ui-monospace, 'D2Coding', monospace;
+
+  --md-text-xs: 0.75rem;
+  --md-text-sm: 0.8125rem;
+  --md-text-base: 0.875rem;
+  --md-text-lg: 1rem;
+  --md-text-xl: 1.125rem;
+  --md-text-2xl: 1.375rem;
+  --md-text-3xl: 1.75rem;
+
+  --md-leading-tight: 1.25;
+  --md-leading-normal: 1.55;
+
+  /* 간격 — 4px 리듬 */
+  --md-space-1: 0.25rem;
+  --md-space-2: 0.5rem;
+  --md-space-3: 0.75rem;
+  --md-space-4: 1rem;
+  --md-space-5: 1.25rem;
+  --md-space-6: 1.5rem;
+  --md-space-8: 2rem;
+  --md-space-12: 3rem;
+
+  /* 라운드 */
+  --md-radius-sm: 0.25rem;
+  --md-radius-md: 0.5rem;
+  --md-radius-lg: 0.75rem;
+  --md-radius-full: 9999px;
+
+  /* 그림자 — 업무 도구라 얕게 */
+  --md-shadow-sm: 0 1px 2px 0 oklch(0.21 0.02 260 / 0.06);
+  --md-shadow-md: 0 2px 6px -1px oklch(0.21 0.02 260 / 0.08), 0 1px 3px -1px oklch(0.21 0.02 260 / 0.06);
+  --md-shadow-lg: 0 10px 24px -6px oklch(0.21 0.02 260 / 0.14);
+}
+
+/* 다크 모드는 토큰 레벨에서만 지원한다(DES-24). 기본값은 라이트이며 opt-in이다 */
+.dark {
+  --md-color-bg: oklch(0.18 0.015 260);
+  --md-color-surface: oklch(0.23 0.018 260);
+  --md-color-fg: oklch(0.96 0.003 260);
+  --md-color-muted-fg: oklch(0.7 0.012 260);
+  --md-color-border: oklch(0.32 0.015 260);
+  --md-color-accent: oklch(0.28 0.018 260);
+  --md-color-brand: oklch(0.68 0.14 258);
+  --md-color-brand-fg: oklch(0.18 0.015 260);
+}

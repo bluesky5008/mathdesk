@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 47건 중 25건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-44 디자인 토큰과 공통 컴포넌트 기반](#task-44-디자인-토큰과-공통-컴포넌트-기반)을 시작한다. [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)에 따라 시각 설계(TASK-44~47)를 M5~M9 기능 작업보다 먼저 수행한다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 47건 중 26건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-45 리포트 카드 HTML 렌더러 전환](#task-45-리포트-카드-html-렌더러-전환)을 시작한다. TASK-44로 토큰 단일 소스가 확립되었으므로 카드 렌더러가 이를 인라인한다. [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)에 따라 시각 설계(TASK-44~47)를 M5~M9 기능 작업보다 먼저 수행한다.
 
 ## 문서 연결
 
@@ -82,8 +82,8 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │  ├─ [✓] TASK-41 단일 오리진 테스트 운영 서빙 ...... 2026-09-22 14:44
 │  └─ [✓] TASK-42 mathdesk 터널 등록과 노출 검증 .... 2026-09-22 15:26
 │
-├─ 시각 설계 (DCR-003) ............................. in-progress (0/4)
-│  ├─ [▶] TASK-44 디자인 토큰·공통 컴포넌트 기반 .... depends: —
+├─ 시각 설계 (DCR-003) ............................. in-progress (1/4)
+│  ├─ [✓] TASK-44 디자인 토큰·공통 컴포넌트 기반 .... 2026-09-23 01:22
 │  ├─ [ ] TASK-45 리포트 카드 HTML 렌더러 전환 ...... depends: TASK-44
 │  ├─ [ ] TASK-46 카드 재설계·브랜드 (시안 확인) .... depends: TASK-45
 │  └─ [ ] TASK-47 기존 화면 5개 재작성 .............. depends: TASK-44
@@ -211,8 +211,8 @@ flowchart TD
 ```mermaid
 flowchart TD
     V["시각 설계 (DCR-003)"]:::active
-    V --> T44["TASK-44 토큰·공통 컴포넌트"]:::active
-    V --> T45["TASK-45 카드 HTML 렌더러 전환"]:::todo
+    V --> T44["TASK-44 토큰·공통 컴포넌트"]:::done
+    V --> T45["TASK-45 카드 HTML 렌더러 전환"]:::active
     V --> T46["TASK-46 카드 재설계·브랜드"]:::todo
     V --> T47["TASK-47 기존 화면 재작성"]:::todo
     T44 -. depends .-> T45
@@ -231,7 +231,8 @@ flowchart TD
 
 ### TASK-44: 디자인 토큰과 공통 컴포넌트 기반
 
-- 상태: in-progress
+- 상태: completed
+- 완료: 2026-09-23 01:22
 - 상위: 없음
 - 목표: Tailwind v4를 도입하고 `tokens.css`에 색·간격·타이포·라운드·그림자를 CSS 변수로 단일 정의한다. shadcn/ui 패턴으로 공통 컴포넌트(버튼·입력·표·카드·대화상자)와 레이아웃 셸을 저장소에 둔다.
 - 관련 요구사항과 설계: [NFR-13·NFR-14·NFR-18](./requirements.md#비기능-요구사항), [DES-24](./design.md#컴포넌트와-책임), [DES-24 상세](./design.md#des-24-상세), [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md)
@@ -240,6 +241,7 @@ flowchart TD
 - 위험: 토큰 구조를 잘못 잡으면 이후 3개 작업이 모두 영향을 받는다. 번들 크기 증가
 - 검증 방법: 선행 테스트 — 토큰 파일이 웹과 카드 양쪽에서 참조 가능한 순수 CSS임을 고정하는 테스트(VER-30의 웹 측). 기존 웹 테스트 20건 전량 통과 유지
 - 완료 조건: `npm test`와 `npm run build` 통과, 토큰 단일 소스 확립, 공통 컴포넌트가 최소 1개 화면에서 동작
+- 결과: Tailwind v4.3.3 도입, `src/styles/tokens.css`에 순수 CSS 변수 38개(색·타이포·간격·라운드·그림자) 단일 정의. `app.css`의 `@theme inline`이 토큰을 Tailwind 이름에 연결해 모든 유틸리티가 `var(--md-*)`를 참조한다(VER-30 웹 측 통과). 공통 컴포넌트 `button`·`input`·`card`·`table`·`dialog`와 `AppShell` 추가, 로그인 화면에 적용. 웹 테스트 24건(기존 20 + 토큰 4)·`npm run build` 통과. 번들 JS 324.18 → 355.96 kB(+31.8, gzip +9.9), CSS 신규 13.48 kB. Recharts·lucide-react는 [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md) 결정을 유지하되 실제 사용처가 생기는 TASK-26·TASK-47로 설치를 미뤘다
 
 ### TASK-45: 리포트 카드 HTML 렌더러 전환
 

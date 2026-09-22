@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
 
 import { login, type CurrentUser } from './api'
+import { Button } from './components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
+import { Input } from './components/ui/input'
 
 export function LoginForm({ onLoggedIn }: { onLoggedIn: (user: CurrentUser) => void }) {
   const [loginId, setLoginId] = useState('')
@@ -18,22 +21,36 @@ export function LoginForm({ onLoggedIn }: { onLoggedIn: (user: CurrentUser) => v
   }
 
   return (
-    <form onSubmit={submit}>
-      <h1>mathdesk 로그인</h1>
-      <label>
-        아이디
-        <input value={loginId} onChange={(event) => setLoginId(event.target.value)} />
-      </label>
-      <label>
-        비밀번호
-        <input
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-      </label>
-      <button type="submit">로그인</button>
-      {error && <p role="alert">{error}</p>}
-    </form>
+    <div className="flex min-h-screen items-center justify-center bg-bg px-6">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle as="h1">mathdesk 로그인</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="flex flex-col gap-4" onSubmit={submit}>
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              아이디
+              <Input value={loginId} onChange={(event) => setLoginId(event.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              비밀번호
+              <Input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </label>
+            <Button type="submit" size="lg">
+              로그인
+            </Button>
+            {error && (
+              <p role="alert" className="text-sm text-danger">
+                {error}
+              </p>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
