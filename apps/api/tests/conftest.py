@@ -56,6 +56,24 @@ def table_names():
     return lambda: asyncio.run(_table_names())
 
 
+async def _column_names(table: str) -> set[str]:
+    connection = await asyncpg.connect(_dsn(TEST_DATABASE_URL))
+    try:
+        rows = await connection.fetch(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = $1",
+            table,
+        )
+    finally:
+        await connection.close()
+    return {row["column_name"] for row in rows}
+
+
+@pytest.fixture
+def column_names():
+    return lambda table: asyncio.run(_column_names(table))
+
+
 async def _scalar(query: str) -> int:
     connection = await asyncpg.connect(_dsn(TEST_DATABASE_URL))
     try:

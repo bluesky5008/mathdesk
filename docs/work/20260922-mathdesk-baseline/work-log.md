@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-23 스키마 2차 (시험·OMR·상담·파일)](../../plan.md#task-23-스키마-2차-시험omr상담파일) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-22 ★ MVP 사이클 완료 승인](../../plan.md#task-22--mvp-사이클-완료-승인) (2026-09-22 20:05)
+- 진행 중인 작업: 없음
+- 마지막 완료 작업: [TASK-23 스키마 2차 (시험·OMR·상담·파일)](../../plan.md#task-23-스키마-2차-시험omr상담파일) (2026-09-22 23:53)
 - 차단 요인: 없음. Anthropic API 키는 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서만 필요하며 그 앞 구현을 차단하지 않는다. 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시 퍼지는 사용자가 보류했다(TTL 만료로 자연 해소)
 
 ## 계획 트리
@@ -539,6 +539,16 @@ flowchart TD
 - 재승인: 2026-09-22 사용자 응답 "API키는 가장 마지막에 검증하는것으로 하자. 승인." → 기준선 `v3` 발행, ADR-009 `approved`.
 - 검증: 이 변경은 문서 변경만이며 코드 변경이 없다. 링크 검증만 수행했다.
 
+### 2026-09-22 — TASK-23 스키마 2차 (시험·OMR·상담·파일) 완료
+
+- TDD Red: `tests/test_migrations.py`의 `EXPECTED_TABLES`에 신규 9건을 추가하고, 기준선 `v3`가 요구하는 `llm_call_log` 컬럼 구성을 고정하는 `test_llm_call_log_records_provider_and_cache_tokens`를 먼저 작성했다. 두 테스트 모두 의도한 이유(테이블 부재)로 실패했다.
+- Green: 모델 `exam.py`(Exam·ExamQuestion·ExamAttempt·ExamAnswer·OmrScan·LabelCorrection), `consult.py`(ConsultLog), `system.py`(StoredFile·LlmCallLog)를 추가하고 Alembic 리비전 `6f28fe0c3cac`를 autogenerate했다.
+- `llm_call_log`는 `provider`(`test`·`anthropic`·`openai_compat`)와 `cache_read_tokens`·`cache_write_tokens`를 **최초 정의에 포함**했다. TASK-23이 착수 전이었기 때문에 [DCR-002](./DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)의 컬럼 추가에 별도 마이그레이션이 들지 않았다.
+- 설계에 명시되지 않았으나 추가한 제약(되돌릴 수 있는 구현 세부사항): `exam_question(exam_id, no)`, `exam_attempt(exam_id, student_id)`, `exam_answer(attempt_id, question_no)` 유일 제약. 근거는 [시험지 분석·OMR 채점 흐름](../../design.md#omr-채점)의 "이미 반영된 스캔을 다시 적용하면 기존 시도를 대체한다".
+- 검증: 왕복 마이그레이션 통과(`upgrade head` → `downgrade base` 후 잔여 테이블 0), API 전체 78건 통과(직전 77건 + 신규 1건).
+- 통합: 개발 DB와 테스트 운영 DB 모두 `6f28fe0c3cac` 적용 완료. 테스트 운영 재빌드 후 `https://mathdesk.yongs-wiki.com/` HTTP 200 확인.
+- 발견: API 컨테이너에는 `migrations/`·`alembic.ini`가 없어 개발 DB 마이그레이션은 호스트에서 `DATABASE_URL`을 지정해 실행해야 한다(테스트 운영 이미지는 기동 시 자동 적용).
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -563,7 +573,7 @@ flowchart TD
 
 ## 재개 지점
 
-- 다음 작업: [TASK-23 스키마 2차 (시험·OMR·상담·파일)](../../plan.md#task-23-스키마-2차-시험omr상담파일) — `llm_call_log`는 기준선 `v3` 컬럼 구성(`provider`·`cache_read_tokens`·`cache_write_tokens` 포함)으로 최초 정의한다
+- 다음 작업: [TASK-24 M5 성적 통계](../../plan.md#task-24-m5-성적-통계) — 분해 작업 TASK-25(집계 API·엑셀) → TASK-26(화면) 순서
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
 - 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
@@ -572,8 +582,8 @@ flowchart TD
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v3`, [DESIGN-mathdesk](../../design.md) `v3`
-- 완료된 항목: 기준선 v1·v2·v3 승인, ADR-001~009, DCR-001·DCR-002, 계획, 사이클 1 전체(TASK-01~TASK-22), TASK-40~TASK-42
-- 미완료 항목: TASK-23~TASK-39, TASK-43(사이클 2)
+- 완료된 항목: 기준선 v1·v2·v3 승인, ADR-001~009, DCR-001·DCR-002, 계획, 사이클 1 전체(TASK-01~TASK-22), TASK-40~TASK-42, TASK-23
+- 미완료 항목: TASK-24~TASK-39, TASK-43(사이클 2)
 - 차단 요인: 없음
-- 다음 행동: TASK-23의 왕복 마이그레이션 테스트(Red)를 작성한다
+- 다음 행동: TASK-25의 통계 집계 인수 테스트(AC-19·AC-20)를 Red로 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.

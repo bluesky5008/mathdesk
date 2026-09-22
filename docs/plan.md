@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 43건 중 24건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-23 스키마 2차 (시험·OMR·상담·파일)](#task-23-스키마-2차-시험omr상담파일)를 시작한다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 43건 중 25건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-24 M5 성적 통계](#task-24-m5-성적-통계)를 시작한다.
 
 ## 문서 연결
 
@@ -81,8 +81,8 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │  ├─ [✓] TASK-41 단일 오리진 테스트 운영 서빙 ...... 2026-09-22 14:44
 │  └─ [✓] TASK-42 mathdesk 터널 등록과 노출 검증 .... 2026-09-22 15:26
 │
-└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (0/18)
-   ├─ [▶] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... depends: TASK-03
+└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (1/18)
+   ├─ [✓] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... 2026-09-22 23:53
    ├─ [ ] TASK-24 M5 성적 통계 (분해 2) .............. depends: TASK-23
    │   ├─ [ ] TASK-25 통계 집계 API와 엑셀 내보내기
    │   └─ [ ] TASK-26 통계 화면 ...................... depends: TASK-25
@@ -165,7 +165,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     C2["사이클 2 — 확장 (M5~M9)"]:::active
-    C2 --> T23["TASK-23 스키마 2차"]:::active
+    C2 --> T23["TASK-23 스키마 2차"]:::done
     C2 --> T24["TASK-24 M5 성적 통계"]:::todo
     T24 --> T25["TASK-25 통계 API·엑셀"]:::todo
     T24 --> T26["TASK-26 통계 화면"]:::todo
@@ -533,7 +533,8 @@ flowchart TD
 
 ### TASK-23: 스키마 2차 (시험·OMR·상담·파일)
 
-- 상태: in-progress
+- 상태: completed
+- 완료: 2026-09-22 23:53
 - 상위: 없음
 - 목표: 시험·문항·응시·답안·OMR 스캔·라벨 교정·저장 파일·LLM 호출 로그·상담일지 테이블을 Alembic 리비전으로 추가한다. `llm_call_log`는 기준선 `v3`의 컬럼 구성(`provider`·`cache_read_tokens`·`cache_write_tokens` 포함)으로 최초 정의한다.
 - 관련 요구사항과 설계: [데이터 모델](./design.md#데이터-모델), [NFR-09](./requirements.md#비기능-요구사항), [NFR-15](./requirements.md#비기능-요구사항), [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)
@@ -542,6 +543,7 @@ flowchart TD
 - 위험: 전환 작업이므로 롤백 준비가 필수다
 - 검증 방법: 선행 테스트 — 왕복 마이그레이션 테스트 확장(Red)
 - 완료 조건: `upgrade head` → `downgrade base` 왕복 통과
+- 결과: 리비전 `6f28fe0c3cac`로 테이블 9건(`stored_file`·`exam`·`exam_question`·`exam_attempt`·`exam_answer`·`omr_scan`·`label_correction`·`llm_call_log`·`consult_log`) 추가. `llm_call_log`는 기준선 `v3` 컬럼 구성으로 최초 정의. 왕복 통과, 전체 78건 통과, 개발·테스트 운영 DB 모두 head 적용
 
 ### TASK-24: M5 성적 통계
 
