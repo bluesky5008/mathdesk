@@ -1,3 +1,4 @@
+from .auth import UserSession
 from .base import Base
 from .daily import ClassSession, ClassSessionProgress, StudentDailyRecord
 from .masterdata import (
@@ -31,4 +32,5 @@ __all__ = [
     "MessageTemplate",
     "Student",
     "StudentDailyRecord",
+    "UserSession",
 ]

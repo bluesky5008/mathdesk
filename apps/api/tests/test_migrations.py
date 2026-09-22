@@ -15,6 +15,7 @@ EXPECTED_TABLES = {
     "message_log",
     "integration_setting",
     "audit_log",
+    "user_session",
 }
 
 

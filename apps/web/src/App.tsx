@@ -1,19 +1,38 @@
 import { useEffect, useState } from 'react'
 
+import { fetchCurrentUser, logout, type CurrentUser } from './api'
+import { LoginForm } from './LoginForm'
+
 export function App() {
-  const [apiStatus, setApiStatus] = useState('확인 중')
+  const [user, setUser] = useState<CurrentUser | null>(null)
+  const [checked, setChecked] = useState(false)
 
   useEffect(() => {
-    fetch('/api/health')
-      .then((response) => response.json())
-      .then((body: { status: string }) => setApiStatus(body.status))
-      .catch(() => setApiStatus('연결 실패'))
+    fetchCurrentUser()
+      .then(setUser)
+      .finally(() => setChecked(true))
   }, [])
 
+  if (!checked) {
+    return <p>확인 중</p>
+  }
+  if (!user) {
+    return <LoginForm onLoggedIn={setUser} />
+  }
   return (
     <main>
-      <h1>mathdesk</h1>
-      <p>API 상태: {apiStatus}</p>
+      <h1>종합 대시보드</h1>
+      <p>
+        {user.display_name} ({user.role})
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          void logout().then(() => setUser(null))
+        }}
+      >
+        로그아웃
+      </button>
     </main>
   )
 }

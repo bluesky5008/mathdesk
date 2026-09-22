@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: TASK-02(스캐폴딩)와 TASK-03(스키마 1차·마이그레이션·시드)을 완료했다. 16개 테이블의 왕복 마이그레이션과 시드(반 4 · 학생 47)가 테스트로 검증된다.
-- 다음 행동: [TASK-04 인증과 세션](../../plan.md#task-04-인증과-세션) — AC-01(로그인·로그아웃)을 인수 테스트(Red)로 먼저 작성한다.
+- 현재 결론 또는 상태: TASK-02·TASK-03·TASK-04를 완료했다. 로그인·세션·로그아웃이 API와 화면에서 동작하고 AC-01이 통과한다.
+- 다음 행동: [TASK-05 권한·캠퍼스 스코프 강제](../../plan.md#task-05-권한캠퍼스-스코프-강제) — AC-02·AC-03을 인수 테스트(Red)로 먼저 작성한다.
 
 ## 문서 연결
 
@@ -31,9 +31,9 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-04 인증과 세션](../../plan.md#task-04-인증과-세션) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-03 스키마 1차·마이그레이션·시드](../../plan.md#task-03-스키마-1차마이그레이션시드) (2026-09-22 10:26)
-- 차단 요인: 없음
+- 진행 중인 작업: [TASK-05 권한·캠퍼스 스코프 강제](../../plan.md#task-05-권한캠퍼스-스코프-강제) (미착수, 상태만 `in-progress`)
+- 마지막 완료 작업: [TASK-04 인증과 세션](../../plan.md#task-04-인증과-세션) (2026-09-22 10:53)
+- 차단 요인: 없음. [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
 
 ## 수행 기록
 
@@ -104,29 +104,54 @@
   - `docker compose ps` — postgres가 55432로 게시된 상태로 재기동 확인.
 - 결과: TASK-03 완료. 완료 조건(왕복 마이그레이션 통과, 시드로 반 4개·학생 47명 투입) 전항 충족. VER-23(NFR-09)의 마이그레이션 왕복 근거가 확보되었다.
 
+### 2026-09-22 — TASK-04 인증과 세션
+
+- 수행 내용
+  - TDD Red: `tests/test_auth.py`에 AC-01 흐름(로그인 → `/me` → 로그아웃 → `/me` 401), 오답 거부, 평문 미저장·미노출, 쿠키 속성 4개 테스트를 먼저 작성해 `ModuleNotFoundError: mathdesk.security`로 의도한 실패를 확인했다.
+  - Green: `security.py`(Argon2id), `db.py`(엔진·세션 의존성), `models/auth.py`(`user_session`), `auth.py`(로그인·로그아웃·`/me`·`current_user` 의존성·초기 원장 계정), `main.py` lifespan 배선을 구현했다.
+  - 웹에 로그인 화면(`LoginForm.tsx`)과 인증 상태 분기(`App.tsx`), API 클라이언트(`api.ts`)를 추가했다.
+  - alembic 리비전 `977a7bf03a58`(user_session)을 추가했다.
+- 변경 파일: `apps/api/src/mathdesk/{security,db,auth,main}.py`, `apps/api/src/mathdesk/models/{auth.py,__init__.py}`, `apps/api/migrations/versions/977a7bf03a58_user_session.py`, `apps/api/tests/{conftest,test_auth,test_migrations}.py`, `apps/web/src/{api.ts,LoginForm.tsx,App.tsx}`, `compose.yaml`, `README.md`
+- 발견 사항
+  - 시드가 만든 원장 계정의 `password_hash`가 `!`(사용 불가)였고, 초기 계정 준비 로직이 이를 실제 해시로 교체해 로그인이 가능해졌다. 이미 사용 중인 비밀번호는 덮어쓰지 않는다.
+- 결정과 이유
+  - 세션 토큰은 SHA-256 해시로만 저장한다. DB 덤프가 곧 세션 탈취가 되지 않도록.
+  - 계정이 없거나 비밀번호가 미설정이어도 더미 해시로 동일한 검증 비용을 치른다. 응답 시간으로 계정 존재를 알아내는 것을 막는다.
+  - 초기 원장 계정 환경변수는 compose에 기본값을 두지 않았다. 기본 비밀번호를 저장소에 남기지 않기 위해서다. 비우면 계정을 만들지 않는다.
+  - React Router·TanStack Query는 아직 도입하지 않았다. 화면이 2개(로그인·빈 대시보드)뿐이라 필요가 없다. TASK-08에서 도입한다.
+- 실행한 검증
+  - `uv run pytest -q` — 인증 테스트 최초 `ModuleNotFoundError`(의도한 Red) → 구현 후 전체 `7 passed`.
+  - `npm run build` 성공.
+  - 실행 스택 e2e(`curl`): 비로그인 `/api/auth/me` 401 → 오답 로그인 401 → 정상 로그인 200(쿠키 `HttpOnly`) → `/me` 200 → 로그아웃 204 → `/me` 401.
+- 결과: TASK-04 완료. AC-01(VER-01) 통과, 완료 조건(평문 미저장 확인 포함) 충족.
+
 ## 설계와 달라진 점
 
-없음. 현재까지 승인된 설계를 벗어난 구현 선택이 없다.
+| 항목 | 내용 | 처리 |
+|---|---|---|
+| `user_session` 테이블 | [설계 데이터 모델](../../design.md#데이터-모델)의 테이블 목록에 없지만 [DES-03](../../design.md#des-03-상세)이 "서버 측 세션 레코드"를 규정한다. 목록이 이를 열거하지 않았을 뿐이며 새로운 제품 결정이 아니라고 판단해 내부 구현으로 추가했다 | 경미한 변경으로 처리, DCR 없음 |
+| 로그인 시도 제한 | [보안과 품질 속성](../../design.md#보안과-품질-속성)의 "로그인 실패 지연·시도 제한" 중 실패 지연만 구현했다. 시도 제한은 임계값·잠금 시간이 기준선에 없어 임의로 정하면 실사용자가 잠길 수 있다 | [TASK-40](../../plan.md#task-40-로그인-시도-제한)으로 분리, 임계값은 사용자 확인 대기 |
 
 ## 미완료 항목
 
-- TASK-01(자식 2건 잔여), TASK-04~TASK-39
-- VER-23(마이그레이션 왕복)은 TASK-03에서 1차 확보. 나머지 VER 항목은 미수행
+- TASK-01(자식 2건 잔여: TASK-05·TASK-40), TASK-05~TASK-40
+- VER-01(AC-01)은 TASK-04에서 통과. VER-23(마이그레이션 왕복)은 TASK-03에서 1차 확보. 나머지 VER 항목은 미수행
+- 로그인 시도 제한 임계값·잠금 시간 미결정 (TASK-40)
 - [Q-02·Q-03·Q-08](../../requirements.md#가정과-미해결-질문) 미해소 — TASK-19·TASK-34·TASK-37의 실발송·실스캔 검증이 제한된다
 
 ## 재개 지점
 
-- 다음 작업: [TASK-04 인증과 세션](../../plan.md#task-04-인증과-세션)
+- 다음 작업: [TASK-05 권한·캠퍼스 스코프 강제](../../plan.md#task-05-권한캠퍼스-스코프-강제)
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
-- 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, [설계 DES-03 상세](../../design.md#des-03-상세)
+- 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, [설계 DES-03 상세](../../design.md#des-03-상세)의 권한 매트릭스
 
 ## 인계
 
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 승인, ADR-001~007, 구현 계획과 검증 계획, TASK-02 스캐폴딩, TASK-03 스키마 1차
-- 미완료 항목: TASK-01(자식 2건), TASK-04~TASK-39
+- 완료된 항목: 기준선 승인, ADR-001~007, 계획, TASK-02 스캐폴딩, TASK-03 스키마 1차, TASK-04 인증과 세션
+- 미완료 항목: TASK-01(자식 2건), TASK-05~TASK-40
 - 차단 요인: 없음
-- 다음 행동: TASK-04의 AC-01 인수 테스트(Red)를 먼저 작성한다
+- 다음 행동: TASK-05의 AC-02·AC-03 인수 테스트(Red)를 먼저 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.

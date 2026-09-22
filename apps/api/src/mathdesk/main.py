@@ -1,6 +1,23 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="mathdesk API")
+from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
+from .auth import ensure_initial_director, router as auth_router
+from .db import create_engine
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    engine = create_engine()
+    app.state.session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    await ensure_initial_director(app.state.session_factory)
+    yield
+    await engine.dispose()
+
+
+app = FastAPI(title="mathdesk API", lifespan=lifespan)
+app.include_router(auth_router)
 
 
 @app.get("/api/health")

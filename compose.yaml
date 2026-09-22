@@ -19,6 +19,9 @@ services:
     build: ./apps/api
     environment:
       DATABASE_URL: postgresql+asyncpg://mathdesk:${POSTGRES_PASSWORD:-mathdesk}@postgres:5432/mathdesk
+      # 비워 두면 초기 원장 계정을 만들지 않는다. .env에서 지정한다.
+      MATHDESK_INITIAL_ADMIN_ID: ${MATHDESK_INITIAL_ADMIN_ID:-}
+      MATHDESK_INITIAL_ADMIN_PASSWORD: ${MATHDESK_INITIAL_ADMIN_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -41,6 +41,9 @@ async def _table_names() -> set[str]:
     return {row["tablename"] for row in rows}
 
 
+os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
+
+
 @pytest.fixture
 def empty_database() -> str:
     database = urlsplit(TEST_DATABASE_URL).path.lstrip("/")
@@ -77,3 +80,10 @@ def alembic():
         )
 
     return run
+
+
+@pytest.fixture
+def migrated_database(empty_database, alembic):
+    alembic(empty_database, "upgrade", "head")
+    os.environ["DATABASE_URL"] = empty_database
+    return empty_database

@@ -40,7 +40,9 @@ curl http://localhost:8080/api/health
 docker compose down
 ```
 
-호스트 포트가 겹치면 `API_PORT`·`WEB_PORT`로 바꾼다(기본 8080·5173). `POSTGRES_PASSWORD`는 로컬 개발 기본값이 있으므로 실사용 전 `.env`로 덮어쓴다.
+호스트 포트가 겹치면 `API_PORT`·`WEB_PORT`·`POSTGRES_PORT`로 바꾼다(기본 8080·5173·55432). `POSTGRES_PASSWORD`는 로컬 개발 기본값이 있으므로 실사용 전 `.env`로 덮어쓴다.
+
+초기 원장 계정은 `.env`의 `MATHDESK_INITIAL_ADMIN_ID`·`MATHDESK_INITIAL_ADMIN_PASSWORD`로 만든다. 값을 비우면 계정을 만들지 않으며, 이미 비밀번호가 설정된 계정은 덮어쓰지 않는다.
 
 스키마 적용과 개발용 시드 데이터(반 4개 · 학생 47명).
 
@@ -70,4 +72,4 @@ python omr_reader.py ksat-2027-math.json <scan.png>   # 실제 스캔 판독
 
 ## 다음 단계
 
-기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. 현재 TASK-03(스키마 1차·마이그레이션·시드)까지 완료, 다음은 TASK-04(인증과 세션).
+기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. 현재 TASK-04(인증과 세션)까지 완료, 다음은 TASK-05(권한·캠퍼스 스코프 강제).
