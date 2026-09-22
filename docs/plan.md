@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v2`
+> 기준선: `v3`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-22`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -11,7 +11,7 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 42건 중 24건 완료. 사이클 2(M5~M9) 착수 단계다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 43건 중 24건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
 - 다음 행동: [TASK-23 스키마 2차 (시험·OMR·상담·파일)](#task-23-스키마-2차-시험omr상담파일)를 시작한다.
 
 ## 문서 연결
@@ -20,14 +20,15 @@
 |---|---|---|---|---|
 | input | baseline | [REQ-mathdesk: 요구사항](./requirements.md) | FR-01~FR-39, NFR-01~NFR-16, AC-01~AC-27 | 승인된 요구사항 기준선 v1 |
 | input | baseline | [DESIGN-mathdesk: 설계](./design.md) | DES-01~DES-22 | 승인된 설계 기준선 v1 |
-| input | decision | [결정 등록부](./decisions.md) | ADR-001~ADR-007 | 적용되는 설계 결정 |
+| input | decision | [결정 등록부](./decisions.md) | ADR-001~ADR-009 | 적용되는 설계 결정 |
+| input | change | [DCR-002: M6 LLM 공급자 중립화와 Claude 연결](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) | TASK-23, TASK-31, TASK-43 | 기준선 v3가 바꾼 작업 |
 | output | implementation | [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md) | document | 이 계획의 수행·검증 기록 |
 
 ## 기준선
 
-- 관련 요구사항: [REQ-mathdesk](./requirements.md) 기준선 `v2` (2026-09-22 재승인)
-- 관련 설계: [DESIGN-mathdesk](./design.md) 기준선 `v2` (2026-09-22 재승인)
-- 관련 ADR·DCR: [ADR-001~ADR-008](./decisions.md#등록부) (`approved`), [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) (`approved`, 기준선 v2)
+- 관련 요구사항: [REQ-mathdesk](./requirements.md) 기준선 `v3` (2026-09-22 재승인)
+- 관련 설계: [DESIGN-mathdesk](./design.md) 기준선 `v3` (2026-09-22 재승인)
+- 관련 ADR·DCR: [ADR-001~ADR-009](./decisions.md#등록부) (`approved`), [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) (`approved`, 기준선 v2), [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) (`approved`, 기준선 v3)
 
 ## 작업 정의
 
@@ -80,7 +81,7 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │  ├─ [✓] TASK-41 단일 오리진 테스트 운영 서빙 ...... 2026-09-22 14:44
 │  └─ [✓] TASK-42 mathdesk 터널 등록과 노출 검증 .... 2026-09-22 15:26
 │
-└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (0/17) .......................... pending (0/17)
+└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (0/18)
    ├─ [▶] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... depends: TASK-03
    ├─ [ ] TASK-24 M5 성적 통계 (분해 2) .............. depends: TASK-23
    │   ├─ [ ] TASK-25 통계 집계 API와 엑셀 내보내기
@@ -97,7 +98,8 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
    │   └─ [ ] TASK-36 채점 엔진과 문항별 통계 ........ depends: TASK-35, TASK-32
    ├─ [ ] TASK-37 M8 카카오 알림톡 ................... depends: TASK-19
    ├─ [ ] TASK-38 전체 통합·비기능 검증 .............. depends: TASK-26, 27, 32, 36, 37
-   └─ [ ] TASK-39 ★ 최종 사이클 완료 승인 ............ depends: TASK-38
+   ├─ [ ] TASK-43 Claude 실호출 검증 ................. depends: TASK-38
+   └─ [ ] TASK-39 ★ 최종 사이클 완료 승인 ............ depends: TASK-38, TASK-43
 ```
 
 사이클 1 (노드 23)
@@ -158,7 +160,7 @@ flowchart TD
     classDef gate fill:#ffcdd2,stroke:#c62828
 ```
 
-사이클 2 (노드 18)
+사이클 2 (노드 19)
 
 ```mermaid
 flowchart TD
@@ -179,6 +181,7 @@ flowchart TD
     T33 --> T36["TASK-36 채점 엔진·문항 통계"]:::todo
     C2 --> T37["TASK-37 M8 알림톡"]:::todo
     C2 --> T38["TASK-38 전체 통합·비기능 검증"]:::todo
+    C2 --> T43["TASK-43 Claude 실호출 검증"]:::todo
     C2 --> T39[["★ TASK-39 최종 사이클 완료 승인"]]:::gate
     T23 -. depends .-> T28
     T28 -. depends .-> T30
@@ -187,6 +190,8 @@ flowchart TD
     T28 -. depends .-> T34
     T34 -. depends .-> T35
     T35 -. depends .-> T36
+    T38 -. depends .-> T43
+    T43 -. depends .-> T39
     T38 -. depends .-> T39
     classDef done fill:#c8e6c9,stroke:#2e7d32
     classDef active fill:#fff9c4,stroke:#f9a825
@@ -530,8 +535,8 @@ flowchart TD
 
 - 상태: in-progress
 - 상위: 없음
-- 목표: 시험·문항·응시·답안·OMR 스캔·라벨 교정·저장 파일·LLM 호출 로그·상담일지 테이블을 Alembic 리비전으로 추가한다.
-- 관련 요구사항과 설계: [데이터 모델](./design.md#데이터-모델), [NFR-09](./requirements.md#비기능-요구사항)
+- 목표: 시험·문항·응시·답안·OMR 스캔·라벨 교정·저장 파일·LLM 호출 로그·상담일지 테이블을 Alembic 리비전으로 추가한다. `llm_call_log`는 기준선 `v3`의 컬럼 구성(`provider`·`cache_read_tokens`·`cache_write_tokens` 포함)으로 최초 정의한다.
+- 관련 요구사항과 설계: [데이터 모델](./design.md#데이터-모델), [NFR-09](./requirements.md#비기능-요구사항), [NFR-15](./requirements.md#비기능-요구사항), [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)
 - 변경 대상: `apps/api/models/`, `apps/api/alembic/versions/`
 - 의존성: TASK-03
 - 위험: 전환 작업이므로 롤백 준비가 필수다
@@ -626,13 +631,13 @@ flowchart TD
 
 - 상태: pending
 - 상위: TASK-29
-- 목표: 문항 번호 기준 분할, OpenAI 호환 `LlmAdapter`, 전송 필드 화이트리스트를 강제하는 `QuestionAnalyzer`와 토큰 상한·호출 로그를 구현한다.
-- 관련 요구사항과 설계: [FR-28·FR-29](./requirements.md#기능-요구사항), [NFR-04·NFR-15](./requirements.md#nfr-04-상세), [DES-12~DES-14](./design.md#컴포넌트와-책임), [ADR-003](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md)
-- 변경 대상: `apps/api/exams/analyze/`, `apps/api/core/llm.py`
+- 목표: 문항 번호 기준 분할, 공급자 중립 `LlmAdapter`와 구현체 3종(`TestModeLlm`·`AnthropicLlm`·`OpenAICompatLlm`), 전송 필드 화이트리스트를 강제하는 `QuestionAnalyzer`, 토큰 상한과 호출 로그를 구현한다. 기본 공급자는 `test`이며 API 키 없이 완료할 수 있다.
+- 관련 요구사항과 설계: [FR-28·FR-29](./requirements.md#기능-요구사항), [NFR-04·NFR-12·NFR-15](./requirements.md#nfr-04-상세), [DES-12~DES-14](./design.md#컴포넌트와-책임), [DES-14 상세](./design.md#des-14-상세), [ADR-003](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md), [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)
+- 변경 대상: `apps/api/exams/analyze/`, `apps/api/core/llm.py`, `pyproject.toml`(`anthropic` 의존성)
 - 의존성: TASK-30
-- 위험: 개인정보 경계 위반은 최소화 대상이 아니다. 화이트리스트 검증을 생략하지 않는다
-- 검증 방법: 선행 테스트 — [AC-22·AC-23·AC-27](./requirements.md#인수-조건)을 가짜 어댑터 테스트로 전환(30문항 초안 생성, 엔드포인트 교체, 외부 호출 차단 환경에서 호출 카운터 0)
-- 완료 조건: AC-22·AC-23·AC-27 통과, 토큰 상한 초과 시 중단과 사용량 보고 동작
+- 위험: 개인정보 경계 위반은 최소화 대상이 아니다. 화이트리스트 검증을 생략하지 않는다. 구현체 2종의 동작이 갈라질 수 있어 계약 테스트를 공유한다
+- 검증 방법: 선행 테스트 — [AC-22·AC-23·AC-27](./requirements.md#인수-조건)을 가짜 어댑터 테스트로 전환(30문항 초안 생성, 공급자 교체, 외부 호출 차단 환경에서 호출 카운터 0). 구현체 3종이 동일한 `LlmAdapter` 계약 테스트를 통과
+- 완료 조건: AC-22·AC-23·AC-27 통과, 토큰 상한 초과 시 중단과 사용량 보고 동작, `llm_call_log`에 공급자·캐시 토큰 기록. **Anthropic 실호출은 이 작업의 완료 조건이 아니며 [TASK-43](#task-43-claude-실호출-검증)에서 검증한다**
 
 ### TASK-32: 시험 등록·문항 확인 화면
 
@@ -718,14 +723,26 @@ flowchart TD
 - 검증 방법: 전체 테스트 실행, 응답 시간·OMR 처리 시간 측정, 백업·복원 1회 수행, 마이그레이션 왕복
 - 완료 조건: AC-01~AC-27 전항 결과와 실패·미수행 항목이 작업 기록에 기록됨
 
+### TASK-43: Claude 실호출 검증
+
+- 상태: pending
+- 상위: 없음
+- 목표: Anthropic API 키를 설정하고 `AnthropicLlm`으로 실제 시험지 1건을 분석해 품질·비용·토큰 상한을 실측한다. **사용자 지시로 API 키 검증은 최종 단계에 배치한다.**
+- 관련 요구사항과 설계: [NFR-15](./requirements.md#비기능-요구사항), [DES-14 상세](./design.md#des-14-상세), [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)
+- 변경 대상: `.env`(키 주입), 설정 문서. 코드 변경은 실측 결과가 요구할 때만
+- 의존성: TASK-38
+- 위험: 키 미확보 시 이 작업만 미검증으로 남는다. 실측 비용이 추정(시험지당 약 740원)과 다를 수 있다
+- 검증 방법: `MATHDESK_LLM_PROVIDER=anthropic`으로 전환 후 시험지 1건 분석 → 문항별 결과 품질 확인, `llm_call_log`의 공급자·입출력·캐시 토큰·비용 확인, 토큰 상한 초과 시 중단 동작 확인. 확인 후 기본 공급자를 `test`로 되돌린다
+- 완료 조건: 실측 비용·품질이 작업 기록에 남고, 추정과 차이가 크면 토큰 상한·모델을 재조정한다. **키 미확보 시 `차단됨`으로 보고하며 다른 작업의 완료를 막지 않는다**
+
 ### TASK-39: ★ 최종 사이클 완료 승인
 
 - 상태: pending
 - 상위: 없음
-- 목표: 기준선 `v1` 전체 구현의 완료를 사용자에게 확인받는다.
-- 관련 요구사항과 설계: [AC-01~AC-27](./requirements.md#인수-조건) 검증 결과
+- 목표: 기준선 `v3` 전체 구현의 완료를 사용자에게 확인받는다.
+- 관련 요구사항과 설계: [AC-01~AC-29](./requirements.md#인수-조건) 검증 결과
 - 변경 대상: 없음(승인 관문)
-- 의존성: TASK-38
+- 의존성: TASK-38, TASK-43
 - 위험: 미검증·제한 사항이 보고되지 않은 채 완료로 처리될 수 있다
 - 검증 방법: TASK-38 검증 결과와 남은 위험을 사용자에게 제시하고 응답을 기록
 - 완료 조건: 사용자 승인과 시점을 작업 기록에 남김. 배포·패키지 게시 등 새로운 외부 작업은 이 관문과 별도로 확인한다
@@ -751,7 +768,7 @@ flowchart TD
 | VER-13 | AC-17, AC-18 | TASK-19 | 가짜 어댑터 통합 테스트, 스냅샷 불변성 |
 | VER-14 | AC-19, AC-20 | TASK-25 | 통계 통합 테스트 + 생성 파일 파싱 |
 | VER-15 | AC-21 | TASK-30 | 고정 픽스처 단위 테스트 |
-| VER-16 | AC-22, AC-23 | TASK-31 | 가짜 LLM 어댑터 테스트, 엔드포인트 교체 |
+| VER-16 | AC-22, AC-23 | TASK-31 | 가짜 LLM 어댑터 테스트, 공급자 교체. 구현체 3종 공유 계약 테스트 |
 | VER-17 | AC-24 | TASK-34 | 합성 왜곡 판독 테스트(프로토타입 이식) |
 | VER-18 | AC-25 | TASK-35, TASK-36 | 검수 전 미반영 + 교정 후 갱신 통합 테스트 |
 | VER-19 | AC-26 | TASK-37 | 알림톡 실패 → SMS 폴백 테스트 |
@@ -763,8 +780,9 @@ flowchart TD
 | VER-25 | AC-28 | TASK-42 | 공개 도메인 로그인 → 쿠키 `Secure`·`HttpOnly` 확인 → 로그아웃 후 401 |
 | VER-26 | AC-29 | TASK-40 | 임계 횟수 실패 후 거부, 잠금 경과 후 허용, 감사 로그 확인 |
 | VER-27 | NFR-17 | TASK-41 | 노출 구성의 호스트 포트 게시 목록과 기본 비밀번호 미사용 확인 |
+| VER-28 | NFR-15 | TASK-31, TASK-43 | 호출 로그의 공급자·입출력·캐시 토큰·비용 기록, 상한 초과 시 중단. Anthropic 실호출 실측은 TASK-43 |
 
-자동화하지 않는 시나리오 검증: 화면 ①~④의 시각적 재현 확인(TASK-15·TASK-12·TASK-20·TASK-32)과 실발송·실스캔 검증(Q-02·Q-03·Q-08 해소 시점까지 보류).
+자동화하지 않는 시나리오 검증: 화면 ①~④의 시각적 재현 확인(TASK-15·TASK-12·TASK-20·TASK-32), 실발송·실스캔 검증(Q-02·Q-03·Q-08 해소 시점까지 보류), Claude 실호출 검증(TASK-43 — API 키 확보 시점까지 보류).
 
 ## 마이그레이션과 롤백
 

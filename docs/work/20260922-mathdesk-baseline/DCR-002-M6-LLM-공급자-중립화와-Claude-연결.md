@@ -2,8 +2,8 @@
 
 > 문서 유형: `dcr`
 > 작업 ID: `20260922-mathdesk-baseline`
-> 상태: `awaiting-approval`
-> 기준선: `v2 → v3 제안`
+> 상태: `approved`
+> 기준선: `v3`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-22`
 > 관련 문서: [REQ-mathdesk: 요구사항](../../requirements.md), [DESIGN-mathdesk: 설계](../../design.md), [ADR-009: LLM 공급자 추상화와 Claude 연결](./ADR-009-LLM-공급자-추상화와-Claude-연결.md), [ADR-003: AI 작업 분리와 개인정보 경계](./ADR-003-AI-작업-분리와-개인정보-경계.md), [PLAN-mathdesk: 구현 계획](../../plan.md)
@@ -11,7 +11,7 @@
 ## 요약
 
 - 목적: M6 시험지 분석의 LLM 공급자를 설정으로 교체 가능하게 만들고, Anthropic Claude를 기본 운영 공급자로 연결한다.
-- 현재 결론 또는 상태: 승인 대기. 승인되면 기준선 `v3`가 발행된다.
+- 현재 결론 또는 상태: 2026-09-22 사용자 재승인으로 기준선 `v3`가 발행되었다. Claude 실호출 검증은 사용자 지시로 최종 단계(TASK-43)로 미뤘다.
 - 다음 행동: 재승인 후 [TASK-23](../../plan.md#task-23-스키마-2차-시험omr상담파일)의 `llm_call_log` 컬럼을 반영하고 [TASK-31](../../plan.md#task-31-문항-분할llmadapter분석)에서 구현한다.
 
 ## 문서 연결
@@ -137,25 +137,26 @@ QuestionAnalyzer ──호출──▶ LlmAdapter (공급자 중립 계약)
 | 항목 | 내용 |
 |---|---|
 | 승인 대상 | 이 DCR 전체와 [ADR-009](./ADR-009-LLM-공급자-추상화와-Claude-연결.md) |
-| 결과 | 승인 대기 |
+| 결과 | 승인 (Claude 실호출 검증을 최종 단계로 이동하는 조건 반영) |
 | 결정자 | 사용자 |
-| 결정 일시 | — |
-| 근거 | — |
-| 유효 기준선 | `v3` 제안 (승인 시 효력 시작) |
-| 후속 상태 변경 | 승인 시 [REQ-mathdesk](../../requirements.md)·[DESIGN-mathdesk](../../design.md) 기준선 `v3`, ADR-009 → `approved` |
+| 결정 일시 | 2026-09-22 |
+| 근거 | 2026-09-22 대화형 재승인 응답 "API키는 가장 마지막에 검증하는것으로 하자. 승인." |
+| 유효 기준선 | `v3` (효력 시작 2026-09-22) |
+| 후속 상태 변경 | [REQ-mathdesk](../../requirements.md)·[DESIGN-mathdesk](../../design.md) 기준선 `v3`, ADR-009 → `approved`, [TASK-43](../../plan.md#task-43-claude-실호출-검증) 신설 |
 
 ## 변경 이력
 
 | 날짜 | 변경 | 근거 | 상태 또는 기준선 | 작성자·승인자 |
 |---|---|---|---|---|
 | 2026-09-22 | 최초 작성 — M6 공급자 중립화와 Claude 연결 제안 | 사용자 요청과 대화형 선택 2건(진행 승인, 기본 모델 `claude-opus-5`), 실행 환경 자격증명 조사 | → awaiting-approval, v2 → v3 제안 | Claude / 승인자 미정 |
+| 2026-09-22 | 사용자 재승인 — 기준선 `v3` 발행. Claude 실호출 검증을 TASK-43으로 분리해 최종 단계에 배치 | 대화형 재승인 응답 | awaiting-approval → approved, 기준선 v2 → v3 | Claude / 사용자 |
 
 ## 인계
 
-- 다음 단계 또는 워크플로우: 재승인 후 wf-implement — TASK-23(컬럼 반영) → TASK-31(구현)
-- 시작 조건: 미충족 — 이 DCR이 `awaiting-approval`이며 기준선 `v3`가 아직 발행되지 않았다
+- 다음 단계 또는 워크플로우: wf-implement — TASK-23(컬럼 반영) → TASK-31(구현) → TASK-43(실호출 검증, 최종 단계)
+- 시작 조건: 충족됨 — 이 DCR이 `approved`이고 기준선 `v3`가 2026-09-22에 발행되었다
 - 입력 문서와 기준선: [REQ-mathdesk](../../requirements.md), [DESIGN-mathdesk](../../design.md), [ADR-009](./ADR-009-LLM-공급자-추상화와-Claude-연결.md)
-- 완료된 항목: 현재 상태 조사, 자격증명 확인, 대안 비교, 변경 항목·영향·검증 정의
-- 미완료 항목: 사용자 재승인, 기준선 v3 발행, 요구사항·설계 갱신, TASK-23·TASK-31 구현
-- 차단 요인: 사용자 재승인. Anthropic API 키는 실호출 검증에만 필요하며 구현을 차단하지 않는다
-- 다음 행동: 사용자 재승인을 받는다
+- 완료된 항목: 현재 상태 조사, 자격증명 확인, 대안 비교, 변경 항목·영향·검증 정의, 재승인과 기준선 v3 발행, 요구사항·설계·계획 갱신
+- 미완료 항목: TASK-23 컬럼 반영, TASK-31 구현, TASK-43 실호출 검증
+- 차단 요인: 없음. Anthropic API 키는 TASK-43에서만 필요하며 그 앞 구현을 차단하지 않는다
+- 다음 행동: TASK-23에서 `llm_call_log` 컬럼 3개를 반영한다

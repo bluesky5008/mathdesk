@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v2`
+> 기준선: `v3`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-22`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -11,7 +11,7 @@
 ## 요약
 
 - 목적: [REQ-mathdesk](./requirements.md)의 기능·비기능 요구사항을 만족하는 시스템 구조, 데이터 모델, 인터페이스 계약, 동작 흐름과 검증 전략을 정의한다.
-- 현재 결론 또는 상태: React SPA + FastAPI + PostgreSQL 단일 백엔드로 구성하고, 외부 의존(메시징·LLM·스토리지·OMR 판독·문서 파싱)을 5개 어댑터 인터페이스 뒤에 둔다. 컴포넌트 22개와 테이블 24개, REST 계약, OMR·메시지·시험지 흐름을 정의했다. 기준선 `v1` 승인 후 [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md)로 테스트 운영 노출 구성이 추가되어 기준선 `v2`가 유효하다.
+- 현재 결론 또는 상태: React SPA + FastAPI + PostgreSQL 단일 백엔드로 구성하고, 외부 의존(메시징·LLM·스토리지·OMR 판독·문서 파싱)을 5개 어댑터 인터페이스 뒤에 둔다. 컴포넌트 22개와 테이블 24개, REST 계약, OMR·메시지·시험지 흐름을 정의했다. 기준선 `v1` 승인 후 [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md)로 테스트 운영 노출 구성이, [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 LLM 어댑터의 공급자 중립 계약이 반영되어 기준선 `v3`가 유효하다.
 - 다음 행동: wf-implement 스킬로 구현 계획을 수립한다. M0~M4를 선행 단계로 분할한다.
 
 ## 문서 연결
@@ -22,6 +22,7 @@
 | input | decision | [ADR-001: 기술 스택과 실행 형태](./work/20260922-mathdesk-baseline/ADR-001-기술-스택과-실행-형태.md) | document | DES-01, DES-02 |
 | input | decision | [ADR-002: PostgreSQL 단일 저장소](./work/20260922-mathdesk-baseline/ADR-002-PostgreSQL-단일-저장소.md) | document | DES-21 |
 | input | decision | [ADR-003: AI 작업 분리와 개인정보 경계](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md) | document | DES-13, DES-14, DES-15 |
+| input | decision | [ADR-009: LLM 공급자 추상화와 Claude 연결](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md) | document | DES-14, 데이터 모델 |
 | input | decision | [ADR-004: 문서 입력 정규화 파이프라인](./work/20260922-mathdesk-baseline/ADR-004-문서-입력-정규화-파이프라인.md) | document | DES-11, DES-12 |
 | input | decision | [ADR-005: 메시징 어댑터 단일화](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md) | document | DES-09 |
 | input | decision | [ADR-006: OMR 양식 고정과 템플릿 판독](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) | document | DES-15, DES-16, DES-17 |
@@ -63,8 +64,10 @@
 └───┬───────────┬───────────────┬───────────────┬───────────────┘
     │           │               │               │
 ┌───▼────┐ ┌────▼─────┐ ┌───────▼──────┐ ┌──────▼────────────┐
-│Postgres│ │Storage   │ │알리고 API    │ │OpenAI 호환 LLM API│
-│        │ │(로컬→S3) │ │SMS/LMS/MMS   │ │(외부 기본·로컬 폴백)│
+│Postgres│ │Storage   │ │알리고 API    │ │LLM API            │
+│        │ │(로컬→S3) │ │SMS/LMS/MMS   │ │Anthropic 기본 ·   │
+│        │ │          │ │              │ │OpenAI 호환 폴백 · │
+│        │ │          │ │              │ │테스트 모드        │
 └────────┘ └──────────┘ │+카카오 알림톡│ └───────────────────┘
                         └──────────────┘
 ```
@@ -105,7 +108,7 @@
 | DES-11 | DocumentIngest | `.hwp`·`.hwpx`·`.pdf`·이미지를 `{pages, blocks, page_images}`로 정규화 |
 | DES-12 | QuestionSegmenter | 정규화 결과에서 문항 번호 기준으로 문항 단위 블록·이미지를 분리 |
 | DES-13 | QuestionAnalyzer | 문항 단위 입력으로 단원·세부 유형·난이도·판단 근거·신뢰도를 생성. 전송 필드 화이트리스트를 여기서 강제 |
-| DES-14 | LlmAdapter | OpenAI 호환 `chat/completions` 클라이언트. 엔드포인트·모델·토큰 상한을 설정으로 주입, 호출 기록 |
+| DES-14 | LlmAdapter | 공급자 중립 계약(문항 입력 → 분석 결과·사용량). 구현체 3종(`test`·`anthropic`·`openai_compat`)을 설정으로 선택하고 공급자·모델·토큰 상한을 주입, 사용량 기록. 상세는 [DES-14 상세](#des-14-상세) |
 | DES-15 | OmrReader | 템플릿 JSON 기반 판독기. 정합 → R채널 드롭아웃 → 버블 농도 → 필드 판정·플래그 |
 | DES-16 | OMR 검수 서비스 | 스캔 페이지·판독값·플래그 관리, 학생 매칭, 교정값 반영과 라벨 교정 기록 저장 |
 | DES-17 | 채점 엔진 | 문형별 정답표 대조, 학생 점수·문항별 정답률·오답 유형 통계 계산 |
@@ -139,6 +142,22 @@
 - 저장 단위별 API를 분리해 서로의 필드를 건드리지 않는다(FR-14).
 - 재검사 대상 판정은 저장값이 아니라 조회 시 계산한다: 같은 반에서 해당 학생의 직전 세션 과제 등급이 기준 등급 이하이면 대상이다. 판정 근거(직전 등급·직전 수업일)를 함께 반환한다.
 - 출결 확정은 세션 단위 상태(`attendance_confirmed_at`, `attendance_confirmed_by`)로 관리하며 확정 상태에서 학생 출결 필드 변경 요청은 409로 거부한다.
+
+#### DES-14 상세
+
+`LlmAdapter`는 공급자 중립 계약이며 구현체를 설정으로 고른다([ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)).
+
+| 구현체 | 용도 | 비고 |
+|---|---|---|
+| `TestModeLlm` | 개발·자동 테스트 | **기본값.** 외부 호출 0, 고정 응답. API 키 없이 M6 구현·테스트가 가능하다 |
+| `AnthropicLlm` | 운영 | 공식 `anthropic` SDK. 기본 모델 `claude-opus-5` |
+| `OpenAICompatLlm` | 로컬 폴백·타 공급자 | vLLM·Ollama 등. 엔드포인트 설정 필수 |
+
+- 선택은 `MATHDESK_LLM_PROVIDER`·`MATHDESK_LLM_MODEL`로 하고, 캠퍼스별 재정의는 `integration_setting`에 두되 환경변수를 우선한다(DES-20).
+- 자격증명 부재는 기동이 아니라 **첫 호출 시점**에 명확한 오류로 보고한다. 키가 없어도 서버는 기동한다.
+- `AnthropicLlm`은 구조화 출력(`output_config.format`)으로 분석 결과 스키마를 강제하고, 단원 분류 체계 프롬프트에 프롬프트 캐싱을 적용한다. 스키마는 분석 결과 모델에서 생성해 단일 소스로 유지한다.
+- 응답의 `stop_reason == "refusal"`은 문항 단위 실패로 분류해 [시험지 분석](#시험지-분석) 5번 경로를 탄다. 응답 본문을 무조건 읽지 않는다.
+- 모든 호출은 `llm_call_log`에 공급자·모델·입출력·캐시 토큰·비용을 기록한다(NFR-15).
 
 ## 데이터와 인터페이스
 
@@ -183,7 +202,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | `label_correction` | `id`, `kind`, `source_ref`, `before_value`, `after_value`, `asset_ref`, `corrected_by`, `corrected_at` | 학습 데이터 축적(FR-35) |
 | `stored_file` | `id`, `campus_id`, `kind`, `path`, `content_type`, `size`, `sha256` | |
 | `integration_setting` | `campus_id`, `key`, `value_encrypted` | 민감값 암호화(NFR-05) |
-| `llm_call_log` | `id`, `campus_id`, `purpose`, `model`, `exam_id`, `prompt_tokens`, `completion_tokens`, `cost`, `created_at` | 비용 통제(NFR-15) |
+| `llm_call_log` | `id`, `campus_id`, `purpose`, `provider`, `model`, `exam_id`, `prompt_tokens`, `completion_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cost`, `created_at` | 비용 통제(NFR-15). `provider`는 `test`·`anthropic`·`openai_compat` |
 | `audit_log` | `id`, `campus_id`, `actor_id`, `action`, `target`, `detail`, `created_at` | 권한 거부·확정 이벤트 |
 
 열거값
@@ -249,8 +268,13 @@ class MessagingAdapter(Protocol):
     def balance(self) -> Balance: ...
 
 class LlmAdapter(Protocol):
-    def complete(self, messages: list[Message], *, model: str,
-                 max_tokens: int, response_schema: dict | None) -> LlmResult: ...
+    provider: str   # "test" | "anthropic" | "openai_compat"
+
+    def analyze_question(self, question: QuestionInput, *, model: str,
+                         max_output_tokens: int) -> QuestionAnalysis: ...
+    # QuestionInput   = 문항 번호 · 문항 텍스트 · 문항 이미지 (화이트리스트 결과)
+    # QuestionAnalysis = 단원 · 세부 유형 · 난이도 · 판단 근거 · 신뢰도 + LlmUsage
+    # LlmUsage        = 입력 · 출력 · 캐시 읽기 · 캐시 쓰기 토큰 + 비용
 
 class DocumentIngest(Protocol):
     def normalize(self, file_ref: str) -> NormalizedDocument: ...
@@ -260,7 +284,8 @@ class OmrReader(Protocol):
 ```
 
 - 각 인터페이스는 테스트용 가짜 구현을 함께 제공한다(NFR-12).
-- `LlmAdapter` 호출은 `QuestionAnalyzer`를 통해서만 이루어지며, 전송 페이로드는 문항 번호·문항 텍스트·문항 이미지로 제한한다(NFR-04).
+- `LlmAdapter` 호출은 `QuestionAnalyzer`를 통해서만 이루어지며, 전송 페이로드는 문항 번호·문항 텍스트·문항 이미지로 제한한다(NFR-04). 화이트리스트는 어댑터가 아니라 `QuestionAnalyzer`에서 강제하므로 공급자를 바꿔도 경계와 그 검증 위치가 바뀌지 않는다.
+- `LlmAdapter` 계약은 공급자 형식이 아니라 도메인 의미로 정의한다. 구현체 3종이 같은 계약 테스트를 공유한다([ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)).
 
 ## 정상·실패·복구 흐름
 
@@ -288,7 +313,7 @@ class OmrReader(Protocol):
 2. `DocumentIngest.normalize` → `QuestionSegmenter.split` → 문항별 `QuestionAnalyzer.analyze`(LLM) 순으로 처리한다.
 3. 결과는 `exam_question`에 `status=draft`로 저장하고 신뢰도가 임계값 미만이면 `needs_review=true`로 표시한다.
 4. 파싱 실패(암호·배포 금지 `.hwp`)는 작업을 실패로 종료하고 사용자에게 사유와 대안(PDF 변환)을 안내한다.
-5. LLM 호출 실패는 문항 단위로 재시도 2회 후 해당 문항만 미분석으로 남기고 나머지는 저장한다. 토큰 상한 초과 시 작업을 중단하고 사용한 비용을 알린다(NFR-15).
+5. LLM 호출 실패는 문항 단위로 재시도 2회 후 해당 문항만 미분석으로 남기고 나머지는 저장한다. 공급자의 안전 분류기 거부(`refusal`)도 같은 실패 경로로 처리한다. 토큰 상한 초과 시 작업을 중단하고 사용한 비용을 알린다(NFR-15).
 
 ### OMR 채점
 
@@ -353,6 +378,7 @@ class OmrReader(Protocol):
 | 기술 스택·실행 형태 | React SPA + FastAPI, 로컬 `docker compose` | Electron/Tauri는 웹 전환 시 재작업 발생. Node 백엔드는 문서 파싱·OpenCV·모델 추론을 별도 서비스로 분리해야 함 | [ADR-001](./work/20260922-mathdesk-baseline/ADR-001-기술-스택과-실행-형태.md) |
 | 저장소 | PostgreSQL 단일 | SQLite는 Phase B 전환 시 쿼리·타입 차이로 재검증 필요 | [ADR-002](./work/20260922-mathdesk-baseline/ADR-002-PostgreSQL-단일-저장소.md) |
 | AI 배치·개인정보 경계 | OMR은 로컬 OpenCV, 문항 분석은 외부 LLM 기본·로컬 폴백 | VLM 전면 사용은 판독 오류와 개인정보 전송 위험, 로컬 전용은 분석 품질 부족 | [ADR-003](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md) |
+| LLM 공급자 계약 | 공급자 중립 계약 + 구현체 3종, 기본 `claude-opus-5` | OpenAI 호환 shim은 구조화 출력·캐싱·사용량 기록 상실. Anthropic 전용은 가변성 상실. 범용 추상화 라이브러리는 과한 의존성 | [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md) |
 | 문서 입력 | 4포맷을 공통 구조로 정규화 | 포맷별 개별 처리 경로는 분석 코드가 4중 분기됨 | [ADR-004](./work/20260922-mathdesk-baseline/ADR-004-문서-입력-정규화-파이프라인.md) |
 | 메시징 | 알리고 단일 어댑터로 SMS·알림톡 통합 | 채널별 SDK 분리는 폴백 구현이 복잡해짐 | [ADR-005](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md) |
 | OMR | 수능 양식 고정 + 템플릿 좌표 판독 | 범용 OMR 인식은 정확도·개발량 모두 불리 | [ADR-006](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) |
@@ -421,6 +447,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v2` (2026-09-22): [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) 재승인으로 테스트 운영 노출 경계(DES-23)와 보안 속성이 반영되었고 [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)이 `approved`로 전이되었다.
 
+기준선 `v3` (2026-09-22): [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) 재승인으로 DES-14가 공급자 중립 계약으로 바뀌고 `llm_call_log`에 공급자·캐시 토큰 컬럼이 추가되었으며 [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)가 `approved`로 전이되었다. [ADR-003](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md)은 결정 2만 부분 대체되고 `approved`를 유지한다.
+
 ## 변경 이력
 
 | 날짜 | 변경 | 근거 | 상태 또는 기준선 | 작성자·승인자 |
@@ -430,6 +458,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-09-22 | 구현 계획 문서 링크 추가 (기준선 의미 변경 없는 역방향 링크 보완) | [PLAN-mathdesk](./plan.md) 생성 | approved 유지, 기준선 v1 | Claude |
 | 2026-09-22 | 테스트 운영 노출 경계·DES-23·보안 속성 추가 | [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md), [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md) | approved 유지, 기준선 v1 → v2 | Claude / 사용자 |
 | 2026-09-22 | Q-10·RISK-10 해소 기록, API 캐시 금지 속성 추가 (명확화) | 구현 중 발견한 CDN 캐시 노출 사고 | approved 유지, 기준선 v2 유지 | Claude |
+| 2026-09-22 | DES-14 공급자 중립 계약화, DES-14 상세 신설, `llm_call_log` 컬럼 3개 추가, 시험지 분석 흐름에 `refusal` 처리 추가 | [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md), [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md) | approved 유지, 기준선 v2 → v3 | Claude / 사용자 |
 
 ## 인계
 

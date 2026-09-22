@@ -25,15 +25,15 @@
 
 ## 기준선과 현재 계획
 
-- 적용 기준선: [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1` (2026-09-22 사용자 승인)
-- 현재 계획: [PLAN-mathdesk](../../plan.md) — 작업 39건, 사이클 1(MVP M0~M4, TASK-01~22) / 사이클 2(확장 M5~M9, TASK-23~39)
-- 발생한 DCR: 없음
+- 적용 기준선: [REQ-mathdesk](../../requirements.md) `v3`, [DESIGN-mathdesk](../../design.md) `v3` (2026-09-22 재승인)
+- 현재 계획: [PLAN-mathdesk](../../plan.md) — 작업 43건, 사이클 1(MVP M0~M4, TASK-01~22 + TASK-40~42) / 사이클 2(확장 M5~M9, TASK-23~39, TASK-43)
+- 발생한 DCR: [DCR-001](./DCR-001-테스트-운영-환경-노출.md) (`approved`, 기준선 v2), [DCR-002](./DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) (`approved`, 기준선 v3)
 
 ## 현재 상태
 
 - 진행 중인 작업: [TASK-23 스키마 2차 (시험·OMR·상담·파일)](../../plan.md#task-23-스키마-2차-시험omr상담파일) (미착수, 상태만 `in-progress`)
 - 마지막 완료 작업: [TASK-22 ★ MVP 사이클 완료 승인](../../plan.md#task-22--mvp-사이클-완료-승인) (2026-09-22 20:05)
-- 차단 요인: 없음. 다만 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시가 남아 있어 사용자 퍼지가 필요하다(최대 4시간 후 자동 만료). [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
+- 차단 요인: 없음. Anthropic API 키는 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서만 필요하며 그 앞 구현을 차단하지 않는다. 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시 퍼지는 사용자가 보류했다(TTL 만료로 자연 해소)
 
 ## 계획 트리
 
@@ -525,6 +525,20 @@ flowchart TD
   - 제시한 미수행 항목: AC-05 브라우저 육안 확인, 알리고 실발송(Q-02), AC-19~AC-27(사이클 2 범위), 구 경로 엣지 캐시 퍼지
 - 결과: TASK-22 완료. 사이클 1 23건이 모두 `completed`가 되었고 완료 시점 트리 스냅숏을 위 [계획 트리](#계획-트리)에 동결했다. 사이클 2는 TASK-23부터 시작한다.
 
+### 2026-09-22 — 기준선 `v3` 발행 (DCR-002 / ADR-009)
+
+- 계기: 사용자 요청 — "M6는 차후 가변으로 사용할 수 있게 해주고, 지금 사용 중인 Claude를 연결하는 것을 검토해 달라".
+- 감지한 차이: [ADR-003](./ADR-003-AI-작업-분리와-개인정보-경계.md) 결정 2가 `LlmAdapter`를 OpenAI 호환 `chat/completions`로 고정하고 있어, Anthropic Messages API(엔드포인트·인증 헤더·시스템 프롬프트 위치·응답 구조가 모두 다름)를 붙일 수 없었다. 중대한 변경으로 판단해 wf-design DCR 절차로 반환했다.
+- 확인한 사실: 이 장비에 `ant` CLI 미설치, `ANTHROPIC_API_KEY` 미설정, `~/.config/anthropic` 프로필 없음. **Claude Code 구독 인증은 애플리케이션 서버가 재사용할 수 있는 API 자격증명이 아니다.**
+- 사용자 결정 2건: 진행 승인(DCR-002/ADR-009 작성), 기본 모델 `claude-opus-5`.
+- 결정: `LlmAdapter`를 공급자 중립 계약으로 정의하고 구현체 3종(`test`·`anthropic`·`openai_compat`)을 설정으로 선택. 화이트리스트는 `QuestionAnalyzer`에 유지해 NFR-04·AC-27 경계와 검증 위치 불변. 상세는 [ADR-009](./ADR-009-LLM-공급자-추상화와-Claude-연결.md).
+- 기각한 대안: OpenAI 호환 shim(구조화 출력·캐싱·사용량 기록 상실), Anthropic 전용 교체(가변성 상실), 범용 추상화 라이브러리(과한 의존성).
+- 기준선 변경: AC-23 문구(엔드포인트 → 공급자), NFR-15 기본 상한 확정(입력 200,000·출력 30,000 토큰), Q-05 해소, DES-14 공급자 중립화와 DES-14 상세 신설, `llm_call_log` 컬럼 3개 추가, 시험지 분석 흐름에 `refusal` 처리 추가. **신설 AC·NFR 없음.**
+- 계획 변경: TASK-23(컬럼 구성), TASK-31(구현체 3종·계약 테스트) 갱신, [TASK-43 Claude 실호출 검증](../../plan.md#task-43-claude-실호출-검증) 신설.
+- 사용자 지시: "API키는 가장 마지막에 검증하는것으로 하자" → 실호출 검증을 TASK-43으로 분리해 TASK-38 뒤, 최종 승인 관문(TASK-39) 앞에 배치했다. 기본 공급자가 `test`이므로 키 없이 TASK-31까지 완료할 수 있다.
+- 재승인: 2026-09-22 사용자 응답 "API키는 가장 마지막에 검증하는것으로 하자. 승인." → 기준선 `v3` 발행, ADR-009 `approved`.
+- 검증: 이 변경은 문서 변경만이며 코드 변경이 없다. 링크 검증만 수행했다.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -549,7 +563,7 @@ flowchart TD
 
 ## 재개 지점
 
-- 다음 작업: [TASK-23 스키마 2차 (시험·OMR·상담·파일)](../../plan.md#task-23-스키마-2차-시험omr상담파일)
+- 다음 작업: [TASK-23 스키마 2차 (시험·OMR·상담·파일)](../../plan.md#task-23-스키마-2차-시험omr상담파일) — `llm_call_log`는 기준선 `v3` 컬럼 구성(`provider`·`cache_read_tokens`·`cache_write_tokens` 포함)으로 최초 정의한다
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
 - 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
@@ -557,9 +571,9 @@ flowchart TD
 
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
-- 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, 사이클 1 전체(TASK-01~TASK-22), TASK-40~TASK-42
-- 미완료 항목: TASK-23~TASK-39(사이클 2)
+- 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v3`, [DESIGN-mathdesk](../../design.md) `v3`
+- 완료된 항목: 기준선 v1·v2·v3 승인, ADR-001~009, DCR-001·DCR-002, 계획, 사이클 1 전체(TASK-01~TASK-22), TASK-40~TASK-42
+- 미완료 항목: TASK-23~TASK-39, TASK-43(사이클 2)
 - 차단 요인: 없음
 - 다음 행동: TASK-23의 왕복 마이그레이션 테스트(Red)를 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
