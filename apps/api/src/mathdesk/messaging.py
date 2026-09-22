@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -143,10 +143,9 @@ async def save_grade_comments(
     return await list_grade_comments(scope, session)
 
 
-@router.get("/preview")
-async def preview(
-    session_id: int, student_id: int, scope: CurrentScope, session: Db
-) -> PreviewOut:
+async def _context(
+    session_id: int, student_id: int, scope, session: AsyncSession
+) -> MessageContext:
     row = await _session_for_write(session, scope, session_id)
     klass = await session.get(Klass, row.class_id)
 
@@ -201,4 +200,22 @@ async def preview(
         homework=row.homework,
         video_url=row.video_url,
     )
+    return context
+
+
+@router.get("/preview")
+async def preview(
+    session_id: int, student_id: int, scope: CurrentScope, session: Db
+) -> PreviewOut:
+    context = await _context(session_id, student_id, scope, session)
     return PreviewOut(body=render_daily_message(context))
+
+
+@router.get("/report-image")
+async def report_image(
+    session_id: int, student_id: int, scope: CurrentScope, session: Db
+) -> Response:
+    from .report import render_report_png  # 순환 임포트를 피해 호출 시점에 가져온다
+
+    context = await _context(session_id, student_id, scope, session)
+    return Response(render_report_png(context), media_type="image/png")

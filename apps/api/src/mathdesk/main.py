@@ -2,7 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -43,6 +43,16 @@ def _mount_web(app: FastAPI, dist: Path) -> None:
 
 def create_app(web_dist: Path | str | None = None) -> FastAPI:
     app = FastAPI(title="mathdesk API", lifespan=lifespan)
+
+    @app.middleware("http")
+    async def no_store_api_responses(request: Request, call_next):
+        """API 응답은 캐시하지 않는다. CDN이 인증된 응답을 엣지에 보관하면
+        URL만으로 열람할 수 있게 된다(실제로 발생했다)."""
+        response = await call_next(request)
+        if request.url.path.startswith("/api"):
+            response.headers["Cache-Control"] = "no-store, private"
+        return response
+
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(masterdata_router)

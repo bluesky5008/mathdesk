@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: M0~M3와 테스트 운영 노출이 끝났고, M4 메시지의 본문 렌더러(TASK-17)까지 완료했다. AC-14·AC-15가 통과한다.
-- 다음 행동: [TASK-18 리포트 이미지와 복사](../../plan.md#task-18-리포트-이미지와-복사) — AC-16(이미지 생성)을 통합 테스트(Red)로 먼저 작성한다.
+- 현재 결론 또는 상태: M4 메시지의 렌더러와 리포트 이미지(TASK-17·18)까지 완료했다. 구현 중 CDN이 인증된 리포트 이미지를 캐시해 무인증 열람이 가능했던 사고를 발견해 수정했다.
+- 다음 행동: [TASK-19 MessagingAdapter·발송 로그](../../plan.md#task-19-messagingadapter발송-로그) — AC-17·AC-18을 가짜 어댑터 통합 테스트(Red)로 먼저 작성한다.
 
 ## 문서 연결
 
@@ -31,9 +31,9 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-18 리포트 이미지와 복사](../../plan.md#task-18-리포트-이미지와-복사) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-17 메시지 렌더러와 등급 문구](../../plan.md#task-17-메시지-렌더러와-등급-문구) (2026-09-22 17:03)
-- 차단 요인: 없음. [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
+- 진행 중인 작업: [TASK-19 MessagingAdapter·발송 로그](../../plan.md#task-19-messagingadapter발송-로그) (미착수, 상태만 `in-progress`)
+- 마지막 완료 작업: [TASK-18 리포트 이미지와 복사](../../plan.md#task-18-리포트-이미지와-복사) (2026-09-22 18:05)
+- 차단 요인: 없음. 다만 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시가 남아 있어 사용자 퍼지가 필요하다(최대 4시간 후 자동 만료). [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
 
 ## 수행 기록
 
@@ -339,6 +339,29 @@
   - 시드 DB e2e: 등급 문구 저장 후 미리보기가 제목·인사말·수업일(`9월 18일(금)`)·출결·교시별 진도·등급과 문구·테스트(학생점수 78점, 반평균 71.7점)·오늘의 과제를 참조 화면과 같은 형식으로 반환했다.
 - 결과: TASK-17 완료. AC-14·AC-15(VER-11) 통과.
 
+### 2026-09-22 — TASK-18 리포트 이미지와 복사 (CDN 캐시 노출 사고 포함)
+
+- 수행 내용
+  - TDD Red: PNG 반환·내용 변경 시 이미지 변화·스코프 거부를 먼저 작성해 `3 failed`로 확인했다. Green: `report.py`에 Pillow 기반 카드 렌더러와 이미지 엔드포인트를 구현했다.
+  - 웹 클립보드 유틸(`clipboard.ts`: 텍스트 복사·이미지 복사·이미지 저장)을 TDD로 추가했다.
+  - 컨테이너 이미지에 한글 글꼴(`fonts-nanum`)을 넣었다.
+- 변경 파일: `apps/api/src/mathdesk/{report,messaging,main}.py`, `apps/api/tests/test_report_image.py`, `apps/web/src/clipboard.{ts,test.ts}`, `apps/api/Dockerfile`, `Dockerfile.testops`
+- 발견 사항
+  - **CDN이 인증된 리포트 이미지를 캐시해 무인증 열람이 가능했다.** 엔드포인트 경로가 `/api/messages/report.png`로 끝나 Cloudflare의 확장자 기반 캐시 규칙에 걸렸고, 응답에 `cf-cache-status: HIT`·`cache-control: max-age=14400`이 붙어 **쿠키 없이 200으로 학생 리포트가 내려왔다.** 경로에서 확장자를 없애고(`/api/messages/report-image`) 모든 `/api` 응답에 `Cache-Control: no-store, private`를 붙여 막았다. 확인: 새 경로는 `cf-cache-status: DYNAMIC`, 무인증 요청 401.
+  - **컨테이너에서 굵은 글꼴이 한글을 렌더하지 못했다.** 같은 TTF의 face index로 굵게 잡은 것이 원인이며, 제목·소제목이 네모로 깨졌다. 굵은 글꼴 파일을 따로 고르도록 고쳤다. 글리프 커버리지 검사 테스트를 추가했다(로컬 macOS에서는 통과하던 환경 의존 결함이라, 컨테이너에서 직접 확인했다).
+  - `npm test`만 돌리고 `npm run build`를 확인하지 않아 타입 오류가 있는 테스트가 Docker 빌드를 깨뜨렸다. 이후 두 명령을 함께 돌린다.
+  - `docker compose up -d --build`는 빌드 실패 시에도 기존 이미지로 컨테이너를 올리고 0을 반환했다. 빌드 출력을 확인하지 않으면 옛 코드가 도는 것을 놓친다.
+- 결정과 이유
+  - **Q-10 해소:** 리포트 이미지는 설계대로 서버에서 생성하되 헤드리스 브라우저 대신 Pillow로 직접 그린다. 설계상 위치(서버)를 바꾸지 않으므로 DCR 없이 진행했고, RISK-10(브라우저 의존으로 인한 이미지 비대)도 함께 해소됐다. 이미지에 추가된 것은 한글 글꼴 패키지뿐이다.
+  - 이미지 클립보드 복사는 브라우저 API로만 가능하므로 웹에 유틸을 두고, 서버는 PNG만 제공한다.
+  - API 경로에 정적 파일 확장자를 쓰지 않는다. 이번 사고의 근본 원인이다.
+- 실행한 검증
+  - `uv run pytest -q` — 최초 `3 failed`(의도한 Red) → 캐시·인증 회귀 테스트 추가 후 전체 `71 passed`.
+  - `npm test` `15 passed`, `npm run build` 성공.
+  - 공개 도메인: 새 경로 200(`cache-control: no-store, private`, `cf-cache-status: DYNAMIC`), 무인증 401, 렌더된 카드에서 한글 제목·소제목 정상.
+  - 오리진에서 구 경로는 404다. 남아 있는 200 응답은 Cloudflare 엣지의 잔여 캐시다.
+- 결과: TASK-18 완료. AC-16(VER-12) 통과. 잔여 위험: 구 경로의 엣지 캐시 — 사용자 퍼지 또는 TTL 만료(최대 4시간) 필요.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -349,7 +372,8 @@
 
 ## 미완료 항목
 
-- TASK-16(자식 3건 잔여: TASK-18·19·20), TASK-21~TASK-39
+- TASK-16(자식 2건 잔여: TASK-19·20), TASK-21~TASK-39
+- 구 경로 `/api/messages/report.png`의 Cloudflare 엣지 캐시 잔존 — 퍼지 또는 TTL 만료 대기
 - VER-01~VER-10·VER-25·VER-26·VER-27 통과
 - 실제 재부팅에서의 자동 기동은 미검증(사용자 재부팅 시 확인)
 - 테스트 운영 자격 증명이 `director`/`director` — 배포 이관 단계에서 교체하기로 합의된 의도된 상태
@@ -360,7 +384,7 @@
 
 ## 재개 지점
 
-- 다음 작업: [TASK-18 리포트 이미지와 복사](../../plan.md#task-18-리포트-이미지와-복사)
+- 다음 작업: [TASK-19 MessagingAdapter·발송 로그](../../plan.md#task-19-messagingadapter발송-로그)
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
 - 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
@@ -369,8 +393,8 @@
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, TASK-02~TASK-15, TASK-17, TASK-40~TASK-42
-- 미완료 항목: TASK-16(TASK-18·19·20), TASK-21~TASK-39
+- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, TASK-02~TASK-15, TASK-17, TASK-18, TASK-40~TASK-42
+- 미완료 항목: TASK-16(TASK-19·20), TASK-21~TASK-39
 - 차단 요인: 없음
-- 다음 행동: TASK-18의 AC-16 통합 테스트(Red)를 작성한다
+- 다음 행동: TASK-19의 AC-17·AC-18 통합 테스트(Red)를 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
