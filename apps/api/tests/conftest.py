@@ -149,3 +149,22 @@ def api(world):
         client.sign_in = sign_in  # type: ignore[attr-defined]
         client.ids = world  # type: ignore[attr-defined]
         yield client
+
+
+@pytest.fixture
+def klass(api):
+    api.sign_in("director_a")
+    class_id = api.post("/api/classes", json={"name": "고2 윤B", "grade": "고2"}).json()["id"]
+    student_ids = []
+    for index, name in enumerate(["김나윤", "김정현", "김태호"], start=1):
+        student_id = api.post(
+            "/api/students", json={"name": name, "omr_number": f"1000{index:02d}00"}
+        ).json()["id"]
+        api.post(
+            f"/api/classes/{class_id}/enrollments",
+            json={"student_id": student_id, "start_date": "2026-03-02"},
+        )
+        student_ids.append(student_id)
+    return {"class_id": class_id, "student_ids": student_ids}
+
+

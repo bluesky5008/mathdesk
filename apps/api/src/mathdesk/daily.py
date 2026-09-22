@@ -1,5 +1,6 @@
+import os
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Annotated
 
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
 from .models import (
+    AuditLog,
     ClassSession,
     ClassSessionProgress,
     Enrollment,
@@ -26,6 +28,8 @@ router = APIRouter(prefix="/api/daily", tags=["daily"])
 
 ATTENDING = ("present", "late", "early_leave")
 STATUS_PATTERN = "^(%s)$" % "|".join(ATTENDANCE_STATUS)
+# 재검사 대상 판정 기준 등급(FR-12). 이 등급 이하면 다음 수업에서 재검사 대상이다.
+RECHECK_THRESHOLD_GRADE = os.environ.get("MATHDESK_RECHECK_THRESHOLD_GRADE", "B")
 GRADE_PATTERN = "^(%s)$" % "|".join(re.escape(grade) for grade in HOMEWORK_GRADE)
 
 
@@ -77,13 +81,20 @@ class SessionOut(BaseModel):
     attendance_confirmed_at: str | None
 
 
+class RecheckOut(BaseModel):
+    target: bool
+    prev_grade: str | None
+    prev_date: date | None
+    result: str | None
+
+
 class RecordOut(BaseModel):
     student_id: int
     name: str
     attendance_status: str
     attendance_reason: str | None
     homework_grade: str | None
-    recheck_result: str | None
+    recheck: RecheckOut
     test_score_num: Decimal | None
     test_score_text: str | None
 
@@ -145,6 +156,39 @@ async def _session_for_write(
     return row
 
 
+def _is_recheck_target(grade: str | None) -> bool:
+    if grade is None or RECHECK_THRESHOLD_GRADE not in HOMEWORK_GRADE:
+        return False
+    return HOMEWORK_GRADE.index(grade) >= HOMEWORK_GRADE.index(RECHECK_THRESHOLD_GRADE)
+
+
+async def _previous_grades(
+    session: AsyncSession, class_id: int, on: date, student_ids: list[int]
+) -> dict[int, tuple[str, date]]:
+    """직전 수업의 과제 등급. 저장하지 않고 조회할 때마다 계산한다(기준 등급이 설정값이므로)."""
+    if not student_ids:
+        return {}
+    rows = await session.execute(
+        select(
+            StudentDailyRecord.student_id,
+            StudentDailyRecord.homework_grade,
+            ClassSession.session_date,
+        )
+        .join(ClassSession, ClassSession.id == StudentDailyRecord.session_id)
+        .where(
+            ClassSession.class_id == class_id,
+            ClassSession.session_date < on,
+            StudentDailyRecord.student_id.in_(student_ids),
+            StudentDailyRecord.homework_grade.is_not(None),
+        )
+        .order_by(ClassSession.session_date.desc())
+    )
+    latest: dict[int, tuple[str, date]] = {}
+    for student_id, grade, session_date in rows:
+        latest.setdefault(student_id, (grade, session_date))
+    return latest
+
+
 async def _enrolled_students(
     session: AsyncSession, class_id: int, on: date
 ) -> list[Student]:
@@ -178,9 +222,14 @@ async def _build_response(
         .order_by(ClassSessionProgress.period)
     )
 
+    previous = await _previous_grades(
+        session, klass.id, row.session_date, [student.id for student in students]
+    )
+
     records = []
     for student in students:
         record = stored.get(student.id)
+        prev_grade, prev_date = previous.get(student.id, (None, None))
         records.append(
             RecordOut(
                 student_id=student.id,
@@ -188,7 +237,12 @@ async def _build_response(
                 attendance_status=record.attendance_status if record else "unchecked",
                 attendance_reason=record.attendance_reason if record else None,
                 homework_grade=record.homework_grade if record else None,
-                recheck_result=record.recheck_result if record else None,
+                recheck=RecheckOut(
+                    target=_is_recheck_target(prev_grade),
+                    prev_grade=prev_grade,
+                    prev_date=prev_date,
+                    result=record.recheck_result if record else None,
+                ),
                 test_score_num=record.test_score_num if record else None,
                 test_score_text=record.test_score_text if record else None,
             )
@@ -289,8 +343,16 @@ async def save_records(
     for item in payload.records:
         if item.student_id not in enrolled:
             raise _forbidden()
+        fields = item.model_dump(exclude_unset=True, exclude={"student_id"})
+        if row.attendance_confirmed_at is not None and (
+            {"attendance_status", "attendance_reason"} & fields.keys()
+        ):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "출결이 확정되었습니다. 편집을 눌러 해제한 뒤 수정하세요.",
+            )
         record = await _record_for(session, row.id, item.student_id)
-        for field, value in item.model_dump(exclude_unset=True, exclude={"student_id"}).items():
+        for field, value in fields.items():
             setattr(record, field, value)
 
     await session.commit()
@@ -308,3 +370,38 @@ async def save_recheck(
     await session.commit()
     klass = await session.get(Klass, row.class_id)
     return await _build_response(session, klass, row)
+
+
+async def _set_confirmation(
+    session: AsyncSession, scope: Scope, session_id: int, confirmed: bool
+) -> DailyOut:
+    row = await _session_for_write(session, scope, session_id)
+    klass = await session.get(Klass, row.class_id)
+
+    row.attendance_confirmed_at = datetime.now(UTC) if confirmed else None
+    row.attendance_confirmed_by = scope.user.id if confirmed else None
+    session.add(
+        AuditLog(
+            campus_id=scope.campus_id,
+            actor_id=scope.user.id,
+            action="attendance.confirm" if confirmed else "attendance.unlock",
+            target=f"class_session:{row.id}",
+            detail=f"{klass.name} {row.session_date}",
+        )
+    )
+    await session.commit()
+    return await _build_response(session, klass, row)
+
+
+@router.post("/{session_id}/attendance/confirm")
+async def confirm_attendance(
+    session_id: int, scope: CurrentScope, session: Db
+) -> DailyOut:
+    return await _set_confirmation(session, scope, session_id, confirmed=True)
+
+
+@router.post("/{session_id}/attendance/unlock")
+async def unlock_attendance(
+    session_id: int, scope: CurrentScope, session: Db
+) -> DailyOut:
+    return await _set_confirmation(session, scope, session_id, confirmed=False)

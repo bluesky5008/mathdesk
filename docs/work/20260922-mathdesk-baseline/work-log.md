@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: TASK-02~TASK-08·TASK-10을 완료했다. 일일 기록의 3개 저장 단위가 서로를 덮어쓰지 않고 동작하며 AC-11·AC-12가 통과한다.
-- 다음 행동: [TASK-11 출결 확정·재검사 판정](../../plan.md#task-11-출결-확정재검사-판정) — AC-06·AC-09·AC-10을 인수 테스트(Red)로 먼저 작성한다.
+- 현재 결론 또는 상태: TASK-02~TASK-08·TASK-10·TASK-11을 완료했다. 출결 확정 잠금과 재검사 대상 판정까지 동작하며 AC-06·AC-09~AC-12가 통과한다.
+- 다음 행동: [TASK-12 일일 입력 2패널 화면](../../plan.md#task-12-일일-입력-2패널-화면) — 메모 편집 중 표 일괄 저장이 메모 입력값을 유지하는 컴포넌트 테스트(Red)부터 작성한다.
 
 ## 문서 연결
 
@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-11 출결 확정·재검사 판정](../../plan.md#task-11-출결-확정재검사-판정) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-10 일일 기록 API (3 저장 단위)](../../plan.md#task-10-일일-기록-api-3-저장-단위) (2026-09-22 13:02)
+- 진행 중인 작업: [TASK-12 일일 입력 2패널 화면](../../plan.md#task-12-일일-입력-2패널-화면) (미착수, 상태만 `in-progress`)
+- 마지막 완료 작업: [TASK-11 출결 확정·재검사 판정](../../plan.md#task-11-출결-확정재검사-판정) (2026-09-22 13:29)
 - 차단 요인: 없음. [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
 
 ## 수행 기록
@@ -201,6 +201,24 @@
   - 시드 DB e2e(`curl`): 세션 생성 → 진도·과제·시험명 메모 저장 → 학생 3명 점수 78·72·65와 출결 저장 → 재조회에서 진도·과제 보존, `{'enrolled': 8, 'attending': 2, 'test_average': 71.7, 'test_count': 3}`.
 - 결과: TASK-10 완료. AC-11(VER-08)·AC-12(VER-09) 통과. AC-02의 일일 기록 API 대상 검증도 이 작업에서 통과했다(강사의 타 반 `GET`·`PUT` 모두 403).
 
+### 2026-09-22 — TASK-11 출결 확정·재검사 판정
+
+- 수행 내용
+  - TDD Red: `tests/test_attendance.py`에 출결 토글 해제(AC-06), 확정 후 잠금과 해제, 잠금 중 등급 수정 허용, 확정·해제 감사 기록, 직전 수업 등급 기반 재검사 판정(AC-09), 재검사 즉시 저장(AC-10)을 먼저 작성해 `4 failed`로 의도한 실패를 확인했다.
+  - Green: `daily.py`에 `attendance/confirm`·`attendance/unlock` 엔드포인트, 잠금 중 출결 필드 409 거부, 직전 세션 등급 조회와 재검사 판정을 구현했다.
+  - `klass` 픽스처를 `conftest.py`로 옮겨 일일 기록·출결 테스트가 공유하게 했다.
+- 변경 파일: `apps/api/src/mathdesk/daily.py`, `apps/api/tests/{conftest,test_daily,test_attendance}.py`
+- 결정과 이유
+  - 재검사 대상은 저장하지 않고 조회할 때마다 계산한다. 기준 등급이 설정값이라 저장하면 설정 변경 즉시 낡는다([FR-12 상세](../../requirements.md#fr-12-상세)).
+  - 기준 등급은 환경변수 `MATHDESK_RECHECK_THRESHOLD_GRADE`(기본 `B`)로 노출했다. 설정값 요구를 만족하면서 새 테이블을 만들지 않는 가장 작은 방법이다.
+  - 잠금은 출결 필드(`attendance_status`·`attendance_reason`)에만 적용한다. 설계가 "학생 출결 필드 변경 요청은 409"라고 한정했고, 과제 등급·점수는 출결 확정과 무관하게 계속 입력한다.
+  - `RecordOut.recheck_result`(평면)를 설계 예시의 `recheck` 중첩 객체(`target`·`prev_grade`·`prev_date`·`result`)로 바꿨다. TASK-10에서 평면으로 낸 것이 설계와 어긋났고, 화면(TASK-12)이 판단 근거를 함께 표시해야 한다.
+  - 확정·해제는 `audit_log`에 `attendance.confirm`·`attendance.unlock`으로 남긴다(FR-09 상세의 "확정·해제 시각과 수행자").
+- 실행한 검증
+  - `uv run pytest -q` — 출결 테스트 최초 `4 failed`(의도한 Red) → 구현 후 전체 `38 passed`.
+  - 시드 DB e2e(`curl`): 직전 수업 등급 B/A → 재검사 판정 `{target: true, prev_grade: 'B', prev_date: '2026-09-16'}` / `{target: false}`, 확정 200 → 출결 변경 409 → 과제 등급 변경 200 → 해제 200 → 출결 변경 200.
+- 결과: TASK-11 완료. AC-06(VER-05 일부)·AC-09·AC-10 통과.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -211,8 +229,8 @@
 
 ## 미완료 항목
 
-- TASK-01(자식 1건 잔여: TASK-40), TASK-09(자식 2건 잔여), TASK-11~TASK-39
-- VER-01·VER-02(AC-02·AC-03 전부)·VER-03·VER-04·VER-08·VER-09 통과
+- TASK-01(자식 1건 잔여: TASK-40), TASK-09(자식 1건 잔여: TASK-12), TASK-13~TASK-39
+- VER-01·VER-02·VER-03·VER-04·VER-05·VER-08·VER-09 통과
 - AC-05의 실제 브라우저 육안 확인은 미수행(자동화 제외 항목, 사용자 확인 필요)
 - VER-23(마이그레이션 왕복)은 TASK-03에서 1차 확보. 나머지 VER 항목은 미수행
 - 로그인 시도 제한 임계값·잠금 시간 미결정 (TASK-40)
@@ -220,7 +238,7 @@
 
 ## 재개 지점
 
-- 다음 작업: [TASK-11 출결 확정·재검사 판정](../../plan.md#task-11-출결-확정재검사-판정)
+- 다음 작업: [TASK-12 일일 입력 2패널 화면](../../plan.md#task-12-일일-입력-2패널-화면)
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
 - 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
@@ -229,8 +247,8 @@
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 승인, ADR-001~007, 계획, TASK-02~TASK-08, TASK-10
-- 미완료 항목: TASK-01(TASK-40), TASK-09(TASK-11·TASK-12), TASK-13~TASK-39
+- 완료된 항목: 기준선 승인, ADR-001~007, 계획, TASK-02~TASK-08, TASK-10, TASK-11
+- 미완료 항목: TASK-01(TASK-40), TASK-09(TASK-12), TASK-13~TASK-39
 - 차단 요인: 없음
-- 다음 행동: TASK-11의 AC-06·AC-09·AC-10 인수 테스트(Red)를 먼저 작성한다
+- 다음 행동: TASK-12의 컴포넌트 테스트(Red)를 먼저 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
