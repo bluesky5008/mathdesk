@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: **MVP(M0~M4) 구현이 끝났다.** 남은 사이클 1 작업은 통합 검증(TASK-21)과 완료 승인(TASK-22)이다.
-- 다음 행동: [TASK-21 MVP 통합·인수 검증](../../plan.md#task-21-mvp-통합인수-검증) — AC-01~AC-18 전항과 NFR-01·NFR-02 측정을 수행한다.
+- 현재 결론 또는 상태: **MVP 구현과 통합 검증이 끝났다.** AC-01~AC-18 전항 성공, NFR-01(p95 21ms)·NFR-02(p95 8ms) 통과. 남은 사이클 1 작업은 완료 승인(TASK-22)뿐이다.
+- 다음 행동: [TASK-22 ★ MVP 사이클 완료 승인](../../plan.md#task-22--mvp-사이클-완료-승인) — 검증 결과와 미수행 항목을 사용자에게 제시한다.
 
 ## 문서 연결
 
@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-21 MVP 통합·인수 검증](../../plan.md#task-21-mvp-통합인수-검증) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-20 메시지 화면](../../plan.md#task-20-메시지-화면) (2026-09-22 19:12)
+- 진행 중인 작업: [TASK-22 ★ MVP 사이클 완료 승인](../../plan.md#task-22--mvp-사이클-완료-승인) — 사용자 응답 대기
+- 마지막 완료 작업: [TASK-21 MVP 통합·인수 검증](../../plan.md#task-21-mvp-통합인수-검증) (2026-09-22 19:48)
 - 차단 요인: 없음. 다만 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시가 남아 있어 사용자 퍼지가 필요하다(최대 4시간 후 자동 만료). [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
 
 ## 수행 기록
@@ -399,6 +399,52 @@
   - 테스트 운영 재배포 후 `https://mathdesk.yongs-wiki.com/messages` 200.
 - 결과: TASK-20 완료, 이로써 TASK-16(M4 메시지)과 **MVP(M0~M4) 구현 전체**가 끝났다. 남은 것은 통합 검증과 완료 승인이다.
 
+### 2026-09-22 — TASK-21 MVP 통합·인수 검증
+
+- 수행 내용
+  - 백엔드·프론트 전체 테스트를 실행하고 인수 조건 AC-01~AC-18을 근거 테스트에 매핑해 판정했다.
+  - NFR-01·NFR-02를 측정하기 위해 `scripts/measure_perf.py`를 만들어 반 10 · 학생 200 · 수업 520 · 학생 기록 10,400건 규모의 데이터셋을 별도 DB(`mathdesk_perf`)에 만들고 응답 시간을 30회씩 측정했다.
+- 변경 파일: `apps/api/scripts/measure_perf.py`
+- 실행한 검증
+  - `uv run pytest -q` → **77 passed**
+  - `npm test` → **20 passed** (7 files)
+  - `npm run build` → 성공
+  - `uv run python scripts/measure_perf.py` → 아래 성능 결과
+
+| 검증 | 대상 | 방법과 근거 | 결과 |
+|---|---|---|---|
+| VER-01 | AC-01 | `test_auth.py::test_login_then_me_then_logout_blocks_protected_access` | 성공 |
+| VER-02 | AC-02 | `test_scope.py::test_teacher_cannot_manage_users`, `test_masterdata.py::test_teacher_cannot_read_a_class_they_do_not_teach`, `test_daily.py::test_teacher_cannot_touch_daily_records_of_another_class`, 엔드포인트 순회 회귀 | 성공 |
+| VER-02 | AC-03 | `test_scope.py::test_campus_list_only_returns_accessible_campuses`, `::test_request_for_another_campus_is_forbidden` | 성공 |
+| VER-03 | AC-04 | `test_masterdata.py::test_omr_number_range_per_digit`(7케이스), `::test_student_with_out_of_range_omr_number_is_rejected` | 성공 |
+| VER-04 | AC-05 | 웹 `Roster.test.tsx`(학생 47·반 4 렌더) + 시드 DB e2e(학생 47·반 4) | 성공 (브라우저 육안 확인은 미수행) |
+| VER-05 | AC-06 | `test_attendance.py::test_attendance_toggles_back_to_unchecked`, `::test_confirmed_attendance_is_locked_until_unlocked`, 웹 `DailyPage.test.tsx` 토글 | 성공 |
+| VER-06 | AC-07 | `test_dashboard.py::test_attendance_shows_attending_over_enrolled`, 웹 `DashboardPage.test.tsx` KPI | 성공 |
+| VER-07 | AC-08 | `test_daily.py::test_saving_records_keeps_unsaved_notes_and_the_reverse`(진도·과제 재조회) | 성공 |
+| VER-05 | AC-09 | `test_attendance.py::test_recheck_target_comes_from_the_previous_session_grade` | 성공 |
+| VER-05 | AC-10 | `test_attendance.py::test_recheck_result_is_saved_immediately` | 성공 |
+| VER-08 | AC-11 | `test_daily.py::test_saving_records_keeps_unsaved_notes_and_the_reverse` + 웹 `DailyPage.test.tsx::keeps unsaved notes` | 성공 |
+| VER-09 | AC-12 | `test_daily.py::test_class_test_average_is_computed_from_saved_scores`(78·72·65 → 71.7) | 성공 |
+| VER-10 | AC-13 | `test_dashboard.py::test_weekly_homework_rate_and_delta_against_last_week` | 성공 |
+| VER-11 | AC-14 | `test_message_render.py` 7건(구획 포함·생략·라벨·교시·점수·문구 없음·미확인) | 성공 |
+| VER-11 | AC-15 | `test_messages_api.py::test_editing_a_grade_comment_changes_the_preview` | 성공 |
+| VER-12 | AC-16 | `test_report_image.py` 6건(PNG 생성·내용 반영·캐시 금지·무인증 401·스코프·글리프) | 성공 |
+| VER-13 | AC-17 | `test_message_send.py::test_test_mode_sends_without_calling_the_provider`(HTTP 호출 차단 상태에서 성공) | 성공 |
+| VER-13 | AC-18 | `test_message_send.py::test_send_writes_a_log_with_an_immutable_body_snapshot` | 성공 |
+| VER-21 | NFR-01 | 반 10·학생 200·수업 520·기록 10,400 규모에서 대시보드 30회: p50 8ms · **p95 21ms** · 최대 24ms (기준 1500ms) | 성공 |
+| VER-21 | NFR-02 | 같은 규모에서 표 일괄 저장 30회: p50 6ms · **p95 8ms** · 최대 8ms (기준 500ms) | 성공 |
+| VER-23 | NFR-09 | `test_migrations.py::test_migration_roundtrip_creates_and_drops_every_table` | 성공 |
+| VER-25 | AC-28 | 공개 도메인 로그인 쿠키 `Secure`·`HttpOnly`, 로그아웃 후 401 | 성공 |
+| VER-26 | AC-29 | `test_login_lockout.py` 3건 | 성공 |
+| VER-27 | NFR-17 | 테스트 운영 스택 호스트 게시 포트 0개, 기본 비밀번호 미사용 | 성공(단, 현재 자격 증명은 사용자 지시로 `director`/`director`) |
+
+- 미수행·미검증으로 남는 항목
+  - AC-05의 **실제 브라우저 육안 확인**: 계획의 자동화 제외 항목. 사용자 확인 필요.
+  - **알리고 실발송**: [Q-02](../../requirements.md#가정과-미해결-질문) 미해소로 테스트 모드까지만 검증했다.
+  - AC-19~AC-27: 사이클 2(M5~M9) 범위라 이번 검증 대상이 아니다.
+  - 구 경로 `/api/messages/report.png`의 Cloudflare 엣지 캐시 잔존(퍼지 대기).
+- 결과: TASK-21 완료. **MVP 인수 조건 AC-01~AC-18 전항 성공**, NFR-01·NFR-02 기준 대비 큰 여유로 통과. 남은 제한은 위에 명시했다.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -409,8 +455,9 @@
 
 ## 미완료 항목
 
-- TASK-21~TASK-39
+- TASK-22(승인 관문), TASK-23~TASK-39(사이클 2)
 - 알리고 실발송 경로 미검증([Q-02](../../requirements.md#가정과-미해결-질문))
+- AC-05의 브라우저 육안 확인 미수행(자동화 제외 항목)
 - 구 경로 `/api/messages/report.png`의 Cloudflare 엣지 캐시 잔존 — 퍼지 또는 TTL 만료 대기
 - VER-01~VER-10·VER-25·VER-26·VER-27 통과
 - 실제 재부팅에서의 자동 기동은 미검증(사용자 재부팅 시 확인)
@@ -422,7 +469,7 @@
 
 ## 재개 지점
 
-- 다음 작업: [TASK-21 MVP 통합·인수 검증](../../plan.md#task-21-mvp-통합인수-검증)
+- 다음 작업: [TASK-22 ★ MVP 사이클 완료 승인](../../plan.md#task-22--mvp-사이클-완료-승인)
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
 - 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
@@ -431,8 +478,8 @@
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, MVP 구현 전체(TASK-02~TASK-20), TASK-40~TASK-42
-- 미완료 항목: TASK-21~TASK-39
+- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, MVP 구현과 통합 검증(TASK-02~TASK-21), TASK-40~TASK-42
+- 미완료 항목: TASK-22(사용자 승인), TASK-23~TASK-39(사이클 2)
 - 차단 요인: 없음
-- 다음 행동: TASK-21의 AC-01~AC-18 전항 검증과 NFR-01·NFR-02 측정을 수행한다
+- 다음 행동: TASK-22에서 검증 결과와 미수행 항목을 제시하고 사이클 2 착수 여부를 확인받는다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
