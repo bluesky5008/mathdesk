@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 47건 중 26건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-45 리포트 카드 HTML 렌더러 전환](#task-45-리포트-카드-html-렌더러-전환)을 시작한다. TASK-44로 토큰 단일 소스가 확립되었으므로 카드 렌더러가 이를 인라인한다. [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)에 따라 시각 설계(TASK-44~47)를 M5~M9 기능 작업보다 먼저 수행한다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 47건 중 27건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-45 리포트 카드 HTML 렌더러 전환](#task-45-리포트-카드-html-렌더러-전환)을 시작한다. 사용자 지시로 앞세운 TASK-47이 끝나 원래 순서(TASK-45 → TASK-46)로 돌아간다. 시각 설계를 M5~M9 기능 작업보다 먼저 두는 [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)의 기준은 그대로다.
 
 ## 문서 연결
 
@@ -82,11 +82,11 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │  ├─ [✓] TASK-41 단일 오리진 테스트 운영 서빙 ...... 2026-09-22 14:44
 │  └─ [✓] TASK-42 mathdesk 터널 등록과 노출 검증 .... 2026-09-22 15:26
 │
-├─ 시각 설계 (DCR-003) ............................. in-progress (1/4)
+├─ 시각 설계 (DCR-003) ............................. in-progress (2/4)
 │  ├─ [✓] TASK-44 디자인 토큰·공통 컴포넌트 기반 .... 2026-09-23 01:22
+│  ├─ [✓] TASK-47 기존 화면 5개 재작성 .............. 2026-09-23 01:43
 │  ├─ [ ] TASK-45 리포트 카드 HTML 렌더러 전환 ...... depends: TASK-44
-│  ├─ [ ] TASK-46 카드 재설계·브랜드 (시안 확인) .... depends: TASK-45
-│  └─ [ ] TASK-47 기존 화면 5개 재작성 .............. depends: TASK-44
+│  └─ [ ] TASK-46 카드 재설계·브랜드 (시안 확인) .... depends: TASK-45
 │
 └─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (1/18)
    ├─ [✓] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... 2026-09-22 23:53
@@ -212,12 +212,13 @@ flowchart TD
 flowchart TD
     V["시각 설계 (DCR-003)"]:::active
     V --> T44["TASK-44 토큰·공통 컴포넌트"]:::done
+    V --> T47["TASK-47 기존 화면 재작성"]:::done
     V --> T45["TASK-45 카드 HTML 렌더러 전환"]:::active
     V --> T46["TASK-46 카드 재설계·브랜드"]:::todo
-    V --> T47["TASK-47 기존 화면 재작성"]:::todo
+    T44 -. depends .-> T47
     T44 -. depends .-> T45
     T45 -. depends .-> T46
-    T44 -. depends .-> T47
+    T47 -. 순서 변경 .-> T45
     classDef done fill:#c8e6c9,stroke:#2e7d32
     classDef active fill:#fff9c4,stroke:#f9a825
     classDef todo fill:#eceff1,stroke:#90a4ae
@@ -227,7 +228,9 @@ flowchart TD
 
 ### 시각 설계 (DCR-003)
 
-> [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)이 규정한 우선순위에 따라 학부모에게 도달하는 자산(리포트 카드)을 먼저 완성하고, 내부 운영 화면 재작성을 마지막에 둔다.
+> [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)은 학부모에게 도달하는 자산(리포트 카드)을 먼저 완성하고 내부 운영 화면 재작성을 마지막에 두었다.
+>
+> **순서 변경(2026-09-23, 사용자 지시):** TASK-47을 TASK-45·46보다 먼저 수행한다. 기준선(FR-40·NFR-18·NFR-19·AC-30~32·DES-08·DES-24)과 작업 내용은 바뀌지 않고 수행 순서만 바뀌므로 DCR을 발행하지 않는다. TASK-47은 의존성이 TASK-44뿐이라 선행 조건을 이미 충족한다. 기술적으로는 화면 5개를 재작성하며 토큰·컴포넌트의 부족분이 드러나므로, 카드 렌더러가 토큰 위에 올라타기 전에 그것을 발견하는 이점이 있다.
 
 ### TASK-44: 디자인 토큰과 공통 컴포넌트 기반
 
@@ -241,7 +244,7 @@ flowchart TD
 - 위험: 토큰 구조를 잘못 잡으면 이후 3개 작업이 모두 영향을 받는다. 번들 크기 증가
 - 검증 방법: 선행 테스트 — 토큰 파일이 웹과 카드 양쪽에서 참조 가능한 순수 CSS임을 고정하는 테스트(VER-30의 웹 측). 기존 웹 테스트 20건 전량 통과 유지
 - 완료 조건: `npm test`와 `npm run build` 통과, 토큰 단일 소스 확립, 공통 컴포넌트가 최소 1개 화면에서 동작
-- 결과: Tailwind v4.3.3 도입, `src/styles/tokens.css`에 순수 CSS 변수 38개(색·타이포·간격·라운드·그림자) 단일 정의. `app.css`의 `@theme inline`이 토큰을 Tailwind 이름에 연결해 모든 유틸리티가 `var(--md-*)`를 참조한다(VER-30 웹 측 통과). 공통 컴포넌트 `button`·`input`·`card`·`table`·`dialog`와 `AppShell` 추가, 로그인 화면에 적용. 웹 테스트 24건(기존 20 + 토큰 4)·`npm run build` 통과. 번들 JS 324.18 → 355.96 kB(+31.8, gzip +9.9), CSS 신규 13.48 kB. Recharts·lucide-react는 [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md) 결정을 유지하되 실제 사용처가 생기는 TASK-26·TASK-47로 설치를 미뤘다
+- 결과: Tailwind v4.3.3 도입, `src/styles/tokens.css`에 순수 CSS 변수 38개(색·타이포·간격·라운드·그림자) 단일 정의. `app.css`의 `@theme inline`이 토큰을 Tailwind 이름에 연결해 모든 유틸리티가 `var(--md-*)`를 참조한다(VER-30 웹 측 통과). 공통 컴포넌트 `button`·`input`·`card`·`table`·`dialog`와 `AppShell` 추가, 로그인 화면에 적용. 웹 테스트 24건(기존 20 + 토큰 4)·`npm run build` 통과. 번들 JS 324.18 → 355.96 kB(+31.8, gzip +9.9), CSS 신규 13.48 kB. Recharts·lucide-react는 [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md) 결정을 유지하되 실제 사용처가 생길 때까지 설치를 미뤘다(Recharts는 TASK-26 통계 화면). **TASK-47 완료 시점에도 둘 다 미설치다** — 화면 재작성에서 아이콘 없이도 정보 위계가 성립했다
 
 ### TASK-45: 리포트 카드 HTML 렌더러 전환
 
@@ -269,7 +272,8 @@ flowchart TD
 
 ### TASK-47: 기존 화면 5개 재작성
 
-- 상태: pending
+- 상태: completed
+- 완료: 2026-09-23 01:43
 - 상위: 없음
 - 목표: Dashboard·Daily·Students·Classes·Messages와 `LoginForm`·`Roster`·`AttendanceButtons`를 공통 컴포넌트 위로 옮긴다. 일일 입력의 표 기반 키보드 이동을 공통 컴포넌트가 소유하도록 정리한다.
 - 관련 요구사항과 설계: [NFR-13](./requirements.md#비기능-요구사항), [DES-24 상세](./design.md#des-24-상세)
@@ -278,6 +282,7 @@ flowchart TD
 - 위험: 재작성 중 기능 회귀. 화면 수가 많아 한 번에 하면 원인 추적이 어렵다
 - 검증 방법: **화면 단위로 나눠 진행하고 매 화면마다 기존 테스트 20건 전량 재실행.** 역할·레이블 보존 원칙 — 테스트가 깨지면 마크업이 잘못된 것으로 본다
 - 완료 조건: 웹 테스트 20건과 API 78건 전량 통과, `npm run build` 통과, 화면 ①~④ 시각 확인
+- 결과: Dashboard·Daily·Students·Classes·Messages와 `AttendanceButtons`를 공통 컴포넌트 위로 옮겼다. NFR-13의 키보드 이동을 `components/ui/keyboard-grid.tsx`(`KeyboardGrid`)로 신설해 저장소가 소유한다 — 방향키는 같은 열을 유지한 채 행 이동, Enter는 입력란에서만 아래로 이동(버튼에서 가로채면 키보드로 버튼을 누를 수 없다). 열 기준을 포커스 순번이 아니라 `td` 위치로 잡아 행마다 버튼 수가 달라도 어긋나지 않는다. 공통 컴포넌트 `toggle`·`select`·`field`·`stat`·`textarea`·`PageHeader`와 `AttendanceCell`을 추가했다. 웹 테스트 29건(기존 24 + 키보드 5)·API 78건·`npm run build` 통과, **기존 테스트 수정 0건**. 번들 JS 355.96 → 362.75 kB, CSS 13.48 → 17.34 kB
 
 ### 사이클 1 — MVP (M0~M4)
 

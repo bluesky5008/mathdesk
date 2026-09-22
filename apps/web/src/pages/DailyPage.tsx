@@ -1,7 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
-import { AttendanceButtons } from '../components/AttendanceButtons'
+import { AttendanceCell } from '../components/AttendanceButtons'
+import { PageHeader } from '../components/PageHeader'
+import { Button } from '../components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Field } from '../components/ui/field'
+import { Input } from '../components/ui/input'
+import { KeyboardGrid } from '../components/ui/keyboard-grid'
+import { Select } from '../components/ui/select'
+import { Stat } from '../components/ui/stat'
+import { Textarea } from '../components/ui/textarea'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from '../components/ui/table'
+import { Toggle } from '../components/ui/toggle'
 import {
   fetchClasses,
   fetchDaily,
@@ -16,6 +34,11 @@ import {
 
 const GRADES = ['A+', 'A', 'B', 'C', 'D', 'F']
 const PERIODS = [1, 2, 3, 4]
+const NOTE_FIELDS = [
+  ['homework', '오늘의 과제'],
+  ['video_url', '수업 영상 링크'],
+  ['teacher_note', '강사 첨언'],
+] as const
 const EMPTY_NOTES: NotesPatch = {}
 
 function today(): string {
@@ -105,190 +128,217 @@ export function DailyPage() {
 
   return (
     <section>
-      <h2>일일 수업 &amp; 성적 입력</h2>
-
-      <div>
-        <label htmlFor="daily-class">반</label>
-        <select
-          id="daily-class"
-          value={activeClassId ?? ''}
-          onChange={(event) => change({ classId: Number(event.target.value) })}
-        >
-          {classes.data?.map((klass) => (
-            <option key={klass.id} value={klass.id}>
-              {klass.name}
-            </option>
-          ))}
-        </select>
-        <label htmlFor="daily-date">날짜</label>
-        <input
-          id="daily-date"
-          type="date"
-          value={date}
-          onChange={(event) => change({ date: event.target.value })}
-        />
-      </div>
+      <PageHeader title="일일 수업 & 성적 입력">
+        <Field label="반" htmlFor="daily-class">
+          <Select
+            id="daily-class"
+            value={activeClassId ?? ''}
+            onChange={(event) => change({ classId: Number(event.target.value) })}
+          >
+            {classes.data?.map((klass) => (
+              <option key={klass.id} value={klass.id}>
+                {klass.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="날짜" htmlFor="daily-date">
+          <Input
+            id="daily-date"
+            type="date"
+            className="w-40"
+            value={date}
+            onChange={(event) => change({ date: event.target.value })}
+          />
+        </Field>
+      </PageHeader>
 
       {daily.data && (
-        <p>
-          등원 현황{' '}
-          <strong>{`${daily.data.summary.attending} / ${daily.data.summary.enrolled}명`}</strong> ·
-          당일 테스트 평균 <strong>{daily.data.summary.test_average ?? '—'}</strong>
-        </p>
+        <div className="mb-5 grid grid-cols-4 gap-4">
+          <Stat
+            title="등원 현황"
+            value={`${daily.data.summary.attending} / ${daily.data.summary.enrolled}명`}
+          />
+          <Stat title="당일 테스트 평균" value={daily.data.summary.test_average ?? '—'} />
+        </div>
       )}
 
-      <div>
-        <table>
-          <thead>
-            <tr>
-              <th>학생</th>
-              <th>출결 상태</th>
-              <th>이전 과제 재검사</th>
-              <th>과제피드백</th>
-              <th>테스트</th>
-            </tr>
-          </thead>
-          <tbody>
-            {daily.data?.records.map((record) => (
-              <tr key={record.student_id}>
-                <td>{record.name}</td>
-                <td>
-                  <AttendanceButtons
-                    value={String(valueOf(record, 'attendance_status'))}
-                    disabled={locked}
-                    onChange={(next) => patch(record.student_id, { attendance_status: next })}
-                  />
-                  <input
-                    aria-label={`${record.name} 사유`}
-                    value={String(valueOf(record, 'attendance_reason') ?? '')}
-                    disabled={locked}
-                    onChange={(event) =>
-                      patch(record.student_id, { attendance_reason: event.target.value })
-                    }
-                  />
-                </td>
-                <td>
-                  <span>{describeRecheck(record)}</span>
-                  {record.recheck.target &&
-                    (
-                      [
-                        ['pass', '합격'],
-                        ['fail', '불합격'],
-                      ] as const
-                    ).map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        aria-pressed={record.recheck.result === value}
-                        onClick={() =>
-                          recheck.mutate({
-                            studentId: record.student_id,
-                            result: record.recheck.result === value ? null : value,
+      <Card className="mb-5">
+        <CardContent className="p-0">
+          <KeyboardGrid>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell className="w-28">학생</TableHeaderCell>
+                  <TableHeaderCell>출결 상태</TableHeaderCell>
+                  <TableHeaderCell>이전 과제 재검사</TableHeaderCell>
+                  <TableHeaderCell>과제피드백</TableHeaderCell>
+                  <TableHeaderCell className="w-24">테스트</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {daily.data?.records.map((record) => (
+                  <TableRow key={record.student_id}>
+                    <TableCell className="font-medium whitespace-nowrap">{record.name}</TableCell>
+                    <TableCell>
+                      <AttendanceCell
+                        name={record.name}
+                        status={String(valueOf(record, 'attendance_status'))}
+                        reason={String(valueOf(record, 'attendance_reason') ?? '')}
+                        disabled={locked}
+                        onStatusChange={(next) =>
+                          patch(record.student_id, { attendance_status: next })
+                        }
+                        onReasonChange={(next) =>
+                          patch(record.student_id, { attendance_reason: next })
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs whitespace-nowrap text-muted-fg">
+                          {describeRecheck(record)}
+                        </span>
+                        {record.recheck.target &&
+                          (
+                            [
+                              ['pass', '합격', 'success'],
+                              ['fail', '불합격', 'danger'],
+                            ] as const
+                          ).map(([value, label, tone]) => (
+                            <Toggle
+                              key={value}
+                              pressed={record.recheck.result === value}
+                              tone={tone}
+                              onClick={() =>
+                                recheck.mutate({
+                                  studentId: record.student_id,
+                                  result: record.recheck.result === value ? null : value,
+                                })
+                              }
+                            >
+                              {label}
+                            </Toggle>
+                          ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {GRADES.map((grade) => (
+                          <Toggle
+                            key={grade}
+                            pressed={valueOf(record, 'homework_grade') === grade}
+                            className="w-9 tabular-nums"
+                            onClick={() =>
+                              patch(record.student_id, {
+                                homework_grade:
+                                  valueOf(record, 'homework_grade') === grade ? null : grade,
+                              })
+                            }
+                          >
+                            {grade}
+                          </Toggle>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        aria-label={`${record.name} 점수`}
+                        inputMode="numeric"
+                        className="h-7 w-20 text-right tabular-nums"
+                        value={String(valueOf(record, 'test_score_num') ?? '')}
+                        onChange={(event) =>
+                          patch(record.student_id, {
+                            test_score_num:
+                              event.target.value === '' ? null : Number(event.target.value),
                           })
                         }
-                      >
-                        {label}
-                      </button>
-                    ))}
-                </td>
-                <td>
-                  {GRADES.map((grade) => (
-                    <button
-                      key={grade}
-                      type="button"
-                      aria-pressed={valueOf(record, 'homework_grade') === grade}
-                      onClick={() =>
-                        patch(record.student_id, {
-                          homework_grade:
-                            valueOf(record, 'homework_grade') === grade ? null : grade,
-                        })
-                      }
-                    >
-                      {grade}
-                    </button>
-                  ))}
-                </td>
-                <td>
-                  <input
-                    aria-label={`${record.name} 점수`}
-                    inputMode="numeric"
-                    value={String(valueOf(record, 'test_score_num') ?? '')}
-                    onChange={(event) =>
-                      patch(record.student_id, {
-                        test_score_num: event.target.value === '' ? null : Number(event.target.value),
-                      })
-                    }
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <button type="button" onClick={() => saveRecords.mutate()} disabled={!session}>
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </KeyboardGrid>
+        </CardContent>
+      </Card>
+
+      <div className="mb-5 flex items-center gap-2">
+        <Button type="button" onClick={() => saveRecords.mutate()} disabled={!session}>
           표 저장
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="outline"
           onClick={() => confirmation.mutate(!locked)}
           disabled={!session}
         >
           {locked ? '편집' : '확인'}
-        </button>
-        {saveRecords.isError && <p role="alert">{saveRecords.error.message}</p>}
+        </Button>
+        <span className="text-xs text-muted-fg">
+          위아래 방향키와 Enter로 같은 열의 다음 학생으로 이동합니다.
+        </span>
+        {saveRecords.isError && (
+          <p role="alert" className="text-sm text-danger">
+            {saveRecords.error.message}
+          </p>
+        )}
       </div>
 
-      <div>
-        <h3>오늘 진도 &amp; 코멘트</h3>
-        {PERIODS.map((period) => (
-          <label key={period} htmlFor={`period-${period}`}>
-            {period}교시
-            <textarea
-              id={`period-${period}`}
-              value={
-                notes.progress?.find((item) => item.period === period)?.content ??
-                session?.progress.find((item) => item.period === period)?.content ??
-                ''
-              }
-              onChange={(event) =>
-                setNotes((current) => {
-                  const base =
-                    current.progress ??
-                    PERIODS.map((value) => ({
-                      period: value,
-                      content:
-                        session?.progress.find((item) => item.period === value)?.content ?? null,
-                    }))
-                  return {
-                    ...current,
-                    progress: base.map((item) =>
-                      item.period === period ? { ...item, content: event.target.value } : item,
-                    ),
-                  }
-                })
-              }
-            />
-          </label>
-        ))}
-        {(
-          [
-            ['homework', '오늘의 과제'],
-            ['video_url', '수업 영상 링크'],
-            ['teacher_note', '강사 첨언'],
-          ] as const
-        ).map(([field, label]) => (
-          <label key={field} htmlFor={`notes-${field}`}>
-            {label}
-            <textarea
-              id={`notes-${field}`}
-              value={String(notes[field] ?? session?.[field] ?? '')}
-              onChange={(event) => setNotes({ ...notes, [field]: event.target.value })}
-            />
-          </label>
-        ))}
-        <button type="button" onClick={() => saveNotes.mutate()} disabled={!session}>
-          메모 저장
-        </button>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>오늘 진도 &amp; 코멘트</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4">
+          {PERIODS.map((period) => (
+            <Field key={period} label={`${period}교시`} htmlFor={`period-${period}`}>
+              <Textarea
+                id={`period-${period}`}
+                rows={2}
+               
+                value={
+                  notes.progress?.find((item) => item.period === period)?.content ??
+                  session?.progress.find((item) => item.period === period)?.content ??
+                  ''
+                }
+                onChange={(event) =>
+                  setNotes((current) => {
+                    const base =
+                      current.progress ??
+                      PERIODS.map((value) => ({
+                        period: value,
+                        content:
+                          session?.progress.find((item) => item.period === value)?.content ?? null,
+                      }))
+                    return {
+                      ...current,
+                      progress: base.map((item) =>
+                        item.period === period ? { ...item, content: event.target.value } : item,
+                      ),
+                    }
+                  })
+                }
+              />
+            </Field>
+          ))}
+          {NOTE_FIELDS.map(([field, label]) => (
+            <Field key={field} label={label} htmlFor={`notes-${field}`}>
+              <Textarea
+                id={`notes-${field}`}
+                rows={2}
+               
+                value={String(notes[field] ?? session?.[field] ?? '')}
+                onChange={(event) => setNotes({ ...notes, [field]: event.target.value })}
+              />
+            </Field>
+          ))}
+          <div className="col-span-2">
+            <Button type="button" onClick={() => saveNotes.mutate()} disabled={!session}>
+              메모 저장
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </section>
   )
 }

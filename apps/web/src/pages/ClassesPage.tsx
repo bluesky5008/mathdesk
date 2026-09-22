@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 
+import { PageHeader } from '../components/PageHeader'
+import { Button } from '../components/ui/button'
+import { Card, CardContent } from '../components/ui/card'
+import { Field } from '../components/ui/field'
+import { Input } from '../components/ui/input'
 import { createClass, fetchClasses, type Schedule } from '../api'
 
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
@@ -34,37 +39,51 @@ export function ClassesPage() {
 
   return (
     <section>
-      <h2>반 관리</h2>
+      <PageHeader title="반 관리" />
 
-      <form onSubmit={submit}>
-        <label htmlFor="class-name">
-          반 이름
-          <input
-            id="class-name"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-          />
-        </label>
-        <label htmlFor="class-grade">
-          학년
-          <input
-            id="class-grade"
-            value={form.grade}
-            onChange={(event) => setForm({ ...form, grade: event.target.value })}
-          />
-        </label>
-        <button type="submit">반 등록</button>
-        {create.isError && <p role="alert">{create.error.message}</p>}
-      </form>
+      <Card className="mb-5">
+        <CardContent className="py-4">
+          <form className="flex items-end gap-3" onSubmit={submit}>
+            <Field label="반 이름" htmlFor="class-name">
+              <Input
+                id="class-name"
+                className="w-48"
+                value={form.name}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+              />
+            </Field>
+            <Field label="학년" htmlFor="class-grade">
+              <Input
+                id="class-grade"
+                className="w-28"
+                value={form.grade}
+                onChange={(event) => setForm({ ...form, grade: event.target.value })}
+              />
+            </Field>
+            <Button type="submit">반 등록</Button>
+          </form>
+          {create.isError && (
+            <p role="alert" className="mt-3 text-sm text-danger">
+              {create.error.message}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
-      <p>활성 {classes.data?.length ?? 0}개 반</p>
-      <ul>
-        {classes.data?.map((klass) => (
-          <li key={klass.id}>
-            {klass.name} · {klass.grade} · {describeSchedules(klass.schedules) || '시간표 없음'}
-          </li>
-        ))}
-      </ul>
+      <Card>
+        <CardContent className="p-0">
+          <p className="border-b px-5 py-3 text-sm text-muted-fg">
+            활성 {classes.data?.length ?? 0}개 반
+          </p>
+          <ul className="divide-y">
+            {classes.data?.map((klass) => (
+              <li key={klass.id} className="px-5 py-3 text-sm">
+                {klass.name} · {klass.grade} · {describeSchedules(klass.schedules) || '시간표 없음'}
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
     </section>
   )
 }

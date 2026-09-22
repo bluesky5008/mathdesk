@@ -1,9 +1,12 @@
-export const ATTENDANCE = [
-  ['present', '출석'],
-  ['late', '지각'],
-  ['absent', '결석'],
-  ['early_leave', '조퇴'],
-] as const
+import { Input } from './ui/input'
+import { Toggle, type Tone } from './ui/toggle'
+
+const ATTENDANCE = [
+  ['present', '출석', 'success'],
+  ['late', '지각', 'warning'],
+  ['absent', '결석', 'danger'],
+  ['early_leave', '조퇴', 'neutral'],
+] as const satisfies readonly (readonly [string, string, Tone])[]
 
 export function AttendanceButtons({
   value,
@@ -15,21 +18,52 @@ export function AttendanceButtons({
   onChange: (next: string) => void
 }) {
   return (
-    <>
-      {ATTENDANCE.map(([status, label]) => {
+    <div className="flex gap-1">
+      {ATTENDANCE.map(([status, label, tone]) => {
         const pressed = value === status
         return (
-          <button
+          <Toggle
             key={status}
-            type="button"
-            aria-pressed={pressed}
+            pressed={pressed}
+            tone={tone}
             disabled={disabled}
             onClick={() => onChange(pressed ? 'unchecked' : status)}
           >
             {label}
-          </button>
+          </Toggle>
         )
       })}
-    </>
+    </div>
+  )
+}
+
+/** 출결 버튼과 사유 입력은 항상 한 칸에 함께 놓인다. */
+export function AttendanceCell({
+  name,
+  status,
+  reason,
+  disabled,
+  onStatusChange,
+  onReasonChange,
+}: {
+  name: string
+  status: string
+  reason: string
+  disabled?: boolean
+  onStatusChange: (next: string) => void
+  onReasonChange: (next: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <AttendanceButtons value={status} disabled={disabled} onChange={onStatusChange} />
+      <Input
+        aria-label={`${name} 사유`}
+        value={reason}
+        disabled={disabled}
+        placeholder="사유"
+        className="h-7 w-28 text-xs"
+        onChange={(event) => onReasonChange(event.target.value)}
+      />
+    </div>
   )
 }
