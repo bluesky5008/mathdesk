@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "mathdesk API server"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.14",
+    "asyncpg>=0.30",
     "fastapi>=0.115",
+    "greenlet>=3.5.6",
+    "sqlalchemy>=2.0",
     "uvicorn[standard]>=0.32",
 ]
 

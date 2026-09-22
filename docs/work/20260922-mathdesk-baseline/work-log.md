@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: 기준선 승인·계획 수립에 이어 TASK-02(스캐폴딩)를 완료했다. `docker compose up`으로 api·web·postgres 3개 컨테이너가 기동하고 헬스 엔드포인트가 동작한다.
-- 다음 행동: [TASK-03 스키마 1차·마이그레이션·시드](../../plan.md#task-03-스키마-1차마이그레이션시드) — 빈 DB에서 `upgrade head` → `downgrade base` 왕복 테스트(Red)부터 작성한다.
+- 현재 결론 또는 상태: TASK-02(스캐폴딩)와 TASK-03(스키마 1차·마이그레이션·시드)을 완료했다. 16개 테이블의 왕복 마이그레이션과 시드(반 4 · 학생 47)가 테스트로 검증된다.
+- 다음 행동: [TASK-04 인증과 세션](../../plan.md#task-04-인증과-세션) — AC-01(로그인·로그아웃)을 인수 테스트(Red)로 먼저 작성한다.
 
 ## 문서 연결
 
@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-03 스키마 1차·마이그레이션·시드](../../plan.md#task-03-스키마-1차마이그레이션시드) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-02 모노레포 스캐폴딩과 실행 환경](../../plan.md#task-02-모노레포-스캐폴딩과-실행-환경) (2026-09-22 09:58)
+- 진행 중인 작업: [TASK-04 인증과 세션](../../plan.md#task-04-인증과-세션) (미착수, 상태만 `in-progress`)
+- 마지막 완료 작업: [TASK-03 스키마 1차·마이그레이션·시드](../../plan.md#task-03-스키마-1차마이그레이션시드) (2026-09-22 10:26)
 - 차단 요인: 없음
 
 ## 수행 기록
@@ -80,29 +80,53 @@
   - `curl http://localhost:8080/api/health` → `{"status":"ok"}`, `curl http://localhost:5173/api/health`(웹 개발 서버 프록시 경유) → `{"status":"ok"}`.
 - 결과: TASK-02 완료. 완료 조건(3개 컨테이너 기동 + API 테스트 1회 성공 + 웹 빌드 1회 성공) 전항 충족.
 
+### 2026-09-22 — TASK-03 스키마 1차·마이그레이션·시드
+
+- 수행 내용
+  - TDD Red: `tests/test_migrations.py`에 빈 DB → `upgrade head` → 16개 테이블 존재 확인 → `downgrade base` → 테이블 소거를 검증하는 테스트를 먼저 작성해 `No 'script_location' key found`로 의도한 실패를 확인했다.
+  - Green: SQLAlchemy 2.0 선언형 모델 16개(`models/{base,masterdata,daily,messaging,system}.py`)와 alembic 비동기 환경(`migrations/env.py`)을 만들고 초기 리비전 `5b67d2c537eb`을 autogenerate했다.
+  - TDD Red → Green: 시드 스크립트 테스트(반 4 · 학생 47 · 수강 47 · 수험번호 누락 0)를 먼저 작성하고 `src/mathdesk/seed.py`를 구현했다.
+  - `compose.yaml`에 postgres 호스트 포트 게시(`POSTGRES_PORT`, 기본 55432)와 api의 `DATABASE_URL`을 추가했다.
+- 변경 파일: `apps/api/{alembic.ini,migrations/,src/mathdesk/models/,src/mathdesk/seed.py,tests/{conftest,test_migrations,test_seed}.py,pyproject.toml,uv.lock}`, `compose.yaml`, `README.md`
+- 발견 사항
+  - SQLAlchemy 비동기 엔진이 `greenlet`을 요구해 의존성 1건을 추가했다.
+  - 호스트 5432는 로컬 postgres가 점유 중이라 컨테이너 postgres를 55432로 게시했다.
+- 결정과 이유
+  - 열거값은 네이티브 Postgres enum 대신 `native_enum=False`(VARCHAR + CHECK)로 만들었다. 네이티브 enum은 downgrade에서 타입 삭제가 따로 필요해 왕복 마이그레이션이 복잡해진다.
+  - `MetaData`에 명명 규칙을 두어 제약·인덱스 이름을 결정적으로 만들었다. 이름 없는 제약은 downgrade에서 삭제 대상을 특정하기 어렵다.
+  - 테스트 DB를 `mathdesk_test`로 분리하고 픽스처가 매번 다시 만든다. 개발 DB에 직접 `downgrade base`를 걸면 시드 데이터가 사라진다.
+  - 시드의 원장 계정 `password_hash`는 로그인 불가 표시 `!`로 두었다. 실제 해시는 TASK-04에서 설정하며, 지금 임시 비밀번호를 심으면 약한 자격 증명이 저장소에 남는다.
+  - `db.py`(엔진·세션 팩토리) 도입을 미뤘다. 현재 사용처는 시드 하나뿐이며 앱 배선이 생기는 TASK-04에서 만든다.
+  - 시드는 이미 캠퍼스가 있으면 예외로 중단한다. 재실행 시 학생이 94명으로 불어나는 사고를 막는다.
+- 실행한 검증
+  - `uv run pytest -q` — 마이그레이션 테스트 최초 `1 failed`(의도한 Red), 시드 테스트 최초 `ModuleNotFoundError`(의도한 Red) → 구현 후 전체 `3 passed`.
+  - 개발 DB에 `alembic upgrade head` + `python -m mathdesk.seed` 실행 → class 4 / student 47 / enrollment 47 / guardian 47, 수험번호 `10000100`~`10004700`(자리별 범위 준수).
+  - `docker compose ps` — postgres가 55432로 게시된 상태로 재기동 확인.
+- 결과: TASK-03 완료. 완료 조건(왕복 마이그레이션 통과, 시드로 반 4개·학생 47명 투입) 전항 충족. VER-23(NFR-09)의 마이그레이션 왕복 근거가 확보되었다.
+
 ## 설계와 달라진 점
 
 없음. 현재까지 승인된 설계를 벗어난 구현 선택이 없다.
 
 ## 미완료 항목
 
-- TASK-01(자식 3건 잔여), TASK-03~TASK-39
-- 검증 VER-01~VER-24 전체 (미수행 — TASK-02는 인수 조건에 직접 대응하는 VER 항목이 없는 기반 작업)
+- TASK-01(자식 2건 잔여), TASK-04~TASK-39
+- VER-23(마이그레이션 왕복)은 TASK-03에서 1차 확보. 나머지 VER 항목은 미수행
 - [Q-02·Q-03·Q-08](../../requirements.md#가정과-미해결-질문) 미해소 — TASK-19·TASK-34·TASK-37의 실발송·실스캔 검증이 제한된다
 
 ## 재개 지점
 
-- 다음 작업: [TASK-03 스키마 1차·마이그레이션·시드](../../plan.md#task-03-스키마-1차마이그레이션시드)
-- 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 스택 기동 여부
-- 필요한 명령 또는 파일: `docker compose up -d --build`, `cd apps/api && uv run pytest`, [설계 데이터 모델](../../design.md#데이터-모델)
+- 다음 작업: [TASK-04 인증과 세션](../../plan.md#task-04-인증과-세션)
+- 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
+- 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, [설계 DES-03 상세](../../design.md#des-03-상세)
 
 ## 인계
 
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 승인, ADR-001~007, 구현 계획과 검증 계획, TASK-02 스캐폴딩
-- 미완료 항목: TASK-01(자식 3건), TASK-03~TASK-39
+- 완료된 항목: 기준선 승인, ADR-001~007, 구현 계획과 검증 계획, TASK-02 스캐폴딩, TASK-03 스키마 1차
+- 미완료 항목: TASK-01(자식 2건), TASK-04~TASK-39
 - 차단 요인: 없음
-- 다음 행동: TASK-03의 왕복 마이그레이션 테스트(Red)를 먼저 작성한다
+- 다음 행동: TASK-04의 AC-01 인수 테스트(Red)를 먼저 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
