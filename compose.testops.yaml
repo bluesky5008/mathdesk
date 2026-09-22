@@ -1,0 +1,46 @@
+# 테스트 운영 스택. 로컬 개발용 compose.yaml과 분리된 프로젝트다.
+#   docker compose -f compose.testops.yaml up -d --build
+# 호스트에 포트를 게시하지 않는다(NFR-17). 외부 경로는 cloudflared 터널 하나뿐이다.
+name: mathdesk-testops
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: mathdesk
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD를 .env에 설정하세요}
+      POSTGRES_DB: mathdesk
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mathdesk"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.testops
+    environment:
+      DATABASE_URL: postgresql+asyncpg://mathdesk:${POSTGRES_PASSWORD}@postgres:5432/mathdesk
+      MATHDESK_COOKIE_SECURE: "true"
+      MATHDESK_INITIAL_ADMIN_ID: ${MATHDESK_INITIAL_ADMIN_ID:?초기 원장 아이디를 .env에 설정하세요}
+      MATHDESK_INITIAL_ADMIN_PASSWORD: ${MATHDESK_INITIAL_ADMIN_PASSWORD:?초기 원장 비밀번호를 .env에 설정하세요}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./ops/cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  pgdata:

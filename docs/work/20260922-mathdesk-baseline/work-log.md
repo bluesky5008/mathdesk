@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: TASK-02~TASK-12를 완료했다(TASK-40 제외). 참조 화면 ②의 일일 입력이 API와 화면 모두에서 동작하며 AC-06~AC-12가 통과한다.
-- 다음 행동: [TASK-14 KPI 집계 API](../../plan.md#task-14-kpi-집계-api) — AC-07·AC-13을 고정 시드 집계 단위 테스트(Red)로 먼저 작성한다.
+- 현재 결론 또는 상태: TASK-02~TASK-12·TASK-40·TASK-41을 완료했다. `https://mathdesk.yongs-wiki.com`이 실제로 동작하며 AC-28·AC-29가 통과했다. TASK-42는 재부팅 자동 기동 조건만 남았다.
+- 다음 행동: Docker Desktop 로그인 시 자동 시작 여부를 사용자와 확정해 [TASK-42](../../plan.md#task-42-mathdesk-터널-등록과-노출-검증)를 닫고, [TASK-14 KPI 집계 API](../../plan.md#task-14-kpi-집계-api)로 돌아간다.
 
 ## 문서 연결
 
@@ -31,9 +31,9 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-14 KPI 집계 API](../../plan.md#task-14-kpi-집계-api) (미착수, 상태만 `in-progress`)
-- 마지막 완료 작업: [TASK-12 일일 입력 2패널 화면](../../plan.md#task-12-일일-입력-2패널-화면) (2026-09-22 13:58)
-- 차단 요인: 없음. [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
+- 진행 중인 작업: [TASK-42 mathdesk 터널 등록과 노출 검증](../../plan.md#task-42-mathdesk-터널-등록과-노출-검증) — 노출·검증은 끝났고 재부팅 자동 기동만 남았다
+- 마지막 완료 작업: [TASK-41 단일 오리진 테스트 운영 서빙](../../plan.md#task-41-단일-오리진-테스트-운영-서빙) (2026-09-22 14:44)
+- 차단 요인: Docker Desktop `AutoStart`가 꺼져 있어 재부팅 후 자동 기동이 성립하지 않는다. 사용자 확인 필요. [TASK-40 로그인 시도 제한](../../plan.md#task-40-로그인-시도-제한)은 임계값 결정을 기다린다
 
 ## 수행 기록
 
@@ -238,6 +238,31 @@
   - 실행 스택: `http://localhost:5173/daily` 200.
 - 결과: TASK-12 완료, 이로써 TASK-09(M2 일일 수업 입력)도 완료. AC-07·AC-08의 화면 측면과 AC-11의 UI 측면이 통과했다. 실제 브라우저 육안 확인은 자동화 제외 항목으로 남는다.
 
+### 2026-09-22 — TASK-40·41 그리고 TASK-42(부분): 테스트 운영 노출
+
+- 수행 내용
+  - TASK-40 TDD Red: `tests/test_login_lockout.py`에 잠금 중 올바른 비밀번호 거부, 잠금 만료 후 허용, 성공 시 카운트 초기화를 먼저 작성해 `2 failed`로 의도한 실패를 확인했다. Green: `app_user`에 `failed_login_count`·`locked_until`을 추가(리비전 `9c040c3bb194`)하고 잠금 로직과 `auth.lockout` 감사 기록을 구현했다.
+  - TASK-41 TDD Red: `tests/test_serving.py`에 SPA fallback이 `/api/*`를 가로채지 않음, 클라이언트 라우트에 `index.html` 반환, `Secure` 쿠키 설정을 먼저 작성해 import 실패로 확인했다. Green: `main.py`를 `create_app(web_dist=…)` 형태로 바꾸고 정적 서빙과 `MATHDESK_COOKIE_SECURE`를 구현했다. `Dockerfile.testops`(웹 빌드 → API 이미지)와 `compose.testops.yaml`(별도 프로젝트, 호스트 포트 게시 없음)을 추가했다.
+  - TASK-42: 전용 터널 `mathdesk`(`4724c8d8-…`) 생성, DNS 라우트, `cloudflared` compose 서비스 추가, 공개 도메인 검증. `ops/README.md`에 기동·재생성·롤백 절차를 남겼다.
+- 변경 파일: `apps/api/src/mathdesk/{auth,main,seed}.py`, `apps/api/src/mathdesk/models/masterdata.py`, `apps/api/migrations/versions/9c040c3bb194_…`, `apps/api/tests/{conftest,test_login_lockout,test_serving,test_seed}.py`, `Dockerfile.testops`, `compose.testops.yaml`, `.env.example`, `.gitignore`, `ops/`
+- 발견 사항
+  - **시드가 초기 원장 계정과 충돌했다.** 테스트 운영 기동 시 환경변수로 `director`가 먼저 생성되는데 시드가 같은 `login_id`를 다시 만들어 `UniqueViolationError`가 났다. 재현 테스트를 먼저 추가한 뒤 기존 계정을 재사용하도록 고쳤다.
+  - **`cloudflared tunnel route dns`가 엉뚱한 터널로 라우팅했다.** `~/.cloudflared/config.yml`의 `tunnel:` 값이 인자를 덮어써 `mathdesk.yongs-wiki.com`이 `homewiki` 터널에 연결됐다. 빈 설정을 `--config`로 지정하고 `--overwrite-dns`로 재라우팅해 바로잡았다. 이 함정을 `ops/README.md`에 남겼다.
+  - `Secure` 쿠키 때문에 컨테이너 내부 HTTP 호출로는 인증 흐름을 검증할 수 없다(쿠키가 재전송되지 않음). 의도된 동작이며 검증은 HTTPS 경로에서 수행했다.
+  - Docker Desktop `AutoStart`가 꺼져 있어 재부팅 후 자동 기동이 성립하지 않는다.
+- 결정과 이유
+  - cloudflared를 launchd 대신 **compose 서비스**로 운용했다. 컨테이너 네트워크로 `app:8000`에 직접 닿으므로 호스트 포트를 하나도 게시하지 않아 NFR-17을 문자 그대로 만족한다. 계획의 `변경 대상`도 이에 맞춰 수정했다.
+  - 테스트 운영을 별도 compose 프로젝트로 분리했다. 개발 스택과 DB·볼륨·수명주기가 섞이지 않는다.
+  - 마이그레이션은 컨테이너 기동 시 `alembic upgrade head`로 적용한다. 단일 노드 테스트 운영에서 별도 배포 단계를 두지 않는 가장 단순한 방법이다.
+  - 잠금 임계·시간은 호출 시점에 환경변수를 읽는다. 모듈 로드 시 고정하면 설정 변경과 테스트가 반영되지 않는다.
+- 실행한 검증
+  - `uv run pytest -q` — 잠금 테스트 최초 `2 failed`, 서빙 테스트 최초 import 실패, 시드 회귀 테스트 최초 `1 failed`(모두 의도한 Red) → 구현 후 전체 `46 passed`.
+  - 테스트 운영 스택: `docker compose -f compose.testops.yaml ps`에서 3개 서비스 `running`, 호스트 게시 포트 0개(`Publishers`의 PublishedPort 모두 0) → VER-27 충족.
+  - 공개 도메인(VER-25/AC-28): `/` 200, `/api/health` `{"status":"ok"}`, 비로그인 `/api/auth/me` 401, 로그인 200 + `Set-Cookie … HttpOnly … SameSite=lax; Secure`, 인증 후 학생 47명, 로그아웃 204 → `/me` 401, SPA 딥링크 `/daily` 200.
+  - 기존 서비스 영향 없음: `https://yongs-wiki.com/` 200.
+  - VER-26(AC-29)는 잠금 테스트 3건으로 충족.
+- 결과: TASK-40·TASK-41 완료. TASK-42는 노출과 검증이 끝났으나 **재부팅 자동 기동 조건이 미충족**이라 `in-progress`로 남긴다.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -248,8 +273,9 @@
 
 ## 미완료 항목
 
-- TASK-01(자식 1건 잔여: TASK-40), TASK-13~TASK-39
-- VER-01~VER-05·VER-07·VER-08·VER-09 통과. VER-06(AC-07)은 API·화면 양쪽에서 확인했으나 대시보드(TASK-14·15)에서 최종 판정
+- TASK-42(재부팅 자동 기동), TASK-13~TASK-39
+- VER-01~VER-05·VER-07·VER-08·VER-09·VER-25·VER-26·VER-27 통과. VER-06(AC-07)은 대시보드(TASK-14·15)에서 최종 판정
+- Docker Desktop 로그인 시 자동 시작 미설정 — 재부팅 후 테스트 운영 스택이 수동 기동을 요구한다
 - AC-05의 실제 브라우저 육안 확인은 미수행(자동화 제외 항목, 사용자 확인 필요)
 - VER-23(마이그레이션 왕복)은 TASK-03에서 1차 확보. 나머지 VER 항목은 미수행
 - 로그인 시도 제한 임계값·잠금 시간 미결정 (TASK-40)
@@ -257,7 +283,7 @@
 
 ## 재개 지점
 
-- 다음 작업: [TASK-14 KPI 집계 API](../../plan.md#task-14-kpi-집계-api)
+- 다음 작업: [TASK-42](../../plan.md#task-42-mathdesk-터널-등록과-노출-검증) 마무리 후 [TASK-14 KPI 집계 API](../../plan.md#task-14-kpi-집계-api)
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
 - 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
@@ -266,8 +292,8 @@
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v1`, [DESIGN-mathdesk](../../design.md) `v1`
-- 완료된 항목: 기준선 승인, ADR-001~007, 계획, TASK-02~TASK-12(TASK-40 제외)
-- 미완료 항목: TASK-01(TASK-40), TASK-13~TASK-39
-- 차단 요인: 없음
-- 다음 행동: TASK-14의 AC-07·AC-13 집계 단위 테스트(Red)를 먼저 작성한다
+- 완료된 항목: 기준선 v1·v2 승인, ADR-001~008, DCR-001, 계획, TASK-02~TASK-12, TASK-40, TASK-41
+- 미완료 항목: TASK-42(자동 기동), TASK-13~TASK-39
+- 차단 요인: Docker Desktop 자동 시작 설정은 사용자 결정 사항
+- 다음 행동: 자동 기동 방침 확정 후 TASK-42를 닫고 TASK-14의 AC-07·AC-13 테스트(Red)를 작성한다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.

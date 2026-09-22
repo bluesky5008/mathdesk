@@ -22,6 +22,7 @@ from .models import (
 )
 
 CAMPUS_NAME = "전병훈 수학학원 고등관"
+DIRECTOR_LOGIN_ID = "director"
 # (반 이름, 학년, 요일, 시작, 종료, 인원)
 CLASS_SPECS = [
     ("고3 윤A", "고3", 1, time(18, 0), time(22, 0), 8),
@@ -49,14 +50,19 @@ async def seed(database_url: str) -> None:
             session.add(campus)
             await session.flush()
 
-            director = AppUser(
-                login_id="director",
-                password_hash="!",  # 로그인 불가 표시. 실제 해시는 TASK-04에서 설정한다.
-                display_name="원장",
-                role="director",
+            # 초기 원장 계정이 이미 만들어져 있을 수 있다(기동 시 환경변수로 생성).
+            director = await session.scalar(
+                select(AppUser).where(AppUser.login_id == DIRECTOR_LOGIN_ID)
             )
-            session.add(director)
-            await session.flush()
+            if director is None:
+                director = AppUser(
+                    login_id=DIRECTOR_LOGIN_ID,
+                    password_hash="!",  # 로그인 불가 표시. 실제 해시는 기동 시 설정된다.
+                    display_name="원장",
+                    role="director",
+                )
+                session.add(director)
+                await session.flush()
             session.add(AppUserCampus(user_id=director.id, campus_id=campus.id))
 
             sequence = 0

@@ -1,0 +1,9 @@
+# 실제 파일은 ops/cloudflared/config.yml (git 추적 제외).
+# cloudflared tunnel create mathdesk 로 만든 터널 ID와 자격 증명을 넣는다.
+tunnel: <TUNNEL_ID>
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: mathdesk.yongs-wiki.com
+    service: http://app:8000
+  - service: http_status:404

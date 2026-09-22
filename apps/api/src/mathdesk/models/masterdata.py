@@ -1,6 +1,6 @@
-from datetime import date, time
+from datetime import date, datetime, time
 
-from sqlalchemy import Boolean, Date, ForeignKey, String, Time, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Time, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, enum_column
@@ -23,6 +23,8 @@ class AppUser(Base):
     display_name: Mapped[str] = mapped_column(String(50))
     role: Mapped[str] = mapped_column(enum_column("user_role", "director", "teacher"))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    failed_login_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AppUserCampus(Base):

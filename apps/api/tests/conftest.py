@@ -168,3 +168,8 @@ def klass(api):
     return {"class_id": class_id, "student_ids": student_ids}
 
 
+
+
+@pytest.fixture
+def password() -> str:
+    return PASSWORD

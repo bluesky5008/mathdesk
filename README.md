@@ -6,7 +6,7 @@
 |---|---|
 | 상태 | 기준선 `v1` 승인 완료 · 구현 진행 중 ([계획](docs/plan.md)) |
 | 스택 | React 18 + Vite + TypeScript / FastAPI (Python 3.12) + SQLAlchemy 2.0 + Alembic / PostgreSQL |
-| 배포 | Phase A: 로컬 `docker compose` → Phase B: Kubernetes |
+| 배포 | Phase A: 로컬 `docker compose` · Phase A′: 테스트 운영 <https://mathdesk.yongs-wiki.com> ([ops](ops/README.md)) → Phase B: Kubernetes |
 | 요구사항 | [`docs/requirements.md`](docs/requirements.md) |
 | 설계 | [`docs/design.md`](docs/design.md) |
 | 설계 결정 | [`docs/decisions.md`](docs/decisions.md) (ADR-001~007) |
@@ -72,4 +72,4 @@ python omr_reader.py ksat-2027-math.json <scan.png>   # 실제 스캔 판독
 
 ## 다음 단계
 
-기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. 현재 TASK-12(일일 입력 화면)까지 완료 — M0~M2 동작. 기준선 v2(DCR-001)로 테스트 운영 노출 작업(TASK-40~42)이 우선이다.
+기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. M0~M2 동작. 기준선 v2(DCR-001)로 테스트 운영 노출(TASK-40·41)까지 완료되어 <https://mathdesk.yongs-wiki.com>에서 접근할 수 있다. 다음은 TASK-14(대시보드 KPI 집계).

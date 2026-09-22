@@ -18,3 +18,7 @@ prototype/omr/synthetic_*.png
 prototype/omr/registered.png
 prototype/omr/*.npy
 *.tsbuildinfo
+
+# cloudflared 터널 자격 증명·설정 (테스트 운영)
+ops/cloudflared/credentials.json
+ops/cloudflared/config.yml
