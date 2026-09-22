@@ -72,4 +72,4 @@ python omr_reader.py ksat-2027-math.json <scan.png>   # 실제 스캔 판독
 
 ## 다음 단계
 
-기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. 현재 TASK-05(권한·캠퍼스 스코프 강제)까지 완료, 다음은 TASK-07(마스터 데이터 API).
+기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. 현재 TASK-07(마스터 데이터 API)까지 완료, 다음은 TASK-08(마스터 데이터 화면).
