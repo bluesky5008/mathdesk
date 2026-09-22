@@ -25,13 +25,13 @@
 
 ## 기준선과 현재 계획
 
-- 적용 기준선: [REQ-mathdesk](../../requirements.md) `v3`, [DESIGN-mathdesk](../../design.md) `v3` (2026-09-22 재승인)
-- 현재 계획: [PLAN-mathdesk](../../plan.md) — 작업 43건, 사이클 1(MVP M0~M4, TASK-01~22 + TASK-40~42) / 사이클 2(확장 M5~M9, TASK-23~39, TASK-43)
-- 발생한 DCR: [DCR-001](./DCR-001-테스트-운영-환경-노출.md) (`approved`, 기준선 v2), [DCR-002](./DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) (`approved`, 기준선 v3)
+- 적용 기준선: [REQ-mathdesk](../../requirements.md) `v4`, [DESIGN-mathdesk](../../design.md) `v4` (2026-09-23 재승인)
+- 현재 계획: [PLAN-mathdesk](../../plan.md) — 작업 47건, 사이클 1(MVP M0~M4, TASK-01~22 + TASK-40~42) / 사이클 2(확장 M5~M9, TASK-23~39, TASK-43)
+- 발생한 DCR: [DCR-001](./DCR-001-테스트-운영-환경-노출.md) (v2), [DCR-002](./DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) (v3), [DCR-003](./DCR-003-브랜드-자산으로서의-시각-설계.md) (v4) — 모두 `approved`
 
 ## 현재 상태
 
-- 진행 중인 작업: 없음
+- 진행 중인 작업: [TASK-44 디자인 토큰과 공통 컴포넌트 기반](../../plan.md#task-44-디자인-토큰과-공통-컴포넌트-기반) (착수 직전)
 - 마지막 완료 작업: [TASK-23 스키마 2차 (시험·OMR·상담·파일)](../../plan.md#task-23-스키마-2차-시험omr상담파일) (2026-09-22 23:53)
 - 차단 요인: 없음. Anthropic API 키는 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서만 필요하며 그 앞 구현을 차단하지 않는다. 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시 퍼지는 사용자가 보류했다(TTL 만료로 자연 해소)
 
@@ -549,6 +549,22 @@ flowchart TD
 - 통합: 개발 DB와 테스트 운영 DB 모두 `6f28fe0c3cac` 적용 완료. 테스트 운영 재빌드 후 `https://mathdesk.yongs-wiki.com/` HTTP 200 확인.
 - 발견: API 컨테이너에는 `migrations/`·`alembic.ini`가 없어 개발 DB 마이그레이션은 호스트에서 `DATABASE_URL`을 지정해 실행해야 한다(테스트 운영 이미지는 기동 시 자동 적용).
 
+### 2026-09-23 — 기준선 `v4` 발행 (DCR-003 / ADR-010 / ADR-011)
+
+- 계기: 사용자 질문("UI 꾸미기는 언제 하나, 지금은 예쁘지 않다")과 이어진 목표 진술 — "이 뷰를 학생과 학부모에게 보여줌으로써 매출 확대를 도모한다".
+- 감지한 차이: **기준선에 디자인·미관 요구사항이 아예 없었다.** UI 관련 항목은 NFR-13(조작 효율)·NFR-14(해상도)뿐이고 설계에 CSS·디자인 언급이 0건이었다. 실측 결과 웹은 CSS 파일 0개, `className`·`style` 0회로 완전 무스타일이었다. 의도적 제외가 아니라 요구사항 도출 단계의 누락이다.
+- **우선순위를 뒤집은 근거:** 요구사항을 확인하니 [대상과 시나리오](../../requirements.md#대상과-시나리오)가 수신자를 "시스템에 로그인하지 않음"으로 규정하고 [범위 · 제외](../../requirements.md#제외)가 학부모 포털을 명시적으로 뺐다. 즉 **학부모는 웹 UI에 도달하지 않으며, 도달하는 시각물은 리포트 카드(FR-20)와 난이도 분석표 카드(FR-30)뿐이다.** 매출 목표 기준으로 심미 투자 1순위는 웹 UI가 아니라 카드다. 사용자도 도달 경로를 "카톡·문자 리포트 카드"로 한정 확인했다.
+- 사용자 결정 4건: 범위 "지금 기반 + 화면별 다듬기까지", 방식 "가장 좋고 이쁜 솔루션 추천 위임", 도달 경로 "리포트 카드", 렌더러 "HTML/CSS 전환".
+- 결정: [ADR-010](./ADR-010-웹-UI-디자인-시스템.md) 웹은 Tailwind v4 + shadcn/ui 패턴(Radix) + Recharts, 토큰은 순수 CSS 변수 단일 소스. [ADR-011](./ADR-011-리포트-카드-HTML-렌더링.md) 카드는 Pillow → HTML/CSS + 헤드리스 Chromium.
+- 기각한 대안: 컴포넌트 라이브러리(MUI·Mantine) — NFR-13의 표 기반 키보드 입력이 라이브러리 API 밖 요구라 싸워야 한다. WeasyPrint — CSS grid 미지원으로 토큰 공유 이점이 무너진다. Pillow 유지 — 사용자가 지정한 판단 기준(미관 최우선)에 미달.
+- **Q-10 재개:** 2026-09-22 해소 당시 판단 기준은 의존성 무게였고, 매출 목표가 제시되며 기준이 심미적 상한으로 바뀌었다. 설계 DES-08 원안("카드형 HTML로 구성해 이미지로 변환")으로 돌아가는 것이기도 하다.
+- 재작성 위험 평가: 웹 테스트 20건의 쿼리가 전부 의미 기반(`getByRole` 15·`getByLabelText` 5·`getByText` 10, `getByTestId`·`querySelector`·`container` 각 0)이라 역할·레이블을 유지하면 마크업 전면 교체가 안전하다. 이 사실이 "변경 범위가 커도 된다"는 판단의 근거가 되었다.
+- 기준선 변경: FR-40(브랜드)·NFR-18(토큰 일관성)·NFR-19(카드 3초)·AC-30~32 신설, NFR-13 보강, DES-08 전환·DES-08 상세 신설, DES-24 신설, Q-10 재해소. 스키마 변경 없음(브랜드는 기존 `integration_setting` 사용).
+- 계획 변경: TASK-44~47 신설. **기존 화면 재작성(TASK-47)을 마지막에 두어** 학부모에게 닿는 자산을 먼저 완성한다. M5~M9 기능 작업은 그 뒤에 재개한다.
+- 함께 보정: 요구사항 외부 연동 표가 v3(DCR-002) 반영에서 누락되어 "OpenAI 호환 LLM API"로 남아 있었다. 공급자 중립 표기로 고쳤다(의미 변경 없음).
+- 재승인: 2026-09-23 사용자 응답 `승인` → 기준선 `v4` 발행, ADR-010·ADR-011 `approved`.
+- 검증: 문서 변경만이며 코드 변경이 없다. 링크·앵커 전수 검증만 수행했다.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -573,7 +589,7 @@ flowchart TD
 
 ## 재개 지점
 
-- 다음 작업: [TASK-24 M5 성적 통계](../../plan.md#task-24-m5-성적-통계) — 분해 작업 TASK-25(집계 API·엑셀) → TASK-26(화면) 순서
+- 다음 작업: [TASK-44 디자인 토큰과 공통 컴포넌트 기반](../../plan.md#task-44-디자인-토큰과-공통-컴포넌트-기반) — 이후 TASK-45(카드 렌더러) → TASK-46(카드 재설계·시안 확인) → TASK-47(기존 화면 재작성). M5~M9 기능 작업(TASK-24~)은 그 뒤
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
 - 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
 
@@ -582,8 +598,8 @@ flowchart TD
 - 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
 - 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v3`, [DESIGN-mathdesk](../../design.md) `v3`
-- 완료된 항목: 기준선 v1·v2·v3 승인, ADR-001~009, DCR-001·DCR-002, 계획, 사이클 1 전체(TASK-01~TASK-22), TASK-40~TASK-42, TASK-23
-- 미완료 항목: TASK-24~TASK-39, TASK-43(사이클 2)
+- 완료된 항목: 기준선 v1~v4 승인, ADR-001~011, DCR-001~003, 계획, 사이클 1 전체(TASK-01~TASK-22), TASK-40~TASK-42, TASK-23
+- 미완료 항목: TASK-44~TASK-47(시각 설계), TASK-24~TASK-39·TASK-43(사이클 2)
 - 차단 요인: 없음
-- 다음 행동: TASK-25의 통계 집계 인수 테스트(AC-19·AC-20)를 Red로 작성한다
+- 다음 행동: TASK-44에서 Tailwind v4를 도입하고 `tokens.css` 단일 소스를 만든다. 선행 테스트는 토큰이 웹·카드 양쪽에서 참조 가능한 순수 CSS임을 고정하는 검증(VER-30 웹 측)
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.

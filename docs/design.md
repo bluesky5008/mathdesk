@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v3`
+> 기준선: `v4`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-22`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -11,7 +11,7 @@
 ## 요약
 
 - 목적: [REQ-mathdesk](./requirements.md)의 기능·비기능 요구사항을 만족하는 시스템 구조, 데이터 모델, 인터페이스 계약, 동작 흐름과 검증 전략을 정의한다.
-- 현재 결론 또는 상태: React SPA + FastAPI + PostgreSQL 단일 백엔드로 구성하고, 외부 의존(메시징·LLM·스토리지·OMR 판독·문서 파싱)을 5개 어댑터 인터페이스 뒤에 둔다. 컴포넌트 22개와 테이블 24개, REST 계약, OMR·메시지·시험지 흐름을 정의했다. 기준선 `v1` 승인 후 [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md)로 테스트 운영 노출 구성이, [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 LLM 어댑터의 공급자 중립 계약이 반영되어 기준선 `v3`가 유효하다.
+- 현재 결론 또는 상태: React SPA + FastAPI + PostgreSQL 단일 백엔드로 구성하고, 외부 의존(메시징·LLM·스토리지·OMR 판독·문서 파싱)을 5개 어댑터 인터페이스 뒤에 둔다. 컴포넌트 22개와 테이블 24개, REST 계약, OMR·메시지·시험지 흐름을 정의했다. 기준선 `v1` 승인 후 [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md)로 테스트 운영 노출 구성이, [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 LLM 어댑터의 공급자 중립 계약이, [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)으로 디자인 시스템과 카드 HTML 렌더링이 반영되어 기준선 `v4`가 유효하다.
 - 다음 행동: wf-implement 스킬로 구현 계획을 수립한다. M0~M4를 선행 단계로 분할한다.
 
 ## 문서 연결
@@ -23,6 +23,8 @@
 | input | decision | [ADR-002: PostgreSQL 단일 저장소](./work/20260922-mathdesk-baseline/ADR-002-PostgreSQL-단일-저장소.md) | document | DES-21 |
 | input | decision | [ADR-003: AI 작업 분리와 개인정보 경계](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md) | document | DES-13, DES-14, DES-15 |
 | input | decision | [ADR-009: LLM 공급자 추상화와 Claude 연결](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md) | document | DES-14, 데이터 모델 |
+| input | decision | [ADR-010: 웹 UI 디자인 시스템](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md) | document | DES-24 |
+| input | decision | [ADR-011: 리포트 카드 HTML 렌더링](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) | document | DES-08 |
 | input | decision | [ADR-004: 문서 입력 정규화 파이프라인](./work/20260922-mathdesk-baseline/ADR-004-문서-입력-정규화-파이프라인.md) | document | DES-11, DES-12 |
 | input | decision | [ADR-005: 메시징 어댑터 단일화](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md) | document | DES-09 |
 | input | decision | [ADR-006: OMR 양식 고정과 템플릿 판독](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) | document | DES-15, DES-16, DES-17 |
@@ -102,7 +104,7 @@
 | DES-05 | 일일 기록 서비스 | 수업 세션(반 단위)과 학생 일일 기록의 부분 갱신, 출결 확정·해제, 재검사 대상 판정. [상세](#des-05-상세) |
 | DES-06 | 집계 서비스 | 대시보드 KPI와 통계 조회를 SQL 집계로 계산. 저장 집계 테이블을 두지 않는다 |
 | DES-07 | 메시지 렌더러 | 세션·학생 기록·등급 문구·템플릿을 병합해 본문 문자열 생성. 순수 함수로 두어 단위 테스트 대상으로 삼는다 |
-| DES-08 | 리포트 이미지 렌더러 | 렌더된 본문을 카드형 HTML로 구성해 이미지로 변환 |
+| DES-08 | 리포트 이미지 렌더러 | 렌더된 본문을 카드형 HTML로 구성해 헤드리스 Chromium으로 이미지 변환. 디자인 토큰을 인라인하고 브라우저 인스턴스를 warm 유지. 상세는 [DES-08 상세](#des-08-상세) |
 | DES-09 | MessagingAdapter | `send(channel, recipients, body|template_id, vars)` 단일 인터페이스. 알리고 구현, 테스트 모드 구현, 알림톡→SMS 폴백 |
 | DES-10 | StorageAdapter | `put/get/delete/signed_url`. Phase A는 로컬 파일시스템, Phase B는 오브젝트 스토리지 |
 | DES-11 | DocumentIngest | `.hwp`·`.hwpx`·`.pdf`·이미지를 `{pages, blocks, page_images}`로 정규화 |
@@ -117,6 +119,7 @@
 | DES-20 | 설정·시크릿 관리 | 연동 설정 저장(민감값 암호화), 환경변수 우선순위, 연결 상태 점검 |
 | DES-21 | 스키마 마이그레이션 | Alembic 리비전과 시드 데이터 스크립트 |
 | DES-22 | 내보내기 | 통계·시험 결과 엑셀 생성, 난이도 분석표·리포트 이미지 파일 생성 |
+| DES-24 | 디자인 시스템 | 디자인 토큰 단일 소스(`tokens.css`), 공통 컴포넌트(버튼·폼·표·카드·대화상자), 표 기반 입력 컴포넌트. 웹과 리포트 카드가 같은 토큰을 사용한다. 상세는 [DES-24 상세](#des-24-상세) |
 | DES-23 | 테스트 운영 서빙 | 웹 정적 빌드를 API가 SPA fallback으로 서빙하고, `Secure` 쿠키와 노출 표면 축소를 설정으로 제어한다. 외부 경로는 cloudflared 터널 하나다 |
 
 #### DES-03 상세
@@ -158,6 +161,26 @@
 - `AnthropicLlm`은 구조화 출력(`output_config.format`)으로 분석 결과 스키마를 강제하고, 단원 분류 체계 프롬프트에 프롬프트 캐싱을 적용한다. 스키마는 분석 결과 모델에서 생성해 단일 소스로 유지한다.
 - 응답의 `stop_reason == "refusal"`은 문항 단위 실패로 분류해 [시험지 분석](#시험지-분석) 5번 경로를 탄다. 응답 본문을 무조건 읽지 않는다.
 - 모든 호출은 `llm_call_log`에 공급자·모델·입출력·캐시 토큰·비용을 기록한다(NFR-15).
+
+#### DES-08 상세
+
+리포트 카드는 학부모에게 반복 도달하는 유일한 시각 자산이므로 심미적 상한이 높은 경로를 쓴다([ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md)).
+
+- 서버가 HTML 템플릿을 조립하고 `tokens.css`를 인라인한 뒤 헤드리스 Chromium(Playwright)으로 스크린샷을 찍는다. 외부 입력을 렌더하지 않으며 값은 전부 서버가 조립한 내부 데이터다.
+- 브라우저 인스턴스는 FastAPI lifespan에서 1개를 warm으로 유지하고 요청마다 페이지만 연다. 콜드 스타트를 요청 경로에서 제거한다(NFR-19).
+- 난이도 분석표 카드(FR-30)도 같은 렌더러를 쓰고 템플릿만 다르다.
+- 웹 미리보기와 발송 이미지가 같은 HTML·CSS를 쓰므로 미리보기와 결과가 갈라지지 않는다.
+- 렌더 실패는 카드 생성 실패로만 처리한다. 카드는 첨부이므로 문자 본문 발송은 계속 가능해야 한다.
+- 시각 회귀는 기준 이미지 비교로 고정하고 **컨테이너에서 검증한다**(폰트 가용성 차이 전례).
+- 브랜드(학원명·로고·시그니처 색)는 `integration_setting`에서 읽는다(FR-40). 로고 미설정 시 학원명 텍스트로 대체한다.
+
+#### DES-24 상세
+
+- **토큰 단일 소스:** `apps/web/src/styles/tokens.css`에 색·간격·타이포 스케일·라운드·그림자를 CSS 변수로 정의한다. 프레임워크에 묶이지 않은 순수 CSS이므로 웹(Tailwind v4 `@theme`)과 카드 템플릿(인라인)이 함께 읽는다(NFR-18).
+- **공통 컴포넌트:** shadcn/ui 패턴으로 소스를 저장소에 둔다. 라이브러리 의존이 아니라 코드 소유다.
+- **표 기반 입력:** NFR-13의 키보드 이동·즉시 저장 동작은 이 컴포넌트가 소유하며 외부 라이브러리 동작에 맞추지 않는다.
+- **의미 구조 보존:** 재작성 시 역할과 레이블을 유지해 기존 테스트가 그대로 통과해야 한다. 통과하지 않으면 마크업이 잘못된 것으로 본다.
+- **대상 환경:** 1280px 이상 데스크톱 전용(NFR-14). 모바일 반응형은 범위 밖. 다크 모드는 토큰 레벨에서 지원하되 기본값은 라이트.
 
 ## 데이터와 인터페이스
 
@@ -378,6 +401,8 @@ class OmrReader(Protocol):
 | 기술 스택·실행 형태 | React SPA + FastAPI, 로컬 `docker compose` | Electron/Tauri는 웹 전환 시 재작업 발생. Node 백엔드는 문서 파싱·OpenCV·모델 추론을 별도 서비스로 분리해야 함 | [ADR-001](./work/20260922-mathdesk-baseline/ADR-001-기술-스택과-실행-형태.md) |
 | 저장소 | PostgreSQL 단일 | SQLite는 Phase B 전환 시 쿼리·타입 차이로 재검증 필요 | [ADR-002](./work/20260922-mathdesk-baseline/ADR-002-PostgreSQL-단일-저장소.md) |
 | AI 배치·개인정보 경계 | OMR은 로컬 OpenCV, 문항 분석은 외부 LLM 기본·로컬 폴백 | VLM 전면 사용은 판독 오류와 개인정보 전송 위험, 로컬 전용은 분석 품질 부족 | [ADR-003](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md) |
+| 웹 디자인 시스템 | Tailwind v4 + shadcn/ui 패턴(Radix) + Recharts, 토큰 단일 소스 | 컴포넌트 라이브러리는 NFR-13의 표 기반 키보드 입력이 API 밖 요구라 싸워야 함. 순수 CSS는 12개 화면 일관성 보장 장치가 없음 | [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md) |
+| 리포트 카드 렌더러 | HTML/CSS + 헤드리스 Chromium | Pillow는 그라데이션·차트·정교한 타이포 계층이 사실상 불가. WeasyPrint는 CSS grid 미지원으로 토큰 공유 이점이 무너짐 | [ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) |
 | LLM 공급자 계약 | 공급자 중립 계약 + 구현체 3종, 기본 `claude-opus-5` | OpenAI 호환 shim은 구조화 출력·캐싱·사용량 기록 상실. Anthropic 전용은 가변성 상실. 범용 추상화 라이브러리는 과한 의존성 | [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md) |
 | 문서 입력 | 4포맷을 공통 구조로 정규화 | 포맷별 개별 처리 경로는 분석 코드가 4중 분기됨 | [ADR-004](./work/20260922-mathdesk-baseline/ADR-004-문서-입력-정규화-파이프라인.md) |
 | 메시징 | 알리고 단일 어댑터로 SMS·알림톡 통합 | 채널별 SDK 분리는 폴백 구현이 복잡해짐 | [ADR-005](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md) |
@@ -398,7 +423,7 @@ ADR로 분리하지 않은 설계 판단
 | ID | 질문·가정 | 해소 조건 |
 |---|---|---|
 | Q-09 | 가정 — 백그라운드 작업은 별도 워커 프로세스 없이 FastAPI 프로세스 내 작업 큐로 충분하다 | 시험지·OMR 동시 처리 부하 측정 후 재검토 |
-| Q-10 | 해소(2026-09-22) — 리포트 이미지는 서버에서 생성하되 헤드리스 브라우저 대신 이미지 라이브러리로 직접 그린다. 설계상 위치(서버)는 그대로이므로 DCR 없이 진행했다 | 해소됨 |
+| Q-10 | **재개 후 재해소(2026-09-23)** — 리포트 이미지는 서버에서 HTML/CSS를 헤드리스 Chromium으로 렌더한다. 2026-09-22 해소 때의 판단 기준은 의존성 무게였고, 매출 목표가 제시되면서 기준이 심미적 상한으로 바뀌어 [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)·[ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md)로 재결정했다 | 해소됨 |
 | Q-11 | 질문 — 한글 수식 스크립트를 LLM 입력으로 그대로 쓸지 LaTeX로 변환할지 | 초기 분석 품질 측정 후 결정 |
 
 ## 위험
@@ -447,6 +472,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v2` (2026-09-22): [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) 재승인으로 테스트 운영 노출 경계(DES-23)와 보안 속성이 반영되었고 [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)이 `approved`로 전이되었다.
 
+기준선 `v4` (2026-09-23): [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) 재승인으로 DES-08이 HTML/Chromium 렌더링으로 바뀌고 DES-24(디자인 시스템)가 신설되었으며 [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md)·[ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md)이 `approved`로 전이되었다. Q-10은 재개 후 재해소되었다.
+
 기준선 `v3` (2026-09-22): [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) 재승인으로 DES-14가 공급자 중립 계약으로 바뀌고 `llm_call_log`에 공급자·캐시 토큰 컬럼이 추가되었으며 [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)가 `approved`로 전이되었다. [ADR-003](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md)은 결정 2만 부분 대체되고 `approved`를 유지한다.
 
 ## 변경 이력
@@ -459,6 +486,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-09-22 | 테스트 운영 노출 경계·DES-23·보안 속성 추가 | [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md), [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md) | approved 유지, 기준선 v1 → v2 | Claude / 사용자 |
 | 2026-09-22 | Q-10·RISK-10 해소 기록, API 캐시 금지 속성 추가 (명확화) | 구현 중 발견한 CDN 캐시 노출 사고 | approved 유지, 기준선 v2 유지 | Claude |
 | 2026-09-22 | DES-14 공급자 중립 계약화, DES-14 상세 신설, `llm_call_log` 컬럼 3개 추가, 시험지 분석 흐름에 `refusal` 처리 추가 | [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md), [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md) | approved 유지, 기준선 v2 → v3 | Claude / 사용자 |
+| 2026-09-23 | DES-08 HTML/Chromium 렌더링 전환과 상세 신설, DES-24 디자인 시스템 신설, Q-10 재개 후 재해소 | [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md), [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md), [ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) | approved 유지, 기준선 v3 → v4 | Claude / 사용자 |
 
 ## 인계
 

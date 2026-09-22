@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v3`
+> 기준선: `v4`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-22`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 43건 중 25건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-24 M5 성적 통계](#task-24-m5-성적-통계)를 시작한다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 47건 중 25건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-44 디자인 토큰과 공통 컴포넌트 기반](#task-44-디자인-토큰과-공통-컴포넌트-기반)을 시작한다. [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)에 따라 시각 설계(TASK-44~47)를 M5~M9 기능 작업보다 먼저 수행한다.
 
 ## 문서 연결
 
@@ -22,13 +22,14 @@
 | input | baseline | [DESIGN-mathdesk: 설계](./design.md) | DES-01~DES-22 | 승인된 설계 기준선 v1 |
 | input | decision | [결정 등록부](./decisions.md) | ADR-001~ADR-009 | 적용되는 설계 결정 |
 | input | change | [DCR-002: M6 LLM 공급자 중립화와 Claude 연결](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) | TASK-23, TASK-31, TASK-43 | 기준선 v3가 바꾼 작업 |
+| input | change | [DCR-003: 브랜드 자산으로서의 시각 설계](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) | TASK-44~TASK-47 | 기준선 v4가 추가한 작업 |
 | output | implementation | [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md) | document | 이 계획의 수행·검증 기록 |
 
 ## 기준선
 
-- 관련 요구사항: [REQ-mathdesk](./requirements.md) 기준선 `v3` (2026-09-22 재승인)
-- 관련 설계: [DESIGN-mathdesk](./design.md) 기준선 `v3` (2026-09-22 재승인)
-- 관련 ADR·DCR: [ADR-001~ADR-009](./decisions.md#등록부) (`approved`), [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) (`approved`, 기준선 v2), [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) (`approved`, 기준선 v3)
+- 관련 요구사항: [REQ-mathdesk](./requirements.md) 기준선 `v4` (2026-09-23 재승인)
+- 관련 설계: [DESIGN-mathdesk](./design.md) 기준선 `v4` (2026-09-23 재승인)
+- 관련 ADR·DCR: [ADR-001~ADR-011](./decisions.md#등록부) (`approved`), [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) (v2), [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) (v3), [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) (v4)
 
 ## 작업 정의
 
@@ -80,6 +81,12 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │  ├─ [✓] TASK-40 로그인 시도 제한 .................. 2026-09-22 14:31
 │  ├─ [✓] TASK-41 단일 오리진 테스트 운영 서빙 ...... 2026-09-22 14:44
 │  └─ [✓] TASK-42 mathdesk 터널 등록과 노출 검증 .... 2026-09-22 15:26
+│
+├─ 시각 설계 (DCR-003) ............................. in-progress (0/4)
+│  ├─ [▶] TASK-44 디자인 토큰·공통 컴포넌트 기반 .... depends: —
+│  ├─ [ ] TASK-45 리포트 카드 HTML 렌더러 전환 ...... depends: TASK-44
+│  ├─ [ ] TASK-46 카드 재설계·브랜드 (시안 확인) .... depends: TASK-45
+│  └─ [ ] TASK-47 기존 화면 5개 재작성 .............. depends: TASK-44
 │
 └─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (1/18)
    ├─ [✓] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... 2026-09-22 23:53
@@ -199,7 +206,76 @@ flowchart TD
     classDef gate fill:#ffcdd2,stroke:#c62828
 ```
 
+시각 설계 (노드 5)
+
+```mermaid
+flowchart TD
+    V["시각 설계 (DCR-003)"]:::active
+    V --> T44["TASK-44 토큰·공통 컴포넌트"]:::active
+    V --> T45["TASK-45 카드 HTML 렌더러 전환"]:::todo
+    V --> T46["TASK-46 카드 재설계·브랜드"]:::todo
+    V --> T47["TASK-47 기존 화면 재작성"]:::todo
+    T44 -. depends .-> T45
+    T45 -. depends .-> T46
+    T44 -. depends .-> T47
+    classDef done fill:#c8e6c9,stroke:#2e7d32
+    classDef active fill:#fff9c4,stroke:#f9a825
+    classDef todo fill:#eceff1,stroke:#90a4ae
+```
+
 ## 작업 목록
+
+### 시각 설계 (DCR-003)
+
+> [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)이 규정한 우선순위에 따라 학부모에게 도달하는 자산(리포트 카드)을 먼저 완성하고, 내부 운영 화면 재작성을 마지막에 둔다.
+
+### TASK-44: 디자인 토큰과 공통 컴포넌트 기반
+
+- 상태: in-progress
+- 상위: 없음
+- 목표: Tailwind v4를 도입하고 `tokens.css`에 색·간격·타이포·라운드·그림자를 CSS 변수로 단일 정의한다. shadcn/ui 패턴으로 공통 컴포넌트(버튼·입력·표·카드·대화상자)와 레이아웃 셸을 저장소에 둔다.
+- 관련 요구사항과 설계: [NFR-13·NFR-14·NFR-18](./requirements.md#비기능-요구사항), [DES-24](./design.md#컴포넌트와-책임), [DES-24 상세](./design.md#des-24-상세), [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md)
+- 변경 대상: `apps/web/src/styles/`, `apps/web/src/components/ui/`, `apps/web/vite.config.ts`, `package.json`
+- 의존성: 없음
+- 위험: 토큰 구조를 잘못 잡으면 이후 3개 작업이 모두 영향을 받는다. 번들 크기 증가
+- 검증 방법: 선행 테스트 — 토큰 파일이 웹과 카드 양쪽에서 참조 가능한 순수 CSS임을 고정하는 테스트(VER-30의 웹 측). 기존 웹 테스트 20건 전량 통과 유지
+- 완료 조건: `npm test`와 `npm run build` 통과, 토큰 단일 소스 확립, 공통 컴포넌트가 최소 1개 화면에서 동작
+
+### TASK-45: 리포트 카드 HTML 렌더러 전환
+
+- 상태: pending
+- 상위: 없음
+- 목표: `report.py`를 HTML 템플릿 + Playwright(Chromium) 스크린샷으로 교체한다. 브라우저를 lifespan에서 warm 유지하고 `tokens.css`를 인라인한다. 컨테이너에 Chromium을 설치한다.
+- 관련 요구사항과 설계: [FR-20·FR-22](./requirements.md#기능-요구사항), [NFR-19](./requirements.md#비기능-요구사항), [AC-16·AC-31·AC-32](./requirements.md#인수-조건), [DES-08 상세](./design.md#des-08-상세), [ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md)
+- 변경 대상: `apps/api/src/mathdesk/report.py`, `apps/api/src/mathdesk/main.py`(lifespan), `apps/api/Dockerfile`, `Dockerfile.testops`, `pyproject.toml`
+- 의존성: TASK-44
+- 위험: 컨테이너 이미지 +300~400MB, Chromium 상시 메모리. 맥미니에서 home-wiki와 경합할 수 있다. 폰트 가용성 차이로 로컬과 컨테이너 결과가 갈릴 수 있다
+- 검증 방법: 선행 테스트 — 기존 `test_report_image.py`의 계약(PNG 반환·내용 변경 시 이미지 변화·스코프 거부)을 새 렌더러로 유지하고 Red로 시작. 시각 회귀 기준 이미지 비교. **컨테이너에서 검증**. warm 상태 30장 연속 p95 측정(VER-31)
+- 완료 조건: AC-16 유지, NFR-19(p95 3초) 충족, 이미지 크기·메모리 실측 기록, Pillow 경로와 글리프 테스트 제거
+
+### TASK-46: 카드 재설계와 브랜드 반영
+
+- 상태: pending
+- 상위: 없음
+- 목표: 리포트 카드의 레이아웃·타이포·정보 위계를 재설계하고 학원 브랜드(학원명·로고·시그니처 색)를 반영한다. 난이도 분석표 카드 템플릿도 같은 언어로 준비한다.
+- 관련 요구사항과 설계: [FR-40](./requirements.md#기능-요구사항), [FR-20·FR-30](./requirements.md#기능-요구사항), [AC-30](./requirements.md#인수-조건), [DES-08 상세](./design.md#des-08-상세)
+- 변경 대상: 카드 템플릿, `integration_setting` 브랜드 키, 설정 화면
+- 의존성: TASK-45
+- 위험: **디자인 품질은 도구가 보장하지 않는다.** 학원 로고 자산이 없을 수 있다
+- 검증 방법: **시안을 먼저 만들어 사용자 확인을 받은 뒤 확정한다.** 브랜드 설정 반영 확인(VER-29). 실제 카톡 발송 후 폰에서 확인
+- 완료 조건: 사용자가 시안을 확정하고 AC-30 통과. 로고 미설정 시 학원명 텍스트 대체 동작
+
+### TASK-47: 기존 화면 5개 재작성
+
+- 상태: pending
+- 상위: 없음
+- 목표: Dashboard·Daily·Students·Classes·Messages와 `LoginForm`·`Roster`·`AttendanceButtons`를 공통 컴포넌트 위로 옮긴다. 일일 입력의 표 기반 키보드 이동을 공통 컴포넌트가 소유하도록 정리한다.
+- 관련 요구사항과 설계: [NFR-13](./requirements.md#비기능-요구사항), [DES-24 상세](./design.md#des-24-상세)
+- 변경 대상: `apps/web/src/pages/`, `apps/web/src/components/`, `apps/web/src/App.tsx`
+- 의존성: TASK-44
+- 위험: 재작성 중 기능 회귀. 화면 수가 많아 한 번에 하면 원인 추적이 어렵다
+- 검증 방법: **화면 단위로 나눠 진행하고 매 화면마다 기존 테스트 20건 전량 재실행.** 역할·레이블 보존 원칙 — 테스트가 깨지면 마크업이 잘못된 것으로 본다
+- 완료 조건: 웹 테스트 20건과 API 78건 전량 통과, `npm run build` 통과, 화면 ①~④ 시각 확인
 
 ### 사이클 1 — MVP (M0~M4)
 
@@ -782,9 +858,12 @@ flowchart TD
 | VER-25 | AC-28 | TASK-42 | 공개 도메인 로그인 → 쿠키 `Secure`·`HttpOnly` 확인 → 로그아웃 후 401 |
 | VER-26 | AC-29 | TASK-40 | 임계 횟수 실패 후 거부, 잠금 경과 후 허용, 감사 로그 확인 |
 | VER-27 | NFR-17 | TASK-41 | 노출 구성의 호스트 포트 게시 목록과 기본 비밀번호 미사용 확인 |
+| VER-29 | AC-30 | TASK-46 | 브랜드 설정 후 카드 렌더 → 학원명·로고·색 반영 확인 |
+| VER-30 | AC-31 | TASK-44, TASK-45 | 웹 번들과 카드 템플릿이 같은 토큰 파일을 참조함을 테스트로 확인 |
+| VER-31 | AC-32, NFR-19 | TASK-45 | warm 상태에서 카드 30장 연속 생성 p95 측정 |
 | VER-28 | NFR-15 | TASK-31, TASK-43 | 호출 로그의 공급자·입출력·캐시 토큰·비용 기록, 상한 초과 시 중단. Anthropic 실호출 실측은 TASK-43 |
 
-자동화하지 않는 시나리오 검증: 화면 ①~④의 시각적 재현 확인(TASK-15·TASK-12·TASK-20·TASK-32), 실발송·실스캔 검증(Q-02·Q-03·Q-08 해소 시점까지 보류), Claude 실호출 검증(TASK-43 — API 키 확보 시점까지 보류).
+자동화하지 않는 시나리오 검증: 화면 ①~④의 시각적 재현 확인(TASK-15·TASK-12·TASK-20·TASK-32), 실발송·실스캔 검증(Q-02·Q-03·Q-08 해소 시점까지 보류), Claude 실호출 검증(TASK-43 — API 키 확보 시점까지 보류), 카드 시안 심미 확인(TASK-46 — 사용자 판단 항목).
 
 ## 마이그레이션과 롤백
 
