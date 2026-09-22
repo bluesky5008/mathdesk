@@ -162,3 +162,35 @@ export function setAttendanceConfirmed(sessionId: number, confirmed: boolean): P
     method: 'POST',
   })
 }
+
+export type Dashboard = {
+  campus: { enrolled_students: number; active_classes: number }
+  attendance: {
+    class_id: number
+    class_name: string
+    enrolled: number
+    attending: number
+  } | null
+  homework: {
+    completion_rate: number | null
+    delta_points: number | null
+    missing: number
+    recheck_targets: number
+  }
+  test: {
+    average: number | null
+    count: number
+    max: number | null
+    max_count: number
+    min: number | null
+  }
+  last_session: {
+    session_date: string
+    progress: { period: number; content: string | null }[]
+    homework: string | null
+  } | null
+}
+
+export function fetchDashboard(classId: number, date: string): Promise<Dashboard> {
+  return request<Dashboard>(`/dashboard?class_id=${classId}&date=${date}`)
+}

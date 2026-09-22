@@ -72,4 +72,4 @@ python omr_reader.py ksat-2027-math.json <scan.png>   # 실제 스캔 판독
 
 ## 다음 단계
 
-기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. M0~M2와 대시보드 KPI 집계까지 동작한다. 테스트 운영은 <https://mathdesk.yongs-wiki.com>에서 접근할 수 있다. 다음은 TASK-15(대시보드 화면).
+기준선 `v1` 승인 후 [`docs/plan.md`](docs/plan.md)의 TASK-01~39로 구현 중이다. M0~M3(인증·학생/반·일일 입력·대시보드)가 동작한다. 테스트 운영은 <https://mathdesk.yongs-wiki.com>에서 접근할 수 있다. 다음은 M4 메시지(TASK-17~20).

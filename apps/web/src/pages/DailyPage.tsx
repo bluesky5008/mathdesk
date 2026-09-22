@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
+import { AttendanceButtons } from '../components/AttendanceButtons'
 import {
   fetchClasses,
   fetchDaily,
@@ -13,12 +14,6 @@ import {
   type RecordPatch,
 } from '../api'
 
-const ATTENDANCE = [
-  ['present', '출석'],
-  ['late', '지각'],
-  ['absent', '결석'],
-  ['early_leave', '조퇴'],
-] as const
 const GRADES = ['A+', 'A', 'B', 'C', 'D', 'F']
 const PERIODS = [1, 2, 3, 4]
 const EMPTY_NOTES: NotesPatch = {}
@@ -158,24 +153,11 @@ export function DailyPage() {
               <tr key={record.student_id}>
                 <td>{record.name}</td>
                 <td>
-                  {ATTENDANCE.map(([value, label]) => {
-                    const pressed = valueOf(record, 'attendance_status') === value
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        aria-pressed={pressed}
-                        disabled={locked}
-                        onClick={() =>
-                          patch(record.student_id, {
-                            attendance_status: pressed ? 'unchecked' : value,
-                          })
-                        }
-                      >
-                        {label}
-                      </button>
-                    )
-                  })}
+                  <AttendanceButtons
+                    value={String(valueOf(record, 'attendance_status'))}
+                    disabled={locked}
+                    onChange={(next) => patch(record.student_id, { attendance_status: next })}
+                  />
                   <input
                     aria-label={`${record.name} 사유`}
                     value={String(valueOf(record, 'attendance_reason') ?? '')}
