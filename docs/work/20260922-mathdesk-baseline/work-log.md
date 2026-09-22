@@ -31,7 +31,7 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-44 디자인 토큰과 공통 컴포넌트 기반](../../plan.md#task-44-디자인-토큰과-공통-컴포넌트-기반) (착수 직전)
+- 진행 중인 작업: [TASK-44 디자인 토큰과 공통 컴포넌트 기반](../../plan.md#task-44-디자인-토큰과-공통-컴포넌트-기반) (**미착수, 상태만 `in-progress`** — 코드 변경 0)
 - 마지막 완료 작업: [TASK-23 스키마 2차 (시험·OMR·상담·파일)](../../plan.md#task-23-스키마-2차-시험omr상담파일) (2026-09-22 23:53)
 - 차단 요인: 없음. Anthropic API 키는 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서만 필요하며 그 앞 구현을 차단하지 않는다. 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시 퍼지는 사용자가 보류했다(TTL 만료로 자연 해소)
 
@@ -590,16 +590,23 @@ flowchart TD
 ## 재개 지점
 
 - 다음 작업: [TASK-44 디자인 토큰과 공통 컴포넌트 기반](../../plan.md#task-44-디자인-토큰과-공통-컴포넌트-기반) — 이후 TASK-45(카드 렌더러) → TASK-46(카드 재설계·시안 확인) → TASK-47(기존 화면 재작성). M5~M9 기능 작업(TASK-24~)은 그 뒤
-- 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `docker compose ps`로 postgres 기동 여부
-- 필요한 명령 또는 파일: `docker compose up -d`, `cd apps/api && uv run pytest`, `cd apps/web && npm test`, [설계 DES-05 상세](../../design.md#des-05-상세)
+- 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `git status`가 깨끗한지, `docker compose ps`로 개발 스택 기동 여부
+- 필요한 문서: [DES-24 상세](../../design.md#des-24-상세)(디자인 시스템), [ADR-010](./ADR-010-웹-UI-디자인-시스템.md)(스택 결정과 기각 이유), [TASK-44 정의](../../plan.md#task-44-디자인-토큰과-공통-컴포넌트-기반)
+- 필요한 명령: `docker compose up -d`, `cd apps/web && npm test && npm run build`, `cd apps/api && uv run pytest`
+- **반드시 지킬 것**
+  - `npm test`와 `npm run build`를 **함께** 실행한다. 타입 오류가 있는 테스트가 Docker 빌드를 깨뜨린 전례가 있다.
+  - `docker compose up -d --build`는 빌드 실패에도 기존 이미지로 컨테이너를 올리고 0을 반환한다. 빌드 출력을 확인한다.
+  - 재작성 시 역할(`role`)과 레이블을 보존한다. 웹 테스트 20건이 전부 의미 기반이므로 **테스트가 깨지면 마크업이 잘못된 것**이다.
+  - 개발 DB 마이그레이션은 호스트에서 `DATABASE_URL`을 지정해 실행한다(API 컨테이너에 `migrations/`가 없다). 테스트 운영 이미지는 기동 시 자동 적용.
 
 ## 인계
 
-- 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-02부터
-- 시작 조건: 충족됨 — 기준선 `v1` 승인, 계획 수립 완료
-- 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v3`, [DESIGN-mathdesk](../../design.md) `v3`
+- 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-44부터
+- 시작 조건: 충족됨 — 기준선 `v4` 승인(2026-09-23), 계획에 TASK-44~47 반영 완료
+- 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v4`, [DESIGN-mathdesk](../../design.md) `v4`, [ADR-010](./ADR-010-웹-UI-디자인-시스템.md), [ADR-011](./ADR-011-리포트-카드-HTML-렌더링.md)
 - 완료된 항목: 기준선 v1~v4 승인, ADR-001~011, DCR-001~003, 계획, 사이클 1 전체(TASK-01~TASK-22), TASK-40~TASK-42, TASK-23
 - 미완료 항목: TASK-44~TASK-47(시각 설계), TASK-24~TASK-39·TASK-43(사이클 2)
-- 차단 요인: 없음
+- 차단 요인: 없음. TASK-46의 카드 시안은 **사용자 확인이 완료 조건**이므로 그 지점에서 멈추고 물어야 한다. 학원 로고 자산이 없으면 학원명 텍스트로 대체한다
 - 다음 행동: TASK-44에서 Tailwind v4를 도입하고 `tokens.css` 단일 소스를 만든다. 선행 테스트는 토큰이 웹·카드 양쪽에서 참조 가능한 순수 CSS임을 고정하는 검증(VER-30 웹 측)
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
+- 커밋 리듬: TASK 하나가 끝날 때마다 커밋하고 **push까지 함께** 수행한다(사용자 지시 2026-09-22, 별도 지시 전까지 유효).
