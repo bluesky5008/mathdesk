@@ -10,6 +10,7 @@ import { Input } from '../components/ui/input'
 import { KeyboardGrid } from '../components/ui/keyboard-grid'
 import { Select } from '../components/ui/select'
 import { Stat } from '../components/ui/stat'
+import { today } from '../lib/date'
 import { Table, TableBody, TableCell, TableRow } from '../components/ui/table'
 import {
   fetchClasses,
@@ -19,10 +20,6 @@ import {
   setAttendanceConfirmed,
   type RecordPatch,
 } from '../api'
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 function signed(value: number): string {
   return `${value >= 0 ? '+' : ''}${value}`

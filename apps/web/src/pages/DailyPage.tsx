@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '../components/ui/table'
 import { Toggle } from '../components/ui/toggle'
+import { today } from '../lib/date'
 import {
   fetchClasses,
   fetchDaily,
@@ -40,10 +41,6 @@ const NOTE_FIELDS = [
   ['teacher_note', '강사 첨언'],
 ] as const
 const EMPTY_NOTES: NotesPatch = {}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 function describeRecheck(record: DailyRecord): string {
   if (!record.recheck.prev_grade || !record.recheck.prev_date) {

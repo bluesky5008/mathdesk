@@ -15,6 +15,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from '../components/ui/table'
+import { today } from '../lib/date'
 import { cn } from '../lib/utils'
 import {
   fetchClasses,
@@ -35,10 +36,6 @@ const TABS = [
   ['text', '문자 보기'],
   ['report', '리포트 보기'],
 ] as const
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 export function MessagesPage() {
   const queryClient = useQueryClient()
