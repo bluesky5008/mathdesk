@@ -21,8 +21,17 @@ async def lifespan(app: FastAPI):
     engine = create_engine()
     app.state.session_factory = async_sessionmaker(engine, expire_on_commit=False)
     await ensure_initial_director(app.state.session_factory)
-    yield
-    await engine.dispose()
+
+    # 브라우저 콜드 스타트는 수 초다. 요청 경로에서 빼기 위해 여기서 warm으로 올린다(NFR-19).
+    from .report import ReportRenderer
+
+    app.state.report_renderer = ReportRenderer()
+    await app.state.report_renderer.start()
+    try:
+        yield
+    finally:
+        await app.state.report_renderer.stop()
+        await engine.dispose()
 
 
 def _mount_web(app: FastAPI, dist: Path) -> None:

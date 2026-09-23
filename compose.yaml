@@ -17,7 +17,10 @@ services:
       retries: 10
 
   api:
-    build: ./apps/api
+    # 컨텍스트가 저장소 루트인 이유는 apps/api/Dockerfile 머리말 참조
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://mathdesk:mathdesk@postgres:5432/mathdesk
       # 비워 두면 초기 원장 계정을 만들지 않는다. .env에서 지정한다.

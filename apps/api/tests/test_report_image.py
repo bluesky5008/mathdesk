@@ -2,6 +2,8 @@ import io
 
 from PIL import Image
 
+from mathdesk.report import CARD_WIDTH, SCALE
+
 DATE = "2026-09-18"
 
 
@@ -45,7 +47,9 @@ def test_report_endpoint_returns_a_png_image(api, klass):
     assert response.headers["content-type"] == "image/png"
     image = Image.open(io.BytesIO(response.content))
     assert image.format == "PNG"
-    assert image.width == 760
+    # 레이아웃은 CSS 픽셀 760이고 2배로 촬영한다. 카톡으로 받은 카드를 폰에서 확대해
+    # 보는 일이 흔해 1배는 흐리다([ADR-011]).
+    assert image.width == CARD_WIDTH * SCALE
     assert image.height > 300
 
 
@@ -103,15 +107,3 @@ def test_report_respects_class_scope(api, klass):
 
     assert response.status_code == 403
 
-
-def _renders_hangul(font) -> bool:
-    """글리프가 없으면 .notdef(빈 네모)가 나오므로 사설 영역 문자와 비트맵이 같아진다."""
-    hangul, missing = font.getmask("가"), font.getmask("")
-    return hangul.size != missing.size or bytes(hangul) != bytes(missing)
-
-
-def test_every_report_font_can_render_hangul():
-    from mathdesk.report import _font
-
-    for size, bold in ((30, True), (19, True), (17, False)):
-        assert _renders_hangul(_font(size, bold)), f"size={size} bold={bold}"

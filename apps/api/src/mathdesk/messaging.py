@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -249,12 +249,11 @@ async def preview(
 
 @router.get("/report-image")
 async def report_image(
-    session_id: int, student_id: int, scope: CurrentScope, session: Db
+    request: Request, session_id: int, student_id: int, scope: CurrentScope, session: Db
 ) -> Response:
-    from .report import render_report_png  # 순환 임포트를 피해 호출 시점에 가져온다
-
     context = await _context(session_id, student_id, scope, session)
-    return Response(render_report_png(context), media_type="image/png")
+    renderer = request.app.state.report_renderer
+    return Response(await renderer.render_png(context), media_type="image/png")
 
 
 async def _recipients_for(
