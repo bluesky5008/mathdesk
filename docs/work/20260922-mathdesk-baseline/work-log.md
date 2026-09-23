@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: [TASK-29 M6 시험지 분석](../../plan.md#task-29-m6-시험지-분석) — TASK-30 완료, TASK-31·32 남음
-- 마지막 완료 작업: [TASK-30 DocumentIngest 4포맷 정규화](../../plan.md#task-30-documentingest-4포맷-정규화) (2026-09-24 02:55)
+- 진행 중인 작업: [TASK-29 M6 시험지 분석](../../plan.md#task-29-m6-시험지-분석) — TASK-30·31 완료, TASK-32 남음
+- 마지막 완료 작업: [TASK-31 문항 분할·LlmAdapter·분석](../../plan.md#task-31-문항-분할llmadapter분석) (2026-09-24 03:30)
 - 차단 요인: 없음. Anthropic API 키는 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서만 필요하며 그 앞 구현을 차단하지 않는다. 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시 퍼지는 사용자가 보류했다(TTL 만료로 자연 해소)
 
 ## 계획 트리
@@ -794,6 +794,21 @@ flowchart TD
 - 정규화는 라이브러리까지다. 업로드→정규화 연결과 AC-21의 "업로드하면" 부분은 [TASK-31](../../plan.md#task-31-문항-분할llmadapter분석)의 분석 작업에서 닫힌다.
 - 검증: API 118건 통과(1 skip, 신규 7건). 픽스처 3개를 `tests/fixtures/`에 넣었다.
 
+### 2026-09-24 — TASK-31 문항 분할·LlmAdapter·분석 완료
+
+- 선행 테스트 18건을 먼저 썼다(모듈이 없어 import 실패로 Red). AC-22는 30문항 합성 PDF(`tests/fixtures/exam-30.pdf`, Chromium 인쇄)를 업로드 → 시험 등록 → 분석 작업 → 초안 조회까지 API로 돌린다. AC-23은 설정만 바꿔 구현체가 바뀌는지, AC-27은 발송 경로에서 세 어댑터의 `analyze`가 한 번도 불리지 않는지 검사한다.
+- **구현체 3종이 같은 계약 테스트를 공유한다.** Anthropic은 SDK에 `httpx2.MockTransport`를, OpenAI 호환은 `httpx.MockTransport`를 끼워 외부로 나가지 않는다. 가짜 전송 계층이 요청 본문도 검사한다 — 구조화 출력(`output_config.format`), 시스템 블록의 `cache_control`, 폴백 파라미터가 실제로 실려 나가는지.
+- **화이트리스트를 구조로 강제했다.** 계약이 받는 `QuestionInput`의 필드가 문항 번호·텍스트·이미지 셋뿐이고, 분석기의 `_payload()` 한 곳에서만 만든다. 테스트가 필드 집합을 고정한다. 공급자를 바꿔도 이 경계는 움직이지 않는다(ADR-009 결정 4).
+- **거절(refusal)이면 본문을 읽지 않는다.** 가짜 응답이 거절과 함께 JSON이 아닌 본문을 주는데, 파싱을 시도하면 예외가 나므로 이 테스트가 "읽지 않음"을 증명한다.
+- **자격 증명 부재는 첫 호출에서 알린다.** 클라이언트를 첫 호출 때 만들고, 401은 "Anthropic 자격 증명이 없거나 올바르지 않습니다"로 바꾼다. 키가 없어도 서버는 기동한다(개발 컨테이너로 확인).
+- **계획 밖 추가 1건 — 서버 측 거절 폴백.** Anthropic 호출에 `fallbacks: "default"`(beta `server-side-fallback-2026-07-01`)를 켰다. 안전 분류기가 거절하면 서버가 거절 범주에 맞는 모델로 같은 요청을 다시 돌린다. 그 모델까지 거절해야 설계대로 문항 단위 실패 경로를 탄다. 실제로 응답한 모델을 `llm_call_log.model`에 남기므로 비용 재구성(NFR-15)이 깨지지 않는다. ADR-009의 거절 처리를 바꾸지 않고 앞단에 한 겹을 더한 것이라 DCR로 보지 않았지만, 사용자가 원하지 않으면 두 줄로 끈다.
+- **재시도·상한·기록.** 문항 단위로 2회 재시도(오류와 거절 모두)하고 끝내 실패한 문항만 미분석·`확인 필요`로 남긴다. 실패한 호출도 `llm_call_log`에 남긴다(비용이 든다). 토큰 상한(입력 200,000·출력 30,000)을 넘으면 즉시 멈추고 사용량·비용을 사유에 담아 작업을 실패시키되, 이미 분석한 문항은 저장한다 — 쓴 비용의 결과를 버리지 않는다.
+- **핸들러를 멱등으로 만들었다(TASK-28의 제약).** 초안을 통째로 지우고 다시 쓰므로 재기동으로 작업이 처음부터 돌아도 문항이 중복되지 않는다. 테스트가 같은 시험을 두 번 분석한다. 확정된 시험은 다시 분석하지 못하게(409) 막아 사용자가 고친 내용이 덮이지 않게 했다.
+- 분할은 문항 번호가 1씩 늘 때만 새 문항으로 본다. 본문 속 "3." 같은 줄을 문항 시작으로 오인하지 않기 위해서다. 텍스트로 문항을 못 찾은 문서(스캔본)는 페이지 하나를 문항 하나로 보고 이미지를 보내며 항상 `확인 필요`로 둔다.
+- **프롬프트 캐싱은 켰지만 지금은 걸리지 않을 가능성이 높다.** 분류 체계 프롬프트가 수백 토큰이라 모델별 최소 캐시 길이보다 짧다. 짧으면 조용히 캐시되지 않을 뿐 오류는 없다. 실측(`cache_read_input_tokens`)은 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서 한다 — 분류 체계를 늘리려고 프롬프트를 부풀리지는 않았다.
+- 새 의존성: `anthropic` 1.8.0. 개발 API 컨테이너를 재빌드해 새 의존성 import와 `/api/health`를 확인했다.
+- 검증: API 137건 통과(1 skip, 신규 19건). Anthropic 실호출은 미수행(이 작업의 완료 조건이 아님).
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -801,12 +816,14 @@ flowchart TD
 | `user_session` 테이블 | [설계 데이터 모델](../../design.md#데이터-모델)의 테이블 목록에 없지만 [DES-03](../../design.md#des-03-상세)이 "서버 측 세션 레코드"를 규정한다. 목록이 이를 열거하지 않았을 뿐이며 새로운 제품 결정이 아니라고 판단해 내부 구현으로 추가했다 | 경미한 변경으로 처리, DCR 없음 |
 | `GET /api/daily`의 세션 생성 | 설계 REST 계약에는 세션 생성 엔드포인트가 없고 [DES-05](../../design.md#des-05-상세)는 "첫 입력 시 생성"만 규정한다. 조회 시점에 만드는 것으로 해석했다 | 경미한 변경으로 처리, DCR 없음 |
 | `background_task` 테이블 | [설계 데이터 모델](../../design.md#데이터-모델)의 테이블 목록에 없지만 [RISK-09](../../design.md#위험)가 "작업 상태를 DB에 저장하고 재기동 시 `queued`부터 재개"를 완화책으로 규정하고 REST 계약에 `GET /tasks/{task_id}`가 있다. 목록이 이를 열거하지 않았을 뿐이라고 판단해 내부 구현으로 추가했다(`user_session`과 같은 처리) | 경미한 변경으로 처리, DCR 없음 |
+| 서버 측 거절 폴백 | [ADR-009](./ADR-009-LLM-공급자-추상화와-Claude-연결.md)는 `refusal`을 문항 단위 실패로 처리한다. 그 앞단에 서버 측 폴백(`fallbacks: "default"`)을 더해 거절 범주에 맞는 모델이 한 번 더 시도하게 했다. 최종 거절은 여전히 ADR대로 실패 경로를 타고, 실제 응답 모델을 호출 기록에 남긴다 | 경미한 변경으로 처리, 사용자에게 보고(원하지 않으면 제거) |
 | `core/` 패키지 | [TASK-28 계획](../../plan.md#task-28-공통-기반--storage업로드taskrunner)의 변경 대상은 `apps/api/core/storage.py`였으나 저장소에 `core/` 패키지가 없고 모듈이 `src/mathdesk/` 평면에 있다. 기존 구조를 따랐다 | 경미한 변경으로 처리 |
 | 로그인 시도 제한 | [보안과 품질 속성](../../design.md#보안과-품질-속성)의 "로그인 실패 지연·시도 제한" 중 실패 지연만 구현했다. 시도 제한은 임계값·잠금 시간이 기준선에 없어 임의로 정하면 실사용자가 잠길 수 있다 | [TASK-40](../../plan.md#task-40-로그인-시도-제한)으로 분리, 임계값은 사용자 확인 대기 |
 
 ## 미완료 항목
 
-- TASK-27·TASK-31~TASK-39·TASK-43(사이클 2)
+- TASK-27·TASK-32~TASK-39·TASK-43(사이클 2)
+- AC-27의 OMR 경로 검사 — 판독기가 생기는 TASK-34에서 넣는다(발송 경로는 TASK-31에서 닫음)
 - 알리고 실발송 경로 미검증([Q-02](../../requirements.md#가정과-미해결-질문))
 - AC-05의 브라우저 육안 확인 미수행(자동화 제외 항목)
 - 구 경로 `/api/messages/report.png`의 Cloudflare 엣지 캐시 잔존 — 퍼지 또는 TTL 만료 대기
@@ -827,10 +844,10 @@ flowchart TD
 
 ## 재개 지점
 
-- 다음 작업: [TASK-31 문항 분할·LlmAdapter·분석](../../plan.md#task-31-문항-분할llmadapter분석)
+- 다음 작업: [TASK-32 시험 등록·문항 확인 화면](../../plan.md#task-32-시험-등록문항-확인-화면)
 - 사용자가 지정한 순서(2026-09-24): 모바일(완료) → 마스터 데이터 수정(완료) → 사이클 2 재개
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `git status`가 깨끗한지, `docker compose ps`로 개발 스택 기동 여부
-- 필요한 문서: [TASK-31 정의](../../plan.md#task-31-문항-분할llmadapter분석), [DES-14 상세](../../design.md#des-14-상세), [NFR-04 상세](../../requirements.md#nfr-04-상세)(전송 화이트리스트), [NFR-15](../../requirements.md#비기능-요구사항)(토큰 상한), [ADR-003](./ADR-003-AI-작업-분리와-개인정보-경계.md), [ADR-009](./ADR-009-LLM-공급자-추상화와-Claude-연결.md)
+- 필요한 문서: [TASK-32 정의](../../plan.md#task-32-시험-등록문항-확인-화면), [FR-29~FR-31](../../requirements.md#기능-요구사항), [DES-08 상세](../../design.md#des-08-상세)(난이도 분석표 카드는 리포트 카드 렌더러를 쓴다), 화면 ④ 참조 캡쳐
 - 필요한 명령: `docker compose up -d`, `cd apps/web && npm test && npm run build`, `cd apps/api && uv run pytest`
 - **이 작업의 핵심 제약**
   - **하드 삭제 경로를 만들지 않는다.** 기준선이 의도적으로 배제했다 — 출결·성적·발송 이력이 학생과 반을 참조하므로 물리 삭제는 과거 기록을 깨뜨린다. 학생은 상태 전이(`재원`·`휴원`·`퇴원`), 반은 `is_active` 플래그를 쓴다.
@@ -857,12 +874,12 @@ flowchart TD
 
 ## 인계
 
-- 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-31부터
-- 시작 조건: 충족됨 — 기준선 `v6` 승인(2026-09-23), 정규화(TASK-30) 완료, `git status` 깨끗
+- 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-32부터
+- 시작 조건: 충족됨 — 기준선 `v6` 승인(2026-09-23), 분석 경로(TASK-30·31) 완료, `git status` 깨끗
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v6`, [DESIGN-mathdesk](../../design.md) `v6`, [결정 등록부](../../decisions.md)(ADR-001~012, DCR-001~005 모두 `approved`)
-- 완료된 항목: 기준선 v1~v6 승인, ADR-001~012, DCR-001~005, 사이클 1 전체(TASK-01~TASK-22), TASK-23, TASK-40~TASK-42, 시각 설계 TASK-44~TASK-48, 모바일 TASK-53, 마스터 데이터 수정 TASK-49~TASK-52, M5 통계 TASK-24~TASK-26, 공통 기반 TASK-28, 정규화 TASK-30 — 작업 53건 중 39건
-- 미완료 항목: TASK-27, TASK-31~TASK-39, TASK-43
-- 차단 요인: 없음. [TASK-31](../../plan.md#task-31-문항-분할llmadapter분석)의 기본 공급자는 `test`라 **API 키 없이 완료할 수 있다**. Anthropic 실호출은 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서만 필요하다
-- 다음 행동: **[TASK-31 문항 분할·LlmAdapter·분석](../../plan.md#task-31-문항-분할llmadapter분석).** 문항 번호 기준 분할, 공급자 중립 `LlmAdapter`와 구현체 3종(`TestModeLlm`·`AnthropicLlm`·`OpenAICompatLlm`), 전송 필드 화이트리스트, 토큰 상한과 `llm_call_log` 기록. 입력은 [TASK-30](../../plan.md#task-30-documentingest-4포맷-정규화)의 `normalize()`가 주는 `NormalizedDocument`이고, 분석은 [TASK-28](../../plan.md#task-28-공통-기반--storage업로드taskrunner)의 `task_handler`로 등록해 배경에서 돌린다(**핸들러는 멱등이어야 한다**). 선행 테스트는 AC-22·AC-23·AC-27을 가짜 어댑터 테스트로 전환하는 것이며, **구현체 3종이 같은 계약 테스트를 공유해야 한다**. 착수 전 [NFR-04 상세](../../requirements.md#nfr-04-상세)의 전송 허용·금지 표를 먼저 읽을 것
+- 완료된 항목: 기준선 v1~v6 승인, ADR-001~012, DCR-001~005, 사이클 1 전체(TASK-01~TASK-22), TASK-23, TASK-40~TASK-42, 시각 설계 TASK-44~TASK-48, 모바일 TASK-53, 마스터 데이터 수정 TASK-49~TASK-52, M5 통계 TASK-24~TASK-26, 공통 기반 TASK-28, M6 정규화·분석 TASK-30·TASK-31 — 작업 53건 중 40건
+- 미완료 항목: TASK-27, TASK-32~TASK-39, TASK-43
+- 차단 요인: 없음
+- 다음 행동: **[TASK-32 시험 등록·문항 확인 화면](../../plan.md#task-32-시험-등록문항-확인-화면).** API는 `POST /exams`·`POST /exams/{id}/analyze`·`GET /exams/{id}/questions`까지 있다(`exams.py`). 이 작업은 시험 정보 편집(문항 수·배점·홀짝 정답표 — `GET/PATCH /exams/{id}`, `PATCH /exams/{id}/questions`), 문항 확인·확정 화면, 난이도 분석표 카드를 더한다. 선행 테스트는 "저신뢰 문항에 `확인 필요`가 표시되고 확정 시 사라진다". **확정 후 재분석은 409로 막혀 있으니** 확정 흐름은 `exam.status = confirmed`로 두고, 문항을 수정·확정하면 `needs_review`를 끈다. 분석 진행은 `GET /tasks/{task_id}`를 폴링한다. 난이도 분석표 카드는 [DES-08 상세](../../design.md#des-08-상세)대로 리포트 카드 렌더러에 템플릿만 추가한다(시각 회귀 기준 이미지는 컨테이너에서 만든다)
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
 - 커밋 리듬: TASK 하나가 끝날 때마다 커밋하고 **push까지 함께** 수행한다(사용자 지시 2026-09-22, 별도 지시 전까지 유효).

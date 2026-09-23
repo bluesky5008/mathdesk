@@ -5,6 +5,7 @@ description = "mathdesk API server"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.14",
+    "anthropic>=1.8.0",
     "argon2-cffi>=25.1.0",
     "asyncpg>=0.30",
     "fastapi>=0.115",

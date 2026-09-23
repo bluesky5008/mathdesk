@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 39건 완료. 시각 설계(TASK-44~48)와 모바일 대응(TASK-53)이 완료되었다. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-31 문항 분할·LlmAdapter·분석](#task-31-문항-분할llmadapter분석). 기본 공급자는 `test`이며 API 키 없이 완료할 수 있다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 40건 완료. 시각 설계(TASK-44~48)와 모바일 대응(TASK-53)이 완료되었다. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-32 시험 등록·문항 확인 화면](#task-32-시험-등록문항-확인-화면). M6의 마지막 분해다.
 
 ## 문서 연결
 
@@ -100,7 +100,7 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │      ├─ [✓] TASK-51 반 수정·활성 여부 (API 보완) . 2026-09-24 01:20
 │      └─ [✓] TASK-52 수강 배정·해제 화면 .......... 2026-09-24 01:25
 │
-└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (6/18)
+└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (7/18)
    ├─ [✓] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... 2026-09-22 23:53
    ├─ [✓] TASK-24 M5 성적 통계 (분해 2) .............. 2026-09-24 02:05
    │   ├─ [✓] TASK-25 통계 집계 API와 엑셀 내보내기 ... 2026-09-24 01:45
@@ -109,7 +109,7 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
    ├─ [✓] TASK-28 공통 기반 — Storage·업로드·TaskRunner  2026-09-24 02:30
    ├─ [~] TASK-29 M6 시험지 분석 (분해 3) ............ depends: TASK-28
    │   ├─ [✓] TASK-30 DocumentIngest 4포맷 정규화
-   │   ├─ [ ] TASK-31 문항 분할·LlmAdapter·분석 ...... depends: TASK-30
+   │   ├─ [✓] TASK-31 문항 분할·LlmAdapter·분석 ...... 2026-09-24 03:30
    │   └─ [ ] TASK-32 시험 등록·문항 확인 화면 ....... depends: TASK-31
    ├─ [ ] TASK-33 M7 OMR 채점 (분해 3) ............... depends: TASK-28
    │   ├─ [ ] TASK-34 OmrReader 제품 이식
@@ -192,7 +192,7 @@ flowchart TD
     C2 --> T28["TASK-28 공통 기반 Storage·TaskRunner"]:::done
     C2 --> T29["TASK-29 M6 시험지 분석"]:::active
     T29 --> T30["TASK-30 DocumentIngest 4포맷"]:::done
-    T29 --> T31["TASK-31 문항 분할·LLM 분석"]:::todo
+    T29 --> T31["TASK-31 문항 분할·LLM 분석"]:::done
     T29 --> T32["TASK-32 시험 등록·문항 확인 화면"]:::todo
     C2 --> T33["TASK-33 M7 OMR 채점"]:::todo
     T33 --> T34["TASK-34 OmrReader 이식"]:::todo
@@ -845,7 +845,7 @@ flowchart TD
 
 ### TASK-31: 문항 분할·LlmAdapter·분석
 
-- 상태: pending
+- 상태: completed (2026-09-24 03:30)
 - 상위: TASK-29
 - 목표: 문항 번호 기준 분할, 공급자 중립 `LlmAdapter`와 구현체 3종(`TestModeLlm`·`AnthropicLlm`·`OpenAICompatLlm`), 전송 필드 화이트리스트를 강제하는 `QuestionAnalyzer`, 토큰 상한과 호출 로그를 구현한다. 기본 공급자는 `test`이며 API 키 없이 완료할 수 있다.
 - 관련 요구사항과 설계: [FR-28·FR-29](./requirements.md#기능-요구사항), [NFR-04·NFR-12·NFR-15](./requirements.md#nfr-04-상세), [DES-12~DES-14](./design.md#컴포넌트와-책임), [DES-14 상세](./design.md#des-14-상세), [ADR-003](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md), [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)
@@ -854,6 +854,10 @@ flowchart TD
 - 위험: 개인정보 경계 위반은 최소화 대상이 아니다. 화이트리스트 검증을 생략하지 않는다. 구현체 2종의 동작이 갈라질 수 있어 계약 테스트를 공유한다
 - 검증 방법: 선행 테스트 — [AC-22·AC-23·AC-27](./requirements.md#인수-조건)을 가짜 어댑터 테스트로 전환(30문항 초안 생성, 공급자 교체, 외부 호출 차단 환경에서 호출 카운터 0). 구현체 3종이 동일한 `LlmAdapter` 계약 테스트를 통과
 - 완료 조건: AC-22·AC-23·AC-27 통과, 토큰 상한 초과 시 중단과 사용량 보고 동작, `llm_call_log`에 공급자·캐시 토큰 기록. **Anthropic 실호출은 이 작업의 완료 조건이 아니며 [TASK-43](#task-43-claude-실호출-검증)에서 검증한다**
+- 결과: `llm.py`(계약·구현체 3종·`select_adapter`), `analysis.py`(`segment`·`analyze_segments`·`exam_analyze` 작업 핸들러), `exams.py`(`POST /exams`, `POST /exams/{id}/analyze` → `task_id`, `GET /exams/{id}/questions`). 30문항 합성 PDF를 올려 분석하면 초안 30건이 생기고 저신뢰 문항만 `확인 필요`가 된다(AC-22). 공급자는 환경변수 → 캠퍼스 설정 → `test` 순으로 고른다(AC-23). 세 구현체가 같은 계약 테스트를 가짜 전송 계층으로 통과한다
+- AC-27은 **발송 경로만** 닫았다. OMR 경로는 판독기가 생기는 [TASK-34](#task-34-omr-스캔-판독)에서 같은 검사를 넣는다
+- 계획 밖 추가 1건: Anthropic 호출에 서버 측 거절 폴백(`fallbacks: "default"`)을 켰다. 거절되면 서버가 거절 범주에 맞는 모델로 다시 돌리고, 그 모델도 거절하면 기존 설계대로 문항 단위 실패 경로를 탄다. 실제 응답 모델을 `llm_call_log.model`에 남긴다. 사용자가 원하지 않으면 한 줄로 끈다
+- 새 의존성: `anthropic` 1.8.0(공식 SDK, ADR-009)
 
 ### TASK-32: 시험 등록·문항 확인 화면
 

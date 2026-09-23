@@ -111,3 +111,25 @@ def test_balance_is_reported_in_test_mode(api, prepared, blocked_network):
 
     assert body["mode"] == "test"
     assert set(body) >= {"mode", "sms", "lms", "mms", "checked_at"}
+
+
+def test_message_path_never_calls_an_llm(api, prepared, blocked_network, monkeypatch):
+    """AC-27(발송 경로): 메시지 미리보기·발송은 LLM 어댑터를 한 번도 부르지 않는다.
+    OMR 경로의 같은 검사는 TASK-34에서 판독기와 함께 넣는다."""
+    from mathdesk import llm
+
+    calls = []
+
+    async def spy(self, question, taxonomy):
+        calls.append(type(self).__name__)
+        raise AssertionError("발송 경로에서 LLM이 호출되었다")
+
+    for adapter in (llm.TestModeLlm, llm.AnthropicLlm, llm.OpenAICompatLlm):
+        monkeypatch.setattr(adapter, "analyze", spy)
+
+    api.get(
+        "/api/messages/preview",
+        params={"session_id": prepared["session_id"], "student_id": prepared["student_id"]},
+    )
+    assert _send(api, prepared).status_code == 200
+    assert calls == []

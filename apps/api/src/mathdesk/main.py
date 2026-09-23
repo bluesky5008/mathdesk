@@ -12,6 +12,7 @@ from .auth import ensure_initial_director, router as auth_router
 from .branding import router as branding_router
 from .daily import router as daily_router
 from .db import create_engine
+from .exams import router as exams_router
 from .files import router as files_router
 from .masterdata import router as masterdata_router
 from .messaging import router as messaging_router
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
 
     # 지난 프로세스가 실행 중에 끊겼으면 그 작업을 queued로 되돌려 다시 시작한다(RISK-09).
     app.state.task_runner = TaskRunner(app.state.session_factory)
+    app.state.background = set()  # 실행 중인 작업 루프가 GC로 사라지지 않게 붙잡는다
     resume = asyncio.create_task(app.state.task_runner.resume())
     try:
         yield
@@ -79,6 +81,7 @@ def create_app(web_dist: Path | str | None = None) -> FastAPI:
     app.include_router(stats_router)
     app.include_router(messaging_router)
     app.include_router(files_router)
+    app.include_router(exams_router)
     app.include_router(tasks_router)
 
     @app.get("/api/health")
