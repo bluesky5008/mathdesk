@@ -51,6 +51,9 @@ CARD_CSS = """
 
 body {
   width: %(width)spx;
+  /* 여백을 .card의 margin이 아니라 body의 padding으로 둔다. margin이면 body와 상쇄되어
+     body 요소의 높이가 실제 내용과 어긋나고, 그 높이로 촬영하면 카드가 잘린다. */
+  padding: var(--md-space-5);
   background: var(--md-color-bg);
   font-family: var(--md-font-sans);
   color: var(--md-color-fg);
@@ -59,7 +62,6 @@ body {
 }
 
 .card {
-  margin: var(--md-space-5);
   background: var(--md-color-surface);
   border-radius: var(--md-radius-lg);
   overflow: hidden;
@@ -220,6 +222,8 @@ class ReportRenderer:
         )
         try:
             await page.set_content(render_report_html(context, brand_colour))
-            return await page.screenshot(full_page=True, type="png")
+            # full_page는 뷰포트 높이를 하한으로 잡아 짧은 카드 아래에 빈 배경이 붙는다.
+            # body 요소만 촬영하면 이미지 높이가 내용 높이와 정확히 같아진다.
+            return await page.locator("body").screenshot(type="png")
         finally:
             await page.close()
