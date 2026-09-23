@@ -3,9 +3,9 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v4`
+> 기준선: `v5`
 > 작성일: `2026-09-22`
-> 최종 갱신: `2026-09-22`
+> 최종 갱신: `2026-09-23`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
 
 ## 요약
@@ -25,6 +25,7 @@
 | input | decision | [ADR-009: LLM 공급자 추상화와 Claude 연결](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md) | document | DES-14, 데이터 모델 |
 | input | decision | [ADR-010: 웹 UI 디자인 시스템](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md) | document | DES-24 |
 | input | decision | [ADR-011: 리포트 카드 HTML 렌더링](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) | document | DES-08 |
+| input | decision | [ADR-012: 테마 팔레트와 적용 방식](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md) | document | DES-24 |
 | input | decision | [ADR-004: 문서 입력 정규화 파이프라인](./work/20260922-mathdesk-baseline/ADR-004-문서-입력-정규화-파이프라인.md) | document | DES-11, DES-12 |
 | input | decision | [ADR-005: 메시징 어댑터 단일화](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md) | document | DES-09 |
 | input | decision | [ADR-006: OMR 양식 고정과 템플릿 판독](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) | document | DES-15, DES-16, DES-17 |
@@ -119,7 +120,7 @@
 | DES-20 | 설정·시크릿 관리 | 연동 설정 저장(민감값 암호화), 환경변수 우선순위, 연결 상태 점검 |
 | DES-21 | 스키마 마이그레이션 | Alembic 리비전과 시드 데이터 스크립트 |
 | DES-22 | 내보내기 | 통계·시험 결과 엑셀 생성, 난이도 분석표·리포트 이미지 파일 생성 |
-| DES-24 | 디자인 시스템 | 디자인 토큰 단일 소스(`tokens.css`), 공통 컴포넌트(버튼·폼·표·카드·대화상자), 표 기반 입력 컴포넌트. 웹과 리포트 카드가 같은 토큰을 사용한다. 상세는 [DES-24 상세](#des-24-상세) |
+| DES-24 | 디자인 시스템 | 디자인 토큰 단일 소스(`tokens.css`), 테마 팔레트 5벌, 공통 컴포넌트(버튼·폼·표·카드·대화상자), 표 기반 입력 컴포넌트. 웹과 리포트 카드가 같은 토큰 파일의 스케일을 공유하고 색은 각자의 팔레트를 따른다. 상세는 [DES-24 상세](#des-24-상세) |
 | DES-23 | 테스트 운영 서빙 | 웹 정적 빌드를 API가 SPA fallback으로 서빙하고, `Secure` 쿠키와 노출 표면 축소를 설정으로 제어한다. 외부 경로는 cloudflared 터널 하나다 |
 
 #### DES-03 상세
@@ -173,14 +174,22 @@
 - 렌더 실패는 카드 생성 실패로만 처리한다. 카드는 첨부이므로 문자 본문 발송은 계속 가능해야 한다.
 - 시각 회귀는 기준 이미지 비교로 고정하고 **컨테이너에서 검증한다**(폰트 가용성 차이 전례).
 - 브랜드(학원명·로고·시그니처 색)는 `integration_setting`에서 읽는다(FR-40). 로고 미설정 시 학원명 텍스트로 대체한다.
+- **카드는 웹 테마(FR-41)를 따르지 않는다.** 템플릿은 `data-theme`를 지정하지 않아 `:root` 라이트 팔레트를 쓰고 `--md-color-brand`만 학원 시그니처 색으로 덮어쓴다. 학부모가 받는 자산이 사용자 개인 취향에 좌우되면 안 된다([ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md)).
 
 #### DES-24 상세
 
-- **토큰 단일 소스:** `apps/web/src/styles/tokens.css`에 색·간격·타이포 스케일·라운드·그림자를 CSS 변수로 정의한다. 프레임워크에 묶이지 않은 순수 CSS이므로 웹(Tailwind v4 `@theme`)과 카드 템플릿(인라인)이 함께 읽는다(NFR-18).
+- **토큰 단일 소스:** `apps/web/src/styles/tokens.css`에 색·간격·타이포 스케일·라운드·그림자를 CSS 변수로 정의한다. 프레임워크에 묶이지 않은 순수 CSS이므로 웹(Tailwind v4 테마)과 카드 템플릿(인라인)이 함께 읽는다.
+- **스케일과 색의 분리(NFR-18):** 타이포·간격·라운드·그림자 스케일은 `:root`에만 정의하고 **어느 팔레트도 재정의하지 않는다.** 이것이 웹과 카드의 공유 기반이다. 색은 웹이 사용자 테마를, 카드가 학원 시그니처 색을 따른다.
+- **테마 팔레트(FR-41):** `:root`가 라이트이고 `[data-theme='dark']`·`[data-theme='blue']`·`[data-theme='green']`·`[data-theme='pink']`가 **색 토큰만** 덮어쓴다. 속성 선택자이므로 전처리 문법 없이 순수 CSS로 표현되어 카드 인라인 제약을 유지한다.
+- **팔레트 완결성(AC-34):** 5개 팔레트는 동일한 색 토큰 집합을 정의한다. 하나라도 빠지면 그 테마에서만 색이 어긋나므로 테스트로 강제한다.
+- **색조 테마의 성격:** 블루·그린·핑크는 주색뿐 아니라 배경·표면·테두리에도 같은 색조를 옅게 넣은 라이트 테마다. 주색만 바뀌면 테마가 아니라 강조색 변경으로 읽힌다.
+- **상태색:** `success`·`warning`·`danger`는 출결 구분 등 의미 전달이 목적이므로 색조 테마에서 재정의하지 않는다. 다크 팔레트에서만 대비 확보를 위해 밝기를 올린다.
+- **테마 저장:** 사용자 개인 설정이므로 `localStorage`(키 `mathdesk-theme`)에 둔다. 서버·스키마 변경이 없다. 첫 페인트 전에 적용해 화면이 번쩍이지 않게 한다.
+- **테마 선택 UI:** 앱 셸 헤더가 소유한다. 모든 화면에서 같은 위치에 있어야 한다.
 - **공통 컴포넌트:** shadcn/ui 패턴으로 소스를 저장소에 둔다. 라이브러리 의존이 아니라 코드 소유다.
 - **표 기반 입력:** NFR-13의 키보드 이동·즉시 저장 동작은 이 컴포넌트가 소유하며 외부 라이브러리 동작에 맞추지 않는다.
 - **의미 구조 보존:** 재작성 시 역할과 레이블을 유지해 기존 테스트가 그대로 통과해야 한다. 통과하지 않으면 마크업이 잘못된 것으로 본다.
-- **대상 환경:** 1280px 이상 데스크톱 전용(NFR-14). 모바일 반응형은 범위 밖. 다크 모드는 토큰 레벨에서 지원하되 기본값은 라이트.
+- **대상 환경:** 1280px 이상 데스크톱 전용(NFR-14). 모바일 반응형은 범위 밖.
 
 ## 데이터와 인터페이스
 
@@ -472,6 +481,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v2` (2026-09-22): [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) 재승인으로 테스트 운영 노출 경계(DES-23)와 보안 속성이 반영되었고 [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)이 `approved`로 전이되었다.
 
+기준선 `v5` (2026-09-23): [DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md) 재승인으로 DES-24 상세에 테마 팔레트·스케일 분리·저장 위치가 추가되고 DES-08에 카드의 팔레트 고정이 명시되었으며 [ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md)가 `approved`로 전이되었다.
+
 기준선 `v4` (2026-09-23): [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) 재승인으로 DES-08이 HTML/Chromium 렌더링으로 바뀌고 DES-24(디자인 시스템)가 신설되었으며 [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md)·[ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md)이 `approved`로 전이되었다. Q-10은 재개 후 재해소되었다.
 
 기준선 `v3` (2026-09-22): [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) 재승인으로 DES-14가 공급자 중립 계약으로 바뀌고 `llm_call_log`에 공급자·캐시 토큰 컬럼이 추가되었으며 [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md)가 `approved`로 전이되었다. [ADR-003](./work/20260922-mathdesk-baseline/ADR-003-AI-작업-분리와-개인정보-경계.md)은 결정 2만 부분 대체되고 `approved`를 유지한다.
@@ -487,6 +498,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-09-22 | Q-10·RISK-10 해소 기록, API 캐시 금지 속성 추가 (명확화) | 구현 중 발견한 CDN 캐시 노출 사고 | approved 유지, 기준선 v2 유지 | Claude |
 | 2026-09-22 | DES-14 공급자 중립 계약화, DES-14 상세 신설, `llm_call_log` 컬럼 3개 추가, 시험지 분석 흐름에 `refusal` 처리 추가 | [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md), [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md) | approved 유지, 기준선 v2 → v3 | Claude / 사용자 |
 | 2026-09-23 | DES-08 HTML/Chromium 렌더링 전환과 상세 신설, DES-24 디자인 시스템 신설, Q-10 재개 후 재해소 | [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md), [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md), [ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) | approved 유지, 기준선 v3 → v4 | Claude / 사용자 |
+| 2026-09-23 | DES-24 상세에 테마 팔레트·스케일 분리·저장 위치 추가, DES-08에 카드 팔레트 고정 명시 | [DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md), [ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md) | approved 유지, 기준선 v4 → v5 | Claude / 사용자 |
 
 ## 인계
 

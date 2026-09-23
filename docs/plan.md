@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 47건 중 27건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-45 리포트 카드 HTML 렌더러 전환](#task-45-리포트-카드-html-렌더러-전환)을 시작한다. 사용자 지시로 앞세운 TASK-47이 끝나 원래 순서(TASK-45 → TASK-46)로 돌아간다. 시각 설계를 M5~M9 기능 작업보다 먼저 두는 [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)의 기준은 그대로다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 52건 중 27건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-48 테마 팔레트와 선택 UI](#task-48-테마-팔레트와-선택-ui)를 시작한다. 기준선 `v5`([DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md))가 추가한 작업이며 사용자가 테마를 먼저 요청했다. 이후 TASK-45 → TASK-46, 그다음 [TASK-49 마스터 데이터 수정 기능 보완](#task-49-마스터-데이터-수정-기능-보완). 시각 설계를 M5~M9 기능 작업보다 먼저 두는 [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)의 기준은 그대로다.
 
 ## 문서 연결
 
@@ -23,13 +23,14 @@
 | input | decision | [결정 등록부](./decisions.md) | ADR-001~ADR-009 | 적용되는 설계 결정 |
 | input | change | [DCR-002: M6 LLM 공급자 중립화와 Claude 연결](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) | TASK-23, TASK-31, TASK-43 | 기준선 v3가 바꾼 작업 |
 | input | change | [DCR-003: 브랜드 자산으로서의 시각 설계](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) | TASK-44~TASK-47 | 기준선 v4가 추가한 작업 |
+| input | change | [DCR-004: 웹 테마 선택과 브랜드 색의 역할 분리](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md) | TASK-48 | 기준선 v5가 추가한 작업 |
 | output | implementation | [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md) | document | 이 계획의 수행·검증 기록 |
 
 ## 기준선
 
-- 관련 요구사항: [REQ-mathdesk](./requirements.md) 기준선 `v4` (2026-09-23 재승인)
-- 관련 설계: [DESIGN-mathdesk](./design.md) 기준선 `v4` (2026-09-23 재승인)
-- 관련 ADR·DCR: [ADR-001~ADR-011](./decisions.md#등록부) (`approved`), [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) (v2), [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) (v3), [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) (v4)
+- 관련 요구사항: [REQ-mathdesk](./requirements.md) 기준선 `v5` (2026-09-23 재승인)
+- 관련 설계: [DESIGN-mathdesk](./design.md) 기준선 `v5` (2026-09-23 재승인)
+- 관련 ADR·DCR: [ADR-001~ADR-012](./decisions.md#등록부) (`approved`), [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) (v2), [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) (v3), [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) (v4), [DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md) (v5)
 
 ## 작업 정의
 
@@ -82,11 +83,18 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │  ├─ [✓] TASK-41 단일 오리진 테스트 운영 서빙 ...... 2026-09-22 14:44
 │  └─ [✓] TASK-42 mathdesk 터널 등록과 노출 검증 .... 2026-09-22 15:26
 │
-├─ 시각 설계 (DCR-003) ............................. in-progress (2/4)
+├─ 시각 설계 (DCR-003·DCR-004) ..................... in-progress (2/5)
 │  ├─ [✓] TASK-44 디자인 토큰·공통 컴포넌트 기반 .... 2026-09-23 01:22
 │  ├─ [✓] TASK-47 기존 화면 5개 재작성 .............. 2026-09-23 01:43
+│  ├─ [▶] TASK-48 테마 팔레트와 선택 UI ............. depends: TASK-44
 │  ├─ [ ] TASK-45 리포트 카드 HTML 렌더러 전환 ...... depends: TASK-44
 │  └─ [ ] TASK-46 카드 재설계·브랜드 (시안 확인) .... depends: TASK-45
+│
+├─ 마스터 데이터 수정 기능 보완 .................... pending (0/4)
+│  └─ [ ] TASK-49 마스터 데이터 수정 보완 (분해 3) .. depends: TASK-47
+│      ├─ [ ] TASK-50 학생 수정·퇴원 화면
+│      ├─ [ ] TASK-51 반 수정·활성 여부 (API 보완)
+│      └─ [ ] TASK-52 수강 배정·해제 화면 .......... depends: TASK-50, TASK-51
 │
 └─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (1/18)
    ├─ [✓] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... 2026-09-22 23:53
@@ -206,19 +214,28 @@ flowchart TD
     classDef gate fill:#ffcdd2,stroke:#c62828
 ```
 
-시각 설계 (노드 5)
+시각 설계와 마스터 데이터 보완 (노드 11)
 
 ```mermaid
 flowchart TD
     V["시각 설계 (DCR-003)"]:::active
     V --> T44["TASK-44 토큰·공통 컴포넌트"]:::done
     V --> T47["TASK-47 기존 화면 재작성"]:::done
-    V --> T45["TASK-45 카드 HTML 렌더러 전환"]:::active
+    V --> T48["TASK-48 테마 팔레트·선택 UI"]:::active
+    V --> T45["TASK-45 카드 HTML 렌더러 전환"]:::todo
     V --> T46["TASK-46 카드 재설계·브랜드"]:::todo
+    M["마스터 데이터 수정 보완"]:::todo
+    M --> T49["TASK-49 수정 보완 (분해 3)"]:::todo
+    T49 --> T50["TASK-50 학생 수정·퇴원 화면"]:::todo
+    T49 --> T51["TASK-51 반 수정·활성 여부"]:::todo
+    T49 --> T52["TASK-52 수강 배정·해제 화면"]:::todo
     T44 -. depends .-> T47
+    T44 -. depends .-> T48
     T44 -. depends .-> T45
     T45 -. depends .-> T46
-    T47 -. 순서 변경 .-> T45
+    T47 -. depends .-> T49
+    T50 -. depends .-> T52
+    T51 -. depends .-> T52
     classDef done fill:#c8e6c9,stroke:#2e7d32
     classDef active fill:#fff9c4,stroke:#f9a825
     classDef todo fill:#eceff1,stroke:#90a4ae
@@ -283,6 +300,66 @@ flowchart TD
 - 검증 방법: **화면 단위로 나눠 진행하고 매 화면마다 기존 테스트 20건 전량 재실행.** 역할·레이블 보존 원칙 — 테스트가 깨지면 마크업이 잘못된 것으로 본다
 - 완료 조건: 웹 테스트 20건과 API 78건 전량 통과, `npm run build` 통과, 화면 ①~④ 시각 확인
 - 결과: Dashboard·Daily·Students·Classes·Messages와 `AttendanceButtons`를 공통 컴포넌트 위로 옮겼다. NFR-13의 키보드 이동을 `components/ui/keyboard-grid.tsx`(`KeyboardGrid`)로 신설해 저장소가 소유한다 — 방향키는 같은 열을 유지한 채 행 이동, Enter는 입력란에서만 아래로 이동(버튼에서 가로채면 키보드로 버튼을 누를 수 없다). 열 기준을 포커스 순번이 아니라 `td` 위치로 잡아 행마다 버튼 수가 달라도 어긋나지 않는다. 공통 컴포넌트 `toggle`·`select`·`field`·`stat`·`textarea`·`PageHeader`와 `AttendanceCell`을 추가했다. 웹 테스트 29건(기존 24 + 키보드 5)·API 78건·`npm run build` 통과, **기존 테스트 수정 0건**. 번들 JS 355.96 → 362.75 kB, CSS 13.48 → 17.34 kB
+
+### TASK-48: 테마 팔레트와 선택 UI
+
+- 상태: in-progress
+- 상위: 없음
+- 목표: `tokens.css`를 `data-theme` 기반 팔레트 5벌(라이트·다크·블루·그린·핑크)로 확장하고, 앱 셸 헤더에 테마 선택 UI를 두며 선택을 `localStorage`에 유지한다.
+- 관련 요구사항과 설계: [FR-41](./requirements.md#기능-요구사항), [NFR-18](./requirements.md#비기능-요구사항), [AC-31·AC-33·AC-34](./requirements.md#인수-조건), [DES-24 상세](./design.md#des-24-상세), [ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md)
+- 변경 대상: `apps/web/src/styles/tokens.css`, `apps/web/src/components/AppShell.tsx`, `apps/web/index.html`(첫 페인트 전 적용), 테마 상태 모듈
+- 의존성: TASK-44
+- 위험: 팔레트 하나에 토큰이 빠지면 그 테마에서만 색이 깨진다(AC-34 테스트로 차단). 다크 팔레트의 대비는 육안 확인에 의존한다. 색값 자체가 심미 판단이라 사용자 확인이 필요하다
+- 검증 방법: 선행 테스트 — (1) 5개 팔레트가 동일한 색 토큰 집합을 정의함(VER-32), (2) 타이포·간격·라운드·그림자 스케일이 어느 팔레트에서도 재정의되지 않음(AC-31, 기존 `tokens.test.ts` 확장), (3) 테마를 고르면 `data-theme`가 바뀌고 `localStorage`에 저장되며 재마운트 후에도 유지됨(VER-33). 기존 웹 테스트 29건 전량 통과 유지
+- 완료 조건: `npm test`·`npm run build` 통과, AC-33·AC-34 통과, 5개 테마의 시안을 사용자가 확인. **색값 확정은 사용자 판단 항목이므로 그 지점에서 멈추고 묻는다**
+
+### TASK-49: 마스터 데이터 수정 기능 보완
+
+- 상태: pending
+- 상위: 없음 (분해 3 — TASK-50~52)
+- 목표: 기준선이 요구했으나 화면·API에 없는 마스터 데이터 수정 경로를 채운다. [TASK-08](#task-08-마스터-데이터-화면)의 목표가 "등록·수정 화면"이었으나 완료 조건이 AC-05(목록 반영)만 검사해 수정 경로가 빠진 채 통과한 것이 원인이다.
+- 관련 요구사항과 설계: [FR-05 상세](./requirements.md#fr-05-상세), [FR-07·FR-08](./requirements.md#기능-요구사항), [DES-04](./design.md#컴포넌트와-책임)
+- 변경 대상: TASK-50~52 참조
+- 의존성: TASK-47
+- 위험: 하드 삭제를 도입하면 출결·성적·발송 이력의 참조가 깨진다. **기준선대로 상태 전이(퇴원)와 비활성 플래그만 쓰고 학생·반의 물리 삭제 경로는 만들지 않는다**
+- 검증 방법: 하위 작업별 선행 테스트. 퇴원 학생이 기본 목록에서 빠지되 과거 기록이 보존됨을 확인
+- 완료 조건: TASK-50~52가 모두 `completed`
+
+### TASK-50: 학생 수정·퇴원 화면
+
+- 상태: pending
+- 상위: TASK-49
+- 목표: 학생 목록에서 수정과 재원 상태 전환(`재원`·`휴원`·`퇴원`)을 할 수 있게 한다. 퇴원 학생은 기본 목록에서 제외하고 필터로 볼 수 있게 한다.
+- 관련 요구사항과 설계: [FR-05 상세](./requirements.md#fr-05-상세)
+- 변경 대상: `apps/web/src/pages/StudentsPage.tsx`, `apps/web/src/api.ts`
+- 의존성: 없음 (API `PATCH /students/{id}`는 이미 구현되어 있고 `status`를 받는다)
+- 위험: 낮음. 서버 계약이 이미 존재한다
+- 검증 방법: 선행 테스트 — 퇴원으로 바꾸면 기본 목록에서 사라지고 필터를 켜면 다시 보인다
+- 완료 조건: FR-05의 수정·퇴원 경로가 화면에서 동작
+
+### TASK-51: 반 수정·활성 여부 (API 보완 포함)
+
+- 상태: pending
+- 상위: TASK-49
+- 목표: 반 수정과 활성 여부 전환을 구현한다. **`PATCH /classes/{id}`가 `is_active`를 다루지 않고 `ClassIn`에도 필드가 없으므로 API부터 보완한다.**
+- 관련 요구사항과 설계: [FR-07](./requirements.md#기능-요구사항), [DES-04](./design.md#컴포넌트와-책임)
+- 변경 대상: `apps/api/src/mathdesk/masterdata.py`(`ClassIn`·`update_class`), `apps/web/src/pages/ClassesPage.tsx`, `apps/web/src/api.ts`
+- 의존성: 없음
+- 위험: 비활성 반이 대시보드·일일 입력의 반 선택 목록에서 어떻게 다뤄지는지 확인이 필요하다. 활성 반 수 KPI(`활성 N개 반`)에 영향이 간다
+- 검증 방법: 선행 테스트 — `is_active`를 `false`로 PATCH하면 `GET /classes`의 기본 목록과 대시보드 활성 반 수에서 빠진다
+- 완료 조건: FR-07의 수정·활성 여부 경로가 API와 화면에서 동작
+
+### TASK-52: 수강 배정·해제 화면
+
+- 상태: pending
+- 상위: TASK-49
+- 목표: 학생을 반에 배정하고 해제하는 화면을 만든다. 배정 기간 이력이 보존되어 과거 수업일의 소속 반을 재현할 수 있어야 한다.
+- 관련 요구사항과 설계: [FR-08](./requirements.md#기능-요구사항)
+- 변경 대상: `apps/web/src/pages/ClassesPage.tsx` 또는 신규 화면, `apps/web/src/api.ts`
+- 의존성: TASK-50, TASK-51
+- 위험: 해제가 `DELETE`인지 기간 종료(`end_date`)인지에 따라 과거 재현이 갈린다. **FR-08이 "배정 기간 이력을 보존"을 요구하므로 해제는 기간 종료로 처리하고, 기존 `DELETE` 엔드포인트는 오등록 취소 용도로 한정한다**
+- 검증 방법: 선행 테스트 — 배정 후 해제하면 현재 명단에서 빠지되 해제 이전 날짜의 일일 기록은 그대로 재현된다
+- 완료 조건: FR-08의 배정·해제 경로가 화면에서 동작하고 과거 재현이 유지됨
 
 ### 사이클 1 — MVP (M0~M4)
 
@@ -866,11 +943,14 @@ flowchart TD
 | VER-26 | AC-29 | TASK-40 | 임계 횟수 실패 후 거부, 잠금 경과 후 허용, 감사 로그 확인 |
 | VER-27 | NFR-17 | TASK-41 | 노출 구성의 호스트 포트 게시 목록과 기본 비밀번호 미사용 확인 |
 | VER-29 | AC-30 | TASK-46 | 브랜드 설정 후 카드 렌더 → 학원명·로고·색 반영 확인 |
-| VER-30 | AC-31 | TASK-44, TASK-45 | 웹 번들과 카드 템플릿이 같은 토큰 파일을 참조함을 테스트로 확인 |
+| VER-30 | AC-31 | TASK-44, TASK-45, TASK-48 | 웹 번들과 카드 템플릿이 같은 토큰 파일을 참조하고, 타이포·간격·라운드·그림자 스케일이 어느 팔레트에서도 재정의되지 않음을 테스트로 확인 |
+| VER-32 | AC-34 | TASK-48 | `tokens.css`를 파싱해 5개 팔레트가 동일한 색 토큰 집합을 정의함을 확인 |
+| VER-33 | AC-33 | TASK-48 | 테마 선택 → `data-theme` 전환과 `localStorage` 저장 → 재마운트 후 유지 확인 |
+| VER-34 | FR-05, FR-07, FR-08 | TASK-50, TASK-51, TASK-52 | 퇴원 학생이 기본 목록에서 빠지되 과거 기록 보존, 비활성 반이 활성 반 수에서 제외, 수강 해제 후에도 과거 수업일 소속 반 재현 |
 | VER-31 | AC-32, NFR-19 | TASK-45 | warm 상태에서 카드 30장 연속 생성 p95 측정 |
 | VER-28 | NFR-15 | TASK-31, TASK-43 | 호출 로그의 공급자·입출력·캐시 토큰·비용 기록, 상한 초과 시 중단. Anthropic 실호출 실측은 TASK-43 |
 
-자동화하지 않는 시나리오 검증: 화면 ①~④의 시각적 재현 확인(TASK-15·TASK-12·TASK-20·TASK-32), 실발송·실스캔 검증(Q-02·Q-03·Q-08 해소 시점까지 보류), Claude 실호출 검증(TASK-43 — API 키 확보 시점까지 보류), 카드 시안 심미 확인(TASK-46 — 사용자 판단 항목).
+자동화하지 않는 시나리오 검증: 화면 ①~④의 시각적 재현 확인(TASK-15·TASK-12·TASK-20·TASK-32), 실발송·실스캔 검증(Q-02·Q-03·Q-08 해소 시점까지 보류), Claude 실호출 검증(TASK-43 — API 키 확보 시점까지 보류), 카드 시안 심미 확인(TASK-46 — 사용자 판단 항목), **테마 팔레트 색값과 다크 모드 대비 확인(TASK-48 — 사용자 판단 항목)**.
 
 ## 마이그레이션과 롤백
 
