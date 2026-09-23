@@ -732,29 +732,37 @@ flowchart TD
 
 ## 재개 지점
 
-- 다음 작업: [TASK-45 리포트 카드 HTML 렌더러 전환](../../plan.md#task-45-리포트-카드-html-렌더러-전환) — 이후 TASK-46(카드 재설계·시안 확인) → TASK-47(기존 화면 재작성). M5~M9 기능 작업(TASK-24~)은 그 뒤
+- 다음 작업: [TASK-49 마스터 데이터 수정 기능 보완](../../plan.md#task-49-마스터-데이터-수정-기능-보완) — 분해 3. [TASK-50](../../plan.md#task-50-학생-수정퇴원-화면)(학생 수정·퇴원) → [TASK-51](../../plan.md#task-51-반-수정활성-여부-api-보완-포함)(반 수정·활성 여부, **API부터**) → [TASK-52](../../plan.md#task-52-수강-배정해제-화면)(수강 배정·해제). 그 뒤 사이클 2 기능 재개([TASK-24](../../plan.md#task-24-m5-성적-통계))
+- 사용자가 지정한 순서(2026-09-24): 모바일(완료) → 마스터 데이터 수정 → 사이클 2 재개
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `git status`가 깨끗한지, `docker compose ps`로 개발 스택 기동 여부
-- 필요한 문서: [DES-08 상세](../../design.md#des-08-상세)(카드 렌더링), [ADR-011](./ADR-011-리포트-카드-HTML-렌더링.md)(HTML/CSS + 헤드리스 Chromium 결정), [TASK-45 정의](../../plan.md#task-45-리포트-카드-html-렌더러-전환). 토큰 파일은 `apps/web/src/styles/tokens.css`이며 카드 템플릿이 그대로 인라인하도록 설계되어 있다
+- 필요한 문서: [FR-05 상세](../../requirements.md#fr-05-상세)(재원 상태 3종·퇴원 시 과거 기록 보존), [FR-07·FR-08](../../requirements.md#기능-요구사항), [TASK-49~52 정의](../../plan.md#task-49-마스터-데이터-수정-기능-보완)
 - 필요한 명령: `docker compose up -d`, `cd apps/web && npm test && npm run build`, `cd apps/api && uv run pytest`
+- **이 작업의 핵심 제약**
+  - **하드 삭제 경로를 만들지 않는다.** 기준선이 의도적으로 배제했다 — 출결·성적·발송 이력이 학생과 반을 참조하므로 물리 삭제는 과거 기록을 깨뜨린다. 학생은 상태 전이(`재원`·`휴원`·`퇴원`), 반은 `is_active` 플래그를 쓴다.
+  - TASK-50: `PATCH /students/{id}`가 이미 `status`를 받는다. **웹에만 없다**(`apps/web/src/api.ts`에 PATCH·DELETE 호출 0건).
+  - TASK-51: `update_class`가 `is_active`를 다루지 않고 `ClassIn` 스키마에도 필드가 없다. **API부터 고쳐야 한다.** 비활성 반이 대시보드의 `활성 N개 반` KPI와 반 선택 목록에서 어떻게 빠지는지 확인이 필요하다.
+  - TASK-52: `DELETE /classes/{id}/enrollments/{id}`가 이미 있으나, FR-08이 "배정 기간 이력을 보존"을 요구하므로 **해제는 기간 종료(`end_date`)로 처리하고 기존 DELETE는 오등록 취소 용도로 한정**한다.
 - **반드시 지킬 것**
-  - `npm test`와 `npm run build`를 **함께** 실행한다. 타입 오류가 있는 테스트가 Docker 빌드를 깨뜨린 전례가 있다.
+  - `npm test`와 `npm run build`를 **함께** 실행한다. 타입 오류가 있는 테스트가 Docker 빌드를 깨뜨린 전례가 두 번 있다.
   - `docker compose up -d --build`는 빌드 실패에도 기존 이미지로 컨테이너를 올리고 0을 반환한다. 빌드 출력을 확인한다.
-  - 역할(`role`)과 레이블을 보존한다. 웹 테스트가 전부 의미 기반이므로 **테스트가 깨지면 마크업이 잘못된 것**이다. TASK-47에서 화면 5개를 전면 교체하고도 기존 테스트를 한 줄도 고치지 않았다.
+  - 역할(`role`)과 레이블을 보존한다. 웹 테스트가 전부 의미 기반이므로 **테스트가 깨지면 마크업이 잘못된 것**이다. TASK-47에서 화면 5개를 전면 교체하고, TASK-53에서 반응형 분기를 넣고도 기존 테스트를 한 줄도 고치지 않았다.
+  - 웹 레이아웃을 바꾸면 `cd apps/web && npm run build && cd ../api && uv run python ../../ops/verify/responsive.py`로 AC-35를 확인한다. jsdom은 레이아웃을 계산하지 않아 vitest로는 못 잡는다.
   - `tokens.css`에 전처리 지시어나 외부 파일 참조를 넣지 않는다. 카드 렌더러가 이 파일을 그대로 인라인하므로 깨지면 카드에서만 조용히 드러난다. `tokens.test.ts`가 이를 막는다.
   - 저장소 루트 `.dockerignore`를 지우지 않는다. 없으면 `Dockerfile.testops`가 호스트 `dist/`·`node_modules/`·`.env`까지 빌드 컨텍스트에 담는다.
   - API 이미지의 빌드 컨텍스트는 **저장소 루트**다(`compose.yaml`). 토큰 파일이 `apps/web`에 있기 때문이며 되돌리면 카드 렌더러가 토큰을 못 찾는다.
   - `playwright install`에 `--only-shell`을 유지한다. 빼면 이미지가 1.51GB → 2.11GB가 된다.
-  - 웹 레이아웃을 바꾸면 `cd apps/web && npm run build && cd ../api && uv run python ../../ops/verify/responsive.py`로 AC-35를 확인한다. jsdom은 레이아웃을 계산하지 않아 vitest로는 못 잡는다.
+  - 카드를 바꾸면 시각 회귀 기준 이미지를 **컨테이너에서** 갱신한다(호스트는 글꼴이 달라 어긋난다). 명령은 `apps/api/tests/make_baseline.py` 머리말 참조.
   - 개발 DB 마이그레이션은 호스트에서 `DATABASE_URL`을 지정해 실행한다(API 컨테이너에 `migrations/`가 없다). 테스트 운영 이미지는 기동 시 자동 적용.
+  - **개발 스택 로그인 주의:** 개발 DB의 `director` 비밀번호가 `.env`의 `MATHDESK_INITIAL_ADMIN_PASSWORD`와 다르다(계정이 이미 있으면 갱신하지 않는다). 개발 서버로 브라우저 검증이 필요하면 API를 가로채는 방식(`ops/verify/responsive.py`)을 쓴다. 테스트 운영은 `director`/`director`.
 
 ## 인계
 
-- 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-45부터
-- 시작 조건: 충족됨 — 기준선 `v4` 승인(2026-09-23), TASK-44 토큰 단일 소스와 TASK-47 화면 재작성 완료
-- 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v4`, [DESIGN-mathdesk](../../design.md) `v4`, [ADR-010](./ADR-010-웹-UI-디자인-시스템.md), [ADR-011](./ADR-011-리포트-카드-HTML-렌더링.md)
-- 완료된 항목: 기준선 v1~v4 승인, ADR-001~011, DCR-001~003, 계획, 사이클 1 전체(TASK-01~TASK-22), TASK-40~TASK-42, TASK-23, TASK-44, TASK-47
-- 미완료 항목: TASK-49~52(마스터 데이터 수정 보완), TASK-24~TASK-39·TASK-43(사이클 2)
-- 차단 요인: 없음. TASK-46의 카드 시안은 **사용자 확인이 완료 조건**이므로 그 지점에서 멈추고 물어야 한다. 학원 로고 자산이 없으면 학원명 텍스트로 대체한다
-- 다음 행동: TASK-45에서 `apps/api/src/mathdesk/report.py`의 Pillow 경로를 HTML 템플릿 + Playwright(Chromium) 스크린샷으로 교체한다. 선행 테스트는 기존 `test_report_image.py`의 계약(PNG 반환·내용 변경 시 이미지 변화·스코프 거부)을 새 렌더러로 유지하는 Red. 템플릿은 `apps/web/src/styles/tokens.css`를 인라인해 VER-30의 카드 측을 채운다
+- 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-50부터
+- 시작 조건: 충족됨 — 기준선 `v6` 승인(2026-09-23), 시각 설계(TASK-44~48)와 모바일 대응(TASK-53) 완료, `git status` 깨끗, 테스트 운영 배포 최신(`e814511`)
+- 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v6`, [DESIGN-mathdesk](../../design.md) `v6`, [결정 등록부](../../decisions.md)(ADR-001~012, DCR-001~005 모두 `approved`)
+- 완료된 항목: 기준선 v1~v6 승인, ADR-001~012, DCR-001~005, 사이클 1 전체(TASK-01~TASK-22), TASK-23, TASK-40~TASK-42, 시각 설계 TASK-44~TASK-48, 모바일 TASK-53 — 작업 53건 중 31건
+- 미완료 항목: TASK-49~TASK-52(마스터 데이터 수정 보완), TASK-24~TASK-39·TASK-43(사이클 2)
+- 차단 요인: 없음
+- 다음 행동: **TASK-50 학생 수정·퇴원 화면.** 선행 테스트(Red)는 "퇴원으로 바꾸면 기본 목록에서 사라지고 필터를 켜면 다시 보인다". `apps/web/src/api.ts`에 `PATCH /students/{id}` 호출을 추가하고 `StudentsPage`에 상태 전환 UI를 넣는다. 서버 계약(`status`: `enrolled`·`paused`·`withdrawn`)은 이미 존재하므로 API 변경이 없다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
 - 커밋 리듬: TASK 하나가 끝날 때마다 커밋하고 **push까지 함께** 수행한다(사용자 지시 2026-09-22, 별도 지시 전까지 유효).
