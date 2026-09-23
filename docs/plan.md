@@ -100,10 +100,10 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │      ├─ [✓] TASK-51 반 수정·활성 여부 (API 보완) . 2026-09-24 01:20
 │      └─ [✓] TASK-52 수강 배정·해제 화면 .......... 2026-09-24 01:25
 │
-└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (1/18)
+└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (2/18)
    ├─ [✓] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... 2026-09-22 23:53
-   ├─ [ ] TASK-24 M5 성적 통계 (분해 2) .............. depends: TASK-23
-   │   ├─ [ ] TASK-25 통계 집계 API와 엑셀 내보내기
+   ├─ [~] TASK-24 M5 성적 통계 (분해 2) .............. depends: TASK-23
+   │   ├─ [✓] TASK-25 통계 집계 API와 엑셀 내보내기 ... 2026-09-24 01:45
    │   └─ [ ] TASK-26 통계 화면 ...................... depends: TASK-25
    ├─ [ ] TASK-27 M9 상담일지 ........................ depends: TASK-23
    ├─ [ ] TASK-28 공통 기반 — Storage·업로드·TaskRunner  depends: TASK-23
@@ -185,8 +185,8 @@ flowchart TD
 flowchart TD
     C2["사이클 2 — 확장 (M5~M9)"]:::active
     C2 --> T23["TASK-23 스키마 2차"]:::done
-    C2 --> T24["TASK-24 M5 성적 통계"]:::todo
-    T24 --> T25["TASK-25 통계 API·엑셀"]:::todo
+    C2 --> T24["TASK-24 M5 성적 통계"]:::active
+    T24 --> T25["TASK-25 통계 API·엑셀"]:::done
     T24 --> T26["TASK-26 통계 화면"]:::todo
     C2 --> T27["TASK-27 M9 상담일지"]:::todo
     C2 --> T28["TASK-28 공통 기반 Storage·TaskRunner"]:::todo
@@ -758,7 +758,7 @@ flowchart TD
 
 ### TASK-25: 통계 집계 API와 엑셀 내보내기
 
-- 상태: pending
+- 상태: completed (2026-09-24 01:45)
 - 상위: TASK-24
 - 목표: 학생별 테스트·과제 등급·출결률 시계열, 반 분포와 기간 비교 API, 엑셀 생성기를 구현한다.
 - 관련 요구사항과 설계: [FR-24~FR-26](./requirements.md#기능-요구사항), [DES-06·DES-22](./design.md#컴포넌트와-책임)
@@ -767,6 +767,9 @@ flowchart TD
 - 위험: 없음
 - 검증 방법: 선행 테스트 — [AC-19·AC-20](./requirements.md#인수-조건)을 통합 테스트로 전환(시계열 값 일치, 생성 파일 파싱 후 행 비교)
 - 완료 조건: AC-19·AC-20 통과
+- 결과: `GET /stats/students/{id}`(주 단위 시계열 + 같은 주 반 평균), `GET /stats/classes/{id}`(학생 행·점수 분포·등급 분포·출결률 + 비교 기간), `GET /stats/export`(학생 행 xlsx). DES-06대로 저장 집계 테이블 없이 SQL 집계로 계산하고 대시보드가 쓰던 `_completion_rate`·`_week_bounds`·`ATTENDING`을 그대로 쓴다. AC-19·AC-20의 **API 절반**이 통합 테스트로 덮였고, 화면 표시는 TASK-26에서 닫는다
+- 새 의존성: `openpyxl` — xlsx는 표준 라이브러리로 만들 수 없고 저장소에 다른 엑셀 경로가 없다. 되돌릴 수 있는 내부 선택이라 ADR을 만들지 않았다
+- 권한: 강사는 담당 반 학생의 이력만 본다(설계 권한 표). 담당 반이 아니면 403이며 이름도 돌려주지 않는다
 
 ### TASK-26: 통계 화면
 

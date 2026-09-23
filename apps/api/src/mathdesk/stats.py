@@ -1,8 +1,10 @@
 import os
 from datetime import date, timedelta
+from io import BytesIO
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from openpyxl import Workbook
 from pydantic import BaseModel
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +20,7 @@ from .models import (
     StudentDailyRecord,
 )
 from .models.daily import HOMEWORK_GRADE
-from .scope import CurrentScope, Scope
+from .scope import CurrentScope, Scope, ScopedRepository
 
 Db = Annotated[AsyncSession, Depends(get_session)]
 
@@ -230,4 +232,312 @@ async def dashboard(
             min=min(scores) if scores else None,
         ),
         last_session=last_session,
+    )
+
+
+# ── 통계 (FR-24~FR-26) ────────────────────────────────────────────────
+# DES-06대로 저장 집계 테이블 없이 SQL 집계로 계산한다.
+
+
+class StudentWeek(BaseModel):
+    week_start: date
+    test_average: float | None
+    class_test_average: float | None
+    homework_grades: list[str]
+    homework_completion: float | None
+    class_homework_completion: float | None
+    attendance_rate: float | None
+
+
+class StudentHistoryOut(BaseModel):
+    student: dict[str, str | int]
+    klass: dict[str, str | int] | None
+    weeks: list[StudentWeek]
+
+
+class StudentRow(BaseModel):
+    student_id: int
+    name: str
+    test_average: float | None
+    homework_completion: float | None
+    attendance_rate: float | None
+
+
+class Bucket(BaseModel):
+    bucket: str
+    count: int
+
+
+class PeriodStats(BaseModel):
+    start: date
+    end: date
+    students: list[StudentRow]
+    test: dict[str, float | int | None | list[Bucket]]
+    homework: dict[str, float | None | dict[str, int]]
+    attendance_rate: float | None
+
+
+class ClassStatsOut(BaseModel):
+    klass: dict[str, str | int]
+    period: PeriodStats
+    compare: PeriodStats | None
+
+
+def _mean(values: list[float]) -> float | None:
+    return round(sum(values) / len(values), 1) if values else None
+
+
+def _rate(part: int, whole: int) -> float | None:
+    return round(part * 100 / whole, 1) if whole else None
+
+
+def _bucket(score: float) -> str:
+    """10점 구간. 만점 100을 90~100 한 칸으로 묶어 마지막 칸이 1점짜리가 되지 않게 한다."""
+    floor = min(int(score // 10) * 10, 90)
+    return f"{floor}~{100 if floor == 90 else floor + 9}"
+
+
+async def _period_records(
+    session: AsyncSession, class_id: int, start: date, end: date
+) -> list[tuple[StudentDailyRecord, date]]:
+    rows = await session.execute(
+        select(StudentDailyRecord, ClassSession.session_date)
+        .join(ClassSession, ClassSession.id == StudentDailyRecord.session_id)
+        .where(
+            ClassSession.class_id == class_id,
+            ClassSession.session_date.between(start, end),
+        )
+        .order_by(ClassSession.session_date)
+    )
+    return [(record, session_date) for record, session_date in rows]
+
+
+async def _session_count(
+    session: AsyncSession, class_id: int, start: date, end: date
+) -> int:
+    return (
+        await session.scalar(
+            select(func.count(ClassSession.id)).where(
+                ClassSession.class_id == class_id,
+                ClassSession.session_date.between(start, end),
+            )
+        )
+        or 0
+    )
+
+
+async def _current_class(
+    session: AsyncSession, scope: Scope, student_id: int, on: date
+) -> Klass | None:
+    """강사는 담당 반만 본다(설계의 권한 표). 담당 반이 아니면 반이 없는 것으로 본다."""
+    statement = (
+        select(Klass)
+        .join(Enrollment, Enrollment.class_id == Klass.id)
+        .where(
+            Klass.campus_id == scope.campus_id,
+            Enrollment.student_id == student_id,
+            Enrollment.start_date <= on,
+            or_(Enrollment.end_date.is_(None), Enrollment.end_date >= on),
+        )
+    )
+    if not scope.is_director:
+        statement = statement.where(Klass.teacher_id == scope.user.id)
+    return await session.scalar(statement.order_by(Klass.id).limit(1))
+
+
+@router.get("/stats/students/{student_id}")
+async def student_history(
+    student_id: int,
+    scope: CurrentScope,
+    session: Db,
+    to: date | None = None,
+    weeks: int = 8,
+    class_id: int | None = None,
+) -> StudentHistoryOut:
+    """주 단위 시계열과 같은 주의 반 평균을 함께 준다(FR-24, AC-19)."""
+    student = await ScopedRepository(session, scope).get(Student, student_id)
+    anchor = to or date.today()
+    klass = (
+        await _visible_class(session, scope, class_id)
+        if class_id is not None
+        else await _current_class(session, scope, student_id, anchor)
+    )
+    if klass is None and not scope.is_director:
+        # 담당 반의 학생이 아니면 이름조차 돌려주지 않는다.
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "접근 권한이 없습니다.")
+
+    last_monday, _ = _week_bounds(anchor)
+    timeline: list[StudentWeek] = []
+    for index in range(weeks - 1, -1, -1):
+        start = last_monday - timedelta(days=7 * index)
+        end = start + timedelta(days=6)
+        if klass is None:
+            timeline.append(
+                StudentWeek(
+                    week_start=start,
+                    test_average=None,
+                    class_test_average=None,
+                    homework_grades=[],
+                    homework_completion=None,
+                    class_homework_completion=None,
+                    attendance_rate=None,
+                )
+            )
+            continue
+
+        records = await _period_records(session, klass.id, start, end)
+        mine = [record for record, _ in records if record.student_id == student_id]
+        sessions = await _session_count(session, klass.id, start, end)
+        grades = [record.homework_grade for record in mine if record.homework_grade]
+        timeline.append(
+            StudentWeek(
+                week_start=start,
+                test_average=_mean(
+                    [float(r.test_score_num) for r in mine if r.test_score_num is not None]
+                ),
+                class_test_average=_mean(
+                    [
+                        float(record.test_score_num)
+                        for record, _ in records
+                        if record.test_score_num is not None
+                    ]
+                ),
+                homework_grades=grades,
+                homework_completion=_completion_rate(grades),
+                class_homework_completion=_completion_rate(
+                    [record.homework_grade for record, _ in records if record.homework_grade]
+                ),
+                attendance_rate=_rate(
+                    sum(1 for record in mine if record.attendance_status in ATTENDING),
+                    sessions,
+                ),
+            )
+        )
+
+    return StudentHistoryOut(
+        student={"id": student.id, "name": student.name},
+        klass={"id": klass.id, "name": klass.name} if klass else None,
+        weeks=timeline,
+    )
+
+
+async def _period_stats(
+    session: AsyncSession, klass: Klass, start: date, end: date
+) -> PeriodStats:
+    records = await _period_records(session, klass.id, start, end)
+    sessions = await _session_count(session, klass.id, start, end)
+    roster = list(
+        await session.scalars(
+            select(Student)
+            .join(Enrollment, Enrollment.student_id == Student.id)
+            .where(
+                Enrollment.class_id == klass.id,
+                Enrollment.start_date <= end,
+                or_(Enrollment.end_date.is_(None), Enrollment.end_date >= start),
+            )
+            .order_by(Student.id)
+        )
+    )
+
+    rows = []
+    for student in roster:
+        mine = [record for record, _ in records if record.student_id == student.id]
+        grades = [record.homework_grade for record in mine if record.homework_grade]
+        rows.append(
+            StudentRow(
+                student_id=student.id,
+                name=student.name,
+                test_average=_mean(
+                    [float(r.test_score_num) for r in mine if r.test_score_num is not None]
+                ),
+                homework_completion=_completion_rate(grades),
+                attendance_rate=_rate(
+                    sum(1 for record in mine if record.attendance_status in ATTENDING),
+                    sessions,
+                ),
+            )
+        )
+
+    scores = [float(r.test_score_num) for r, _ in records if r.test_score_num is not None]
+    distribution: dict[str, int] = {}
+    for score in scores:
+        distribution[_bucket(score)] = distribution.get(_bucket(score), 0) + 1
+    grades = [record.homework_grade for record, _ in records if record.homework_grade]
+    grade_counts: dict[str, int] = {}
+    for grade in sorted(grades, key=HOMEWORK_GRADE.index):
+        grade_counts[grade] = grade_counts.get(grade, 0) + 1
+
+    return PeriodStats(
+        start=start,
+        end=end,
+        students=rows,
+        test={
+            "average": _mean(scores),
+            "count": len(scores),
+            "distribution": [
+                Bucket(bucket=bucket, count=count)
+                for bucket, count in sorted(distribution.items())
+            ],
+        },
+        homework={
+            "completion_rate": _completion_rate(grades),
+            "distribution": grade_counts,
+        },
+        attendance_rate=_rate(
+            sum(1 for record, _ in records if record.attendance_status in ATTENDING),
+            sessions * len(roster),
+        ),
+    )
+
+
+@router.get("/stats/classes/{class_id}")
+async def class_stats(
+    class_id: int,
+    start: date,
+    end: date,
+    scope: CurrentScope,
+    session: Db,
+    compare_start: date | None = None,
+    compare_end: date | None = None,
+) -> ClassStatsOut:
+    """기간 통계와 선택한 비교 기간을 함께 준다(FR-25)."""
+    klass = await _visible_class(session, scope, class_id)
+    compare = None
+    if compare_start is not None and compare_end is not None:
+        compare = await _period_stats(session, klass, compare_start, compare_end)
+    return ClassStatsOut(
+        klass={"id": klass.id, "name": klass.name},
+        period=await _period_stats(session, klass, start, end),
+        compare=compare,
+    )
+
+
+EXPORT_HEADER = ["학생", "테스트 평균", "과제 완수율", "출결률"]
+EXPORT_MEDIA_TYPE = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
+
+@router.get("/stats/export")
+async def export_class_stats(
+    class_id: int, start: date, end: date, scope: CurrentScope, session: Db
+) -> Response:
+    """통계 화면의 학생 행을 그대로 엑셀로 내보낸다(FR-26, AC-20)."""
+    klass = await _visible_class(session, scope, class_id)
+    stats = await _period_stats(session, klass, start, end)
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "통계"
+    sheet.append(EXPORT_HEADER)
+    for row in stats.students:
+        sheet.append([row.name, row.test_average, row.homework_completion, row.attendance_rate])
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    filename = f"mathdesk-stats-{klass.id}-{start}-{end}.xlsx"
+    return Response(
+        content=buffer.getvalue(),
+        media_type=EXPORT_MEDIA_TYPE,
+        headers={"content-disposition": f'attachment; filename="{filename}"'},
     )
