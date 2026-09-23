@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: 없음. M5 성적 통계(TASK-24~26) 완료
-- 마지막 완료 작업: [TASK-26 통계 화면](../../plan.md#task-26-통계-화면) (2026-09-24 02:05)
+- 진행 중인 작업: 없음. 다음은 M6 시험지 분석 또는 M9 상담일지 (**미착수**)
+- 마지막 완료 작업: [TASK-28 공통 기반 — Storage·업로드·TaskRunner](../../plan.md#task-28-공통-기반--storage업로드taskrunner) (2026-09-24 02:30)
 - 차단 요인: 없음. Anthropic API 키는 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서만 필요하며 그 앞 구현을 차단하지 않는다. 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시 퍼지는 사용자가 보류했다(TTL 만료로 자연 해소)
 
 ## 계획 트리
@@ -767,17 +767,33 @@ flowchart TD
 - 차트마다 같은 값을 담은 표를 함께 뒀다. 값이 색에만 실리지 않고, jsdom이 레이아웃을 계산하지 않아 차트 SVG를 테스트할 수 없는 문제도 이 표가 해결한다.
 - 검증: 웹 49건 통과(기존 46건 무수정 + 신규 3건), API 102건 통과, `npm run build` 통과, VER-35 통과(390·768·1280px, 성적 통계 포함). 이로써 **AC-19·AC-20이 API와 화면 양쪽에서 닫혔다.**
 
+### 2026-09-24 — TASK-28 공통 기반(Storage·업로드·TaskRunner) 완료
+
+- 계획이 지정한 선행 테스트("작업 상태가 DB에 저장되고 재기동 후 `queued`부터 재개")를 포함해 9건을 먼저 썼다. 모듈·모델이 없어 import 실패로 Red를 확인했다.
+- **재기동 재개를 어떻게 흉내 낼지가 이 작업의 핵심이었다.** 실제 프로세스를 죽일 수 없으므로 "`running`으로 끊긴 행"을 만들고 기동 경로(`TaskRunner.resume()`)를 호출한다. `resume()`은 `running`을 전부 `queued`로 되돌린 뒤 대기열을 비운다. 이것이 [RISK-09](../../design.md#위험)가 정한 완화책 그대로다.
+- **실행기를 테스트 가능하게 쪼갰다.** `run_pending()`은 대기열을 끝까지 실행하고 건수를 돌려주는 평범한 awaitable이다. 기동 시에는 `asyncio.create_task`로 배경에 띄우고, 테스트는 직접 await한다. 테스트에서 sleep으로 기다리지 않아도 된다.
+- **`background_task` 테이블은 [설계의 데이터 모델 목록](../../design.md#데이터-모델)에 없다.** 그러나 RISK-09의 완화책과 이 작업의 검증 방법이 "작업 상태를 DB에 저장"을 명시하고 REST 계약에 `GET /tasks/{task_id}`가 있다. 목록이 열거하지 않았을 뿐 새로운 제품 결정이 아니라고 보고 내부 구현으로 추가했다 — `user_session`과 같은 처리이며 아래 "설계와 달라진 점"에 남겼다.
+- **업로드는 신뢰 경계다.** 최소화하지 않은 것 셋: ① 저장 키를 서버가 정한다(`{campus}/{kind}/{sha256}{확장자}`) — 업로드 파일명을 경로에 쓰면 `../`로 루트를 벗어나거나 서로 덮어쓴다. ② `LocalStorage`가 루트 이탈 경로를 `ValueError`로 막는다(전용 테스트 있음). ③ 크기 제한을 **읽기 전에** `upload.size`로 먼저 본다. 처음엔 다 읽고 나서 `len(data)`로 쟀는데, 그러면 큰 파일이 이미 메모리에 올라온 뒤라 제한의 의미가 없다.
+- `signed_url`(DES-10)은 Phase A에서 앱 경로 `/api/files/{id}`를 준다. 같은 오리진에서 세션으로 인가하므로 서명 토큰이 필요 없고, 앱 밖에서 직접 받아 가는 Phase B에서 실제 서명 URL이 된다. 지금 토큰 machinery를 만들면 쓰는 곳 없이 유지만 해야 한다.
+- **운영 구멍 하나를 자체 리뷰에서 막았다.** 업로드 파일은 DB가 아니라 파일시스템에 있는데 compose에 볼륨이 없어 재배포 때 사라진다. 개발·테스트 운영 양쪽에 `files` 볼륨과 `MATHDESK_STORAGE_ROOT`를 넣었다.
+- 없는 `task_id` 조회가 404가 아니라 403이다. 저장소 규약(`ScopedRepository`)이 없는 id와 남의 캠퍼스 id를 구분해 알려주지 않기 때문이다. 처음 쓴 테스트의 기대값(404)을 규약에 맞춰 고쳤다.
+- 새 의존성 1건: `python-multipart`(FastAPI 파일 업로드 필수).
+- 검증: API 111건 통과(1 skip). 마이그레이션 왕복 테스트 포함. 개발 DB에 `980c6aafb97c` 적용, 개발 API 컨테이너 재빌드 후 `/api/health` 확인.
+- 남은 위험: 프로세스 안에서 실행하므로 종료 시점에 진행 중이던 작업은 다음 기동에서 **처음부터** 다시 돈다. 핸들러는 멱등이어야 한다. TASK-31·TASK-34에서 핸들러를 만들 때 지킬 것.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
 |---|---|---|
 | `user_session` 테이블 | [설계 데이터 모델](../../design.md#데이터-모델)의 테이블 목록에 없지만 [DES-03](../../design.md#des-03-상세)이 "서버 측 세션 레코드"를 규정한다. 목록이 이를 열거하지 않았을 뿐이며 새로운 제품 결정이 아니라고 판단해 내부 구현으로 추가했다 | 경미한 변경으로 처리, DCR 없음 |
 | `GET /api/daily`의 세션 생성 | 설계 REST 계약에는 세션 생성 엔드포인트가 없고 [DES-05](../../design.md#des-05-상세)는 "첫 입력 시 생성"만 규정한다. 조회 시점에 만드는 것으로 해석했다 | 경미한 변경으로 처리, DCR 없음 |
+| `background_task` 테이블 | [설계 데이터 모델](../../design.md#데이터-모델)의 테이블 목록에 없지만 [RISK-09](../../design.md#위험)가 "작업 상태를 DB에 저장하고 재기동 시 `queued`부터 재개"를 완화책으로 규정하고 REST 계약에 `GET /tasks/{task_id}`가 있다. 목록이 이를 열거하지 않았을 뿐이라고 판단해 내부 구현으로 추가했다(`user_session`과 같은 처리) | 경미한 변경으로 처리, DCR 없음 |
+| `core/` 패키지 | [TASK-28 계획](../../plan.md#task-28-공통-기반--storage업로드taskrunner)의 변경 대상은 `apps/api/core/storage.py`였으나 저장소에 `core/` 패키지가 없고 모듈이 `src/mathdesk/` 평면에 있다. 기존 구조를 따랐다 | 경미한 변경으로 처리 |
 | 로그인 시도 제한 | [보안과 품질 속성](../../design.md#보안과-품질-속성)의 "로그인 실패 지연·시도 제한" 중 실패 지연만 구현했다. 시도 제한은 임계값·잠금 시간이 기준선에 없어 임의로 정하면 실사용자가 잠길 수 있다 | [TASK-40](../../plan.md#task-40-로그인-시도-제한)으로 분리, 임계값은 사용자 확인 대기 |
 
 ## 미완료 항목
 
-- TASK-27~TASK-39·TASK-43(사이클 2)
+- TASK-27·TASK-29~TASK-39·TASK-43(사이클 2)
 - 알리고 실발송 경로 미검증([Q-02](../../requirements.md#가정과-미해결-질문))
 - AC-05의 브라우저 육안 확인 미수행(자동화 제외 항목)
 - 구 경로 `/api/messages/report.png`의 Cloudflare 엣지 캐시 잔존 — 퍼지 또는 TTL 만료 대기
@@ -797,15 +813,17 @@ flowchart TD
 
 ## 재개 지점
 
-- 다음 작업: [TASK-27 M9 상담일지](../../plan.md#task-27-m9-상담일지) 또는 [TASK-28 공통 기반 — Storage·업로드·TaskRunner](../../plan.md#task-28-공통-기반--storage업로드taskrunner). TASK-28은 M6(시험지 분석)·M7(OMR)의 선행이라 먼저 하면 뒤가 넓어진다
+- 다음 작업: [TASK-30 DocumentIngest 4포맷 정규화](../../plan.md#task-30-documentingest-4포맷-정규화)(M6의 첫 분해) 또는 [TASK-27 M9 상담일지](../../plan.md#task-27-m9-상담일지)
 - 사용자가 지정한 순서(2026-09-24): 모바일(완료) → 마스터 데이터 수정(완료) → 사이클 2 재개
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `git status`가 깨끗한지, `docker compose ps`로 개발 스택 기동 여부
-- 필요한 문서: [TASK-27·28 정의](../../plan.md#task-27-m9-상담일지), 해당 FR·DES 항목, [ADR-003](./ADR-003-AI-작업-분리와-개인정보-경계.md)(개인정보 경계)
+- 필요한 문서: [TASK-29~31 정의](../../plan.md#task-29-m6-시험지-분석), [FR-27 상세](../../requirements.md#fr-27-상세), [ADR-004](./ADR-004-문서-입력-정규화-파이프라인.md), [ADR-003](./ADR-003-AI-작업-분리와-개인정보-경계.md)(개인정보 경계)
 - 필요한 명령: `docker compose up -d`, `cd apps/web && npm test && npm run build`, `cd apps/api && uv run pytest`
 - **이 작업의 핵심 제약**
   - **하드 삭제 경로를 만들지 않는다.** 기준선이 의도적으로 배제했다 — 출결·성적·발송 이력이 학생과 반을 참조하므로 물리 삭제는 과거 기록을 깨뜨린다. 학생은 상태 전이(`재원`·`휴원`·`퇴원`), 반은 `is_active` 플래그를 쓴다.
   - **`PATCH`는 대체로 전치환이다**(학생·반). 폼이 다루지 않는 필드를 함께 실어 보내지 않으면 지워진다. 수강 배정만 부분 갱신(`EnrollmentUpdate`)이다.
   - 마스터 데이터 수정 화면 3건(TASK-50~52)이 쓴 방식: 행별 대화상자 + 목록 토글 + 오늘 날짜는 [`lib/date.ts`의 `today()`](../../../apps/web/src/lib/date.ts).
+  - 백그라운드 작업 핸들러는 **멱등이어야 한다.** 프로세스가 죽으면 진행 중이던 작업이 다음 기동에서 처음부터 다시 돈다(`TaskRunner.resume()`).
+  - 업로드 저장 키는 서버가 정한다(`{campus}/{kind}/{sha256}{확장자}`). 업로드 파일명을 경로에 쓰지 않는다.
   - 차트를 그리면 계열색은 `--md-color-chart-*`를 쓰고(브랜드·상태색 금지) 표를 함께 둔다. 새 화면은 [`ops/verify/responsive.py`](../../../ops/verify/responsive.py)의 `BROWSE`와 응답 스텁에 추가한다. 무거운 라이브러리를 쓰는 화면은 `App.tsx`에서 지연 로딩으로 분리한다.
   - `queryFn: fetchXxx`를 그대로 넘기지 않는다. react-query가 컨텍스트 객체를 첫 인자로 주므로 선택 인자가 있는 API 함수는 `() => fetchXxx()`로 감싼다.
   - TASK-52: `DELETE /classes/{id}/enrollments/{id}`가 이미 있으나, FR-08이 "배정 기간 이력을 보존"을 요구하므로 **해제는 기간 종료(`end_date`)로 처리하고 기존 DELETE는 오등록 취소 용도로 한정**한다.
@@ -825,11 +843,11 @@ flowchart TD
 ## 인계
 
 - 다음 단계 또는 워크플로우: wf-implement 구현 — 사이클 2 계속
-- 시작 조건: 충족됨 — 기준선 `v6` 승인(2026-09-23), M5 성적 통계(TASK-24~26) 완료, `git status` 깨끗
+- 시작 조건: 충족됨 — 기준선 `v6` 승인(2026-09-23), 공통 기반(TASK-28) 완료, `git status` 깨끗
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v6`, [DESIGN-mathdesk](../../design.md) `v6`, [결정 등록부](../../decisions.md)(ADR-001~012, DCR-001~005 모두 `approved`)
-- 완료된 항목: 기준선 v1~v6 승인, ADR-001~012, DCR-001~005, 사이클 1 전체(TASK-01~TASK-22), TASK-23, TASK-40~TASK-42, 시각 설계 TASK-44~TASK-48, 모바일 TASK-53, 마스터 데이터 수정 TASK-49~TASK-52, M5 통계 TASK-24~TASK-26 — 작업 53건 중 37건
-- 미완료 항목: TASK-27~TASK-39·TASK-43(사이클 2의 나머지)
-- 차단 요인: 없음. [TASK-43](../../plan.md#task-43-claude-실호출-검증)만 Anthropic API 키가 필요하고, [TASK-34·37](../../plan.md#task-34-omr-스캔-판독)은 실스캔 표본이 없어 제한된다([Q-03·Q-08](../../requirements.md#가정과-미해결-질문))
-- 다음 행동: **[TASK-28 공통 기반 — Storage·업로드·TaskRunner](../../plan.md#task-28-공통-기반--storage업로드taskrunner)를 먼저 하기를 권한다.** M6(시험지 분석)·M7(OMR)의 선행이라 여기서 막히면 뒤가 전부 막힌다. [TASK-27 M9 상담일지](../../plan.md#task-27-m9-상담일지)는 스키마(TASK-23)만 있으면 독립적으로 끝나므로 짧게 끊어 가고 싶으면 이쪽이다. 어느 쪽이든 착수 전 해당 TASK 정의와 관련 FR·AC를 읽고, 개인정보가 외부로 나가는 경로가 생기면 [ADR-003](./ADR-003-AI-작업-분리와-개인정보-경계.md)의 경계를 먼저 확인할 것
+- 완료된 항목: 기준선 v1~v6 승인, ADR-001~012, DCR-001~005, 사이클 1 전체(TASK-01~TASK-22), TASK-23, TASK-40~TASK-42, 시각 설계 TASK-44~TASK-48, 모바일 TASK-53, 마스터 데이터 수정 TASK-49~TASK-52, M5 통계 TASK-24~TASK-26, 공통 기반 TASK-28 — 작업 53건 중 38건
+- 미완료 항목: TASK-27, TASK-29~TASK-39, TASK-43
+- 차단 요인: 없음. [TASK-43](../../plan.md#task-43-claude-실호출-검증)만 Anthropic API 키가 필요하고, [TASK-30](../../plan.md#task-30-documentingest-4포맷-정규화)은 `.hwp`·`.hwpx` 실파일 표본이 없으면 그 포맷을 미검증으로 남겨야 한다([Q-03](../../requirements.md#가정과-미해결-질문))
+- 다음 행동: **[TASK-30 DocumentIngest 4포맷 정규화](../../plan.md#task-30-documentingest-4포맷-정규화).** 업로드된 `stored_file`을 읽어 `.hwp`·`.hwpx`·`.pdf`·이미지를 공통 구조로 정규화한다. 저장·조회 경로는 TASK-28에서 끝났으므로(`storage()`, `save_upload`, `GET /files/{id}`) 그 위에 얹으면 된다. 선행 테스트는 [AC-21](../../requirements.md#인수-조건)의 고정 픽스처 단위 테스트다 — **픽스처를 못 만드는 포맷은 통과로 적지 말고 미검증으로 남길 것.** 분석을 백그라운드로 돌릴 때는 `task_handler("...")`로 등록하고 핸들러를 멱등으로 만든다. 짧게 끊어 가고 싶으면 [TASK-27 M9 상담일지](../../plan.md#task-27-m9-상담일지)가 독립적이다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
 - 커밋 리듬: TASK 하나가 끝날 때마다 커밋하고 **push까지 함께** 수행한다(사용자 지시 2026-09-22, 별도 지시 전까지 유효).

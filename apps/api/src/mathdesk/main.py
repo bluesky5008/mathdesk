@@ -1,3 +1,4 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,9 +12,11 @@ from .auth import ensure_initial_director, router as auth_router
 from .branding import router as branding_router
 from .daily import router as daily_router
 from .db import create_engine
+from .files import router as files_router
 from .masterdata import router as masterdata_router
 from .messaging import router as messaging_router
 from .stats import router as stats_router
+from .tasks import TaskRunner, router as tasks_router
 from .users import router as users_router
 
 
@@ -28,9 +31,14 @@ async def lifespan(app: FastAPI):
 
     app.state.report_renderer = ReportRenderer()
     await app.state.report_renderer.start()
+
+    # 지난 프로세스가 실행 중에 끊겼으면 그 작업을 queued로 되돌려 다시 시작한다(RISK-09).
+    app.state.task_runner = TaskRunner(app.state.session_factory)
+    resume = asyncio.create_task(app.state.task_runner.resume())
     try:
         yield
     finally:
+        resume.cancel()
         await app.state.report_renderer.stop()
         await engine.dispose()
 
@@ -70,6 +78,8 @@ def create_app(web_dist: Path | str | None = None) -> FastAPI:
     app.include_router(daily_router)
     app.include_router(stats_router)
     app.include_router(messaging_router)
+    app.include_router(files_router)
+    app.include_router(tasks_router)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

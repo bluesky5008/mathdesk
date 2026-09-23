@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 37건 완료. 시각 설계(TASK-44~48)와 모바일 대응(TASK-53)이 완료되었다. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-27 M9 상담일지](#task-27-m9-상담일지) 또는 [TASK-28 공통 기반 — Storage·업로드·TaskRunner](#task-28-공통-기반--storage업로드taskrunner). M5 성적 통계(TASK-24~26)는 완료했다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 38건 완료. 시각 설계(TASK-44~48)와 모바일 대응(TASK-53)이 완료되었다. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-30 DocumentIngest 4포맷 정규화](#task-30-documentingest-4포맷-정규화)(M6의 첫 분해) 또는 [TASK-27 M9 상담일지](#task-27-m9-상담일지). 공통 기반(TASK-28)이 끝나 M6·M7의 선행이 해소되었다.
 
 ## 문서 연결
 
@@ -100,13 +100,13 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │      ├─ [✓] TASK-51 반 수정·활성 여부 (API 보완) . 2026-09-24 01:20
 │      └─ [✓] TASK-52 수강 배정·해제 화면 .......... 2026-09-24 01:25
 │
-└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (4/18)
+└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (5/18)
    ├─ [✓] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... 2026-09-22 23:53
    ├─ [✓] TASK-24 M5 성적 통계 (분해 2) .............. 2026-09-24 02:05
    │   ├─ [✓] TASK-25 통계 집계 API와 엑셀 내보내기 ... 2026-09-24 01:45
    │   └─ [✓] TASK-26 통계 화면 ...................... 2026-09-24 02:05
    ├─ [ ] TASK-27 M9 상담일지 ........................ depends: TASK-23
-   ├─ [ ] TASK-28 공통 기반 — Storage·업로드·TaskRunner  depends: TASK-23
+   ├─ [✓] TASK-28 공통 기반 — Storage·업로드·TaskRunner  2026-09-24 02:30
    ├─ [ ] TASK-29 M6 시험지 분석 (분해 3) ............ depends: TASK-28
    │   ├─ [ ] TASK-30 DocumentIngest 4포맷 정규화
    │   ├─ [ ] TASK-31 문항 분할·LlmAdapter·분석 ...... depends: TASK-30
@@ -189,7 +189,7 @@ flowchart TD
     T24 --> T25["TASK-25 통계 API·엑셀"]:::done
     T24 --> T26["TASK-26 통계 화면"]:::done
     C2 --> T27["TASK-27 M9 상담일지"]:::todo
-    C2 --> T28["TASK-28 공통 기반 Storage·TaskRunner"]:::todo
+    C2 --> T28["TASK-28 공통 기반 Storage·TaskRunner"]:::done
     C2 --> T29["TASK-29 M6 시험지 분석"]:::todo
     T29 --> T30["TASK-30 DocumentIngest 4포맷"]:::todo
     T29 --> T31["TASK-31 문항 분할·LLM 분석"]:::todo
@@ -801,7 +801,7 @@ flowchart TD
 
 ### TASK-28: 공통 기반 — Storage·업로드·TaskRunner
 
-- 상태: pending
+- 상태: completed (2026-09-24 02:30)
 - 상위: 없음
 - 목표: `StorageAdapter`(로컬 구현), 파일 업로드와 `stored_file` 메타데이터, DB 상태 기반 백그라운드 작업 실행기와 진행 상태 조회를 구현한다.
 - 관련 요구사항과 설계: [DES-10·DES-18](./design.md#컴포넌트와-책임), [NFR-08](./requirements.md#비기능-요구사항), [Q-09](./design.md#가정과-미해결-질문), [RISK-09](./design.md#위험)
@@ -810,6 +810,10 @@ flowchart TD
 - 위험: 프로세스 내 큐는 재시작 시 진행 중 작업이 유실될 수 있다
 - 검증 방법: 선행 테스트 — 작업 상태가 DB에 저장되고 재기동 후 `queued`부터 재개되는 통합 테스트
 - 완료 조건: 업로드·작업 등록·상태 조회가 동작하고 재기동 재개 테스트 통과
+- 결과: `storage.py`(`StorageAdapter`+`LocalStorage`), `files.py`(`POST /exams/uploads`, `GET /files/{id}`), `tasks.py`(`TaskRunner`+`GET /tasks/{task_id}`), `background_task` 테이블과 마이그레이션. 재기동 재개는 `running`으로 끊긴 행을 `queued`로 되돌려 다시 실행하는 것으로 구현했고 통합 테스트가 이를 검사한다
+- 설계와의 차이 2건: ① `background_task` 테이블이 [설계의 데이터 모델 목록](./design.md#데이터-모델)에 없다 — [RISK-09](./design.md#위험) 완화책과 이 작업의 검증 방법이 "작업 상태를 DB에 저장"을 규정하므로 목록이 열거하지 않았을 뿐으로 보고 내부 구현으로 추가했다(`user_session`과 같은 처리). ② 저장소에 `core/` 패키지가 없어 기존 구조대로 `src/mathdesk/` 평면에 두었다
+- `signed_url`은 Phase A에서 앱 경로(`/api/files/{id}`)를 준다. 같은 오리진에서 세션으로 인가하므로 서명이 필요 없다. 앱 밖에서 직접 받아 가는 Phase B에서 실제 서명 URL이 된다
+- 운영: 업로드 파일은 DB가 아니라 파일시스템에 있으므로 개발·테스트 운영 compose에 `files` 볼륨과 `MATHDESK_STORAGE_ROOT`를 넣었다. 없으면 재배포 때 사라진다
 
 ### TASK-29: M6 시험지 분석
 

@@ -21,12 +21,13 @@ from .masterdata import (
     Student,
 )
 from .messaging import GradeComment, MessageLog, MessageTemplate
-from .system import AuditLog, IntegrationSetting, LlmCallLog, StoredFile
+from .system import AuditLog, BackgroundTask, IntegrationSetting, LlmCallLog, StoredFile
 
 __all__ = [
     "AppUser",
     "AppUserCampus",
     "AuditLog",
+    "BackgroundTask",
     "Base",
     "Campus",
     "ClassSchedule",

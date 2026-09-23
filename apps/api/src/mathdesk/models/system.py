@@ -2,13 +2,15 @@ from datetime import datetime
 
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, enum_column
 
 # 기준선 v3 (ADR-009): LlmAdapter 구현체와 1:1 대응한다.
 LLM_PROVIDER = ("test", "anthropic", "openai_compat")
+
+TASK_STATUS = ("queued", "running", "done", "failed")
 
 
 class IntegrationSetting(Base):
@@ -65,3 +67,29 @@ class LlmCallLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class BackgroundTask(Base):
+    """오래 걸리는 작업의 상태(DES-18).
+
+    프로세스 안에서 실행하지만 상태는 DB에 둔다. 재시작하면 메모리의 큐는 사라지지만
+    이 행은 남아 `queued`부터 다시 시작할 수 있다(RISK-09 완화책).
+    """
+
+    __tablename__ = "background_task"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    campus_id: Mapped[int] = mapped_column(ForeignKey("campus.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(50), index=True)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(
+        enum_column("task_status", *TASK_STATUS), default="queued", index=True
+    )
+    progress: Mapped[int] = mapped_column(default=0)
+    result: Mapped[dict | None] = mapped_column(JSON)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

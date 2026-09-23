@@ -28,6 +28,10 @@ services:
       MATHDESK_COOKIE_SECURE: "true"
       MATHDESK_INITIAL_ADMIN_ID: ${MATHDESK_INITIAL_ADMIN_ID:?초기 원장 아이디를 .env에 설정하세요}
       MATHDESK_INITIAL_ADMIN_PASSWORD: ${MATHDESK_INITIAL_ADMIN_PASSWORD:?초기 원장 비밀번호를 .env에 설정하세요}
+      # 업로드 파일은 DB가 아니라 파일시스템에 있다(DES-10). 볼륨이 없으면 재배포 때 사라진다.
+      MATHDESK_STORAGE_ROOT: /var/lib/mathdesk/files
+    volumes:
+      - files:/var/lib/mathdesk/files
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,3 +48,4 @@ services:
 
 volumes:
   pgdata:
+  files:
