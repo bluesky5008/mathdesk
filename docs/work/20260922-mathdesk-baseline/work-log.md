@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: 없음. 다음은 M6 시험지 분석 또는 M9 상담일지 (**미착수**)
-- 마지막 완료 작업: [TASK-28 공통 기반 — Storage·업로드·TaskRunner](../../plan.md#task-28-공통-기반--storage업로드taskrunner) (2026-09-24 02:30)
+- 진행 중인 작업: [TASK-29 M6 시험지 분석](../../plan.md#task-29-m6-시험지-분석) — TASK-30 완료, TASK-31·32 남음
+- 마지막 완료 작업: [TASK-30 DocumentIngest 4포맷 정규화](../../plan.md#task-30-documentingest-4포맷-정규화) (2026-09-24 02:55)
 - 차단 요인: 없음. Anthropic API 키는 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서만 필요하며 그 앞 구현을 차단하지 않는다. 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시 퍼지는 사용자가 보류했다(TTL 만료로 자연 해소)
 
 ## 계획 트리
@@ -781,6 +781,19 @@ flowchart TD
 - 검증: API 111건 통과(1 skip). 마이그레이션 왕복 테스트 포함. 개발 DB에 `980c6aafb97c` 적용, 개발 API 컨테이너 재빌드 후 `/api/health` 확인.
 - 남은 위험: 프로세스 안에서 실행하므로 종료 시점에 진행 중이던 작업은 다음 기동에서 **처음부터** 다시 돈다. 핸들러는 멱등이어야 한다. TASK-31·TASK-34에서 핸들러를 만들 때 지킬 것.
 
+### 2026-09-24 — TASK-30 DocumentIngest 4포맷 정규화 완료 (실파일 미확보)
+
+- **사용자가 실제 시험지 파일이 없다고 확인했다(2026-09-24).** 계획의 완료 조건이 "픽스처 미확보 포맷은 미검증으로 명시"이므로 그대로 따랐다. 검증 범위는 아래와 같고 테스트 파일 머리말에도 같은 내용을 적었다.
+  - `.pdf` **실물 검증**: Chromium 인쇄로 만든 텍스트 레이어 PDF와 Pillow로 만든 이미지 PDF 2종. 진짜 PDF라 이 경로는 실제로 동작함이 확인된다.
+  - `.hwpx` **미검증**: 공개 규격(OWPML)대로 손으로 만든 최소 zip으로만 검사했다. 규격 해석이 틀렸을 가능성이 남는다.
+  - `.hwp` **미검증**: `olefile`이 OLE 파일 생성을 지원하지 않아 컨테이너 픽스처를 만들 수 없다. FileHeader 속성 비트 해석만 단위로 검사했고, 암호 파일의 실제 안내 경로는 확인하지 못했다.
+- **PDF 텍스트가 글자 단위로 쪼개져 나왔다.** PDF의 텍스트 개체는 글꼴·자간이 바뀔 때마다 끊기고 한글은 글자 하나가 개체 하나가 되기도 한다. 그대로 두면 블록 66개가 나온다("2026", "학", "년", "도"…). 세로로 겹치는 조각을 한 줄로 합쳐 블록 4개로 만들었다.
+- **처음엔 윗변 좌표로 줄을 묶었는데 문장 끝 마침표가 제 줄에서 떨어져 나갔다**(마침표의 글자 상자가 낮다). 겹침 비율로 바꿔 해결했고 테스트가 이 경우를 고정한다 — 떨어진 마침표는 뒤 단계에서 빈 문항 조각이 된다.
+- **`.hwp` 본문 추출은 공개 규격대로 썼지만 검증할 방법이 없다.** 조용히 빈 문서를 돌려주면 뒤에서 문항 0개로 흘러가므로, 아무 텍스트도 못 읽으면 사유와 대안(PDF 저장)을 알리며 실패하게 했다. [RISK-02](../../requirements.md#위험)의 완화책(PDF 변환·우선 안내)과 같은 방향이다.
+- **라이브러리 선택에서 AGPL을 피했다.** PyMuPDF 하나면 텍스트·좌표·래스터화·암호 감지가 전부 되지만 AGPL이다. 이 제품이 나중에 외부에 서비스되면 §13(네트워크 사용) 의무가 생긴다. 허용적 라이선스인 `pypdfium2`(BSD-3/Apache-2.0)로 같은 범위를 덮고 `.hwp`는 `olefile`(BSD)을 썼다.
+- 정규화는 라이브러리까지다. 업로드→정규화 연결과 AC-21의 "업로드하면" 부분은 [TASK-31](../../plan.md#task-31-문항-분할llmadapter분석)의 분석 작업에서 닫힌다.
+- 검증: API 118건 통과(1 skip, 신규 7건). 픽스처 3개를 `tests/fixtures/`에 넣었다.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -793,7 +806,7 @@ flowchart TD
 
 ## 미완료 항목
 
-- TASK-27·TASK-29~TASK-39·TASK-43(사이클 2)
+- TASK-27·TASK-31~TASK-39·TASK-43(사이클 2)
 - 알리고 실발송 경로 미검증([Q-02](../../requirements.md#가정과-미해결-질문))
 - AC-05의 브라우저 육안 확인 미수행(자동화 제외 항목)
 - 구 경로 `/api/messages/report.png`의 Cloudflare 엣지 캐시 잔존 — 퍼지 또는 TTL 만료 대기
@@ -810,18 +823,20 @@ flowchart TD
 - lucide-react 미설치 — ADR-010 결정은 유효하나 아직 쓸 자리가 없다. Recharts는 TASK-26에서 설치했다
 - 통계 화면의 기간 비교(`compare`)는 API만 있고 화면에는 없다 — FR-25의 두 기간 비교는 API로 충족되나 UI는 후속 작업이다
 - [Q-02·Q-03·Q-08](../../requirements.md#가정과-미해결-질문) 미해소 — TASK-19·TASK-34·TASK-37의 실발송·실스캔 검증이 제한된다
+- **`.hwp`·`.hwpx` 실파일 미확보(2026-09-24 사용자 확인)** — 두 포맷의 정규화 경로는 합성 픽스처로만 검사했다. 실파일을 얻으면 [TASK-30](../../plan.md#task-30-documentingest-4포맷-정규화)의 검증을 다시 돌려야 한다
 
 ## 재개 지점
 
-- 다음 작업: [TASK-30 DocumentIngest 4포맷 정규화](../../plan.md#task-30-documentingest-4포맷-정규화)(M6의 첫 분해) 또는 [TASK-27 M9 상담일지](../../plan.md#task-27-m9-상담일지)
+- 다음 작업: [TASK-31 문항 분할·LlmAdapter·분석](../../plan.md#task-31-문항-분할llmadapter분석)
 - 사용자가 지정한 순서(2026-09-24): 모바일(완료) → 마스터 데이터 수정(완료) → 사이클 2 재개
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `git status`가 깨끗한지, `docker compose ps`로 개발 스택 기동 여부
-- 필요한 문서: [TASK-29~31 정의](../../plan.md#task-29-m6-시험지-분석), [FR-27 상세](../../requirements.md#fr-27-상세), [ADR-004](./ADR-004-문서-입력-정규화-파이프라인.md), [ADR-003](./ADR-003-AI-작업-분리와-개인정보-경계.md)(개인정보 경계)
+- 필요한 문서: [TASK-31 정의](../../plan.md#task-31-문항-분할llmadapter분석), [DES-14 상세](../../design.md#des-14-상세), [NFR-04 상세](../../requirements.md#nfr-04-상세)(전송 화이트리스트), [NFR-15](../../requirements.md#비기능-요구사항)(토큰 상한), [ADR-003](./ADR-003-AI-작업-분리와-개인정보-경계.md), [ADR-009](./ADR-009-LLM-공급자-추상화와-Claude-연결.md)
 - 필요한 명령: `docker compose up -d`, `cd apps/web && npm test && npm run build`, `cd apps/api && uv run pytest`
 - **이 작업의 핵심 제약**
   - **하드 삭제 경로를 만들지 않는다.** 기준선이 의도적으로 배제했다 — 출결·성적·발송 이력이 학생과 반을 참조하므로 물리 삭제는 과거 기록을 깨뜨린다. 학생은 상태 전이(`재원`·`휴원`·`퇴원`), 반은 `is_active` 플래그를 쓴다.
   - **`PATCH`는 대체로 전치환이다**(학생·반). 폼이 다루지 않는 필드를 함께 실어 보내지 않으면 지워진다. 수강 배정만 부분 갱신(`EnrollmentUpdate`)이다.
   - 마스터 데이터 수정 화면 3건(TASK-50~52)이 쓴 방식: 행별 대화상자 + 목록 토글 + 오늘 날짜는 [`lib/date.ts`의 `today()`](../../../apps/web/src/lib/date.ts).
+  - **개인정보 경계는 최소화 대상이 아니다.** 외부로 나가는 것은 학생 정보가 없는 문항 텍스트·이미지뿐이다([NFR-04 상세](../../requirements.md#nfr-04-상세)). 화이트리스트 검증을 생략하지 않는다.
   - 백그라운드 작업 핸들러는 **멱등이어야 한다.** 프로세스가 죽으면 진행 중이던 작업이 다음 기동에서 처음부터 다시 돈다(`TaskRunner.resume()`).
   - 업로드 저장 키는 서버가 정한다(`{campus}/{kind}/{sha256}{확장자}`). 업로드 파일명을 경로에 쓰지 않는다.
   - 차트를 그리면 계열색은 `--md-color-chart-*`를 쓰고(브랜드·상태색 금지) 표를 함께 둔다. 새 화면은 [`ops/verify/responsive.py`](../../../ops/verify/responsive.py)의 `BROWSE`와 응답 스텁에 추가한다. 무거운 라이브러리를 쓰는 화면은 `App.tsx`에서 지연 로딩으로 분리한다.
@@ -842,12 +857,12 @@ flowchart TD
 
 ## 인계
 
-- 다음 단계 또는 워크플로우: wf-implement 구현 — 사이클 2 계속
-- 시작 조건: 충족됨 — 기준선 `v6` 승인(2026-09-23), 공통 기반(TASK-28) 완료, `git status` 깨끗
+- 다음 단계 또는 워크플로우: wf-implement 구현 — TASK-31부터
+- 시작 조건: 충족됨 — 기준선 `v6` 승인(2026-09-23), 정규화(TASK-30) 완료, `git status` 깨끗
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v6`, [DESIGN-mathdesk](../../design.md) `v6`, [결정 등록부](../../decisions.md)(ADR-001~012, DCR-001~005 모두 `approved`)
-- 완료된 항목: 기준선 v1~v6 승인, ADR-001~012, DCR-001~005, 사이클 1 전체(TASK-01~TASK-22), TASK-23, TASK-40~TASK-42, 시각 설계 TASK-44~TASK-48, 모바일 TASK-53, 마스터 데이터 수정 TASK-49~TASK-52, M5 통계 TASK-24~TASK-26, 공통 기반 TASK-28 — 작업 53건 중 38건
-- 미완료 항목: TASK-27, TASK-29~TASK-39, TASK-43
-- 차단 요인: 없음. [TASK-43](../../plan.md#task-43-claude-실호출-검증)만 Anthropic API 키가 필요하고, [TASK-30](../../plan.md#task-30-documentingest-4포맷-정규화)은 `.hwp`·`.hwpx` 실파일 표본이 없으면 그 포맷을 미검증으로 남겨야 한다([Q-03](../../requirements.md#가정과-미해결-질문))
-- 다음 행동: **[TASK-30 DocumentIngest 4포맷 정규화](../../plan.md#task-30-documentingest-4포맷-정규화).** 업로드된 `stored_file`을 읽어 `.hwp`·`.hwpx`·`.pdf`·이미지를 공통 구조로 정규화한다. 저장·조회 경로는 TASK-28에서 끝났으므로(`storage()`, `save_upload`, `GET /files/{id}`) 그 위에 얹으면 된다. 선행 테스트는 [AC-21](../../requirements.md#인수-조건)의 고정 픽스처 단위 테스트다 — **픽스처를 못 만드는 포맷은 통과로 적지 말고 미검증으로 남길 것.** 분석을 백그라운드로 돌릴 때는 `task_handler("...")`로 등록하고 핸들러를 멱등으로 만든다. 짧게 끊어 가고 싶으면 [TASK-27 M9 상담일지](../../plan.md#task-27-m9-상담일지)가 독립적이다
+- 완료된 항목: 기준선 v1~v6 승인, ADR-001~012, DCR-001~005, 사이클 1 전체(TASK-01~TASK-22), TASK-23, TASK-40~TASK-42, 시각 설계 TASK-44~TASK-48, 모바일 TASK-53, 마스터 데이터 수정 TASK-49~TASK-52, M5 통계 TASK-24~TASK-26, 공통 기반 TASK-28, 정규화 TASK-30 — 작업 53건 중 39건
+- 미완료 항목: TASK-27, TASK-31~TASK-39, TASK-43
+- 차단 요인: 없음. [TASK-31](../../plan.md#task-31-문항-분할llmadapter분석)의 기본 공급자는 `test`라 **API 키 없이 완료할 수 있다**. Anthropic 실호출은 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서만 필요하다
+- 다음 행동: **[TASK-31 문항 분할·LlmAdapter·분석](../../plan.md#task-31-문항-분할llmadapter분석).** 문항 번호 기준 분할, 공급자 중립 `LlmAdapter`와 구현체 3종(`TestModeLlm`·`AnthropicLlm`·`OpenAICompatLlm`), 전송 필드 화이트리스트, 토큰 상한과 `llm_call_log` 기록. 입력은 [TASK-30](../../plan.md#task-30-documentingest-4포맷-정규화)의 `normalize()`가 주는 `NormalizedDocument`이고, 분석은 [TASK-28](../../plan.md#task-28-공통-기반--storage업로드taskrunner)의 `task_handler`로 등록해 배경에서 돌린다(**핸들러는 멱등이어야 한다**). 선행 테스트는 AC-22·AC-23·AC-27을 가짜 어댑터 테스트로 전환하는 것이며, **구현체 3종이 같은 계약 테스트를 공유해야 한다**. 착수 전 [NFR-04 상세](../../requirements.md#nfr-04-상세)의 전송 허용·금지 표를 먼저 읽을 것
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
 - 커밋 리듬: TASK 하나가 끝날 때마다 커밋하고 **push까지 함께** 수행한다(사용자 지시 2026-09-22, 별도 지시 전까지 유효).

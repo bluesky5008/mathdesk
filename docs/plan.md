@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 38건 완료. 시각 설계(TASK-44~48)와 모바일 대응(TASK-53)이 완료되었다. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-30 DocumentIngest 4포맷 정규화](#task-30-documentingest-4포맷-정규화)(M6의 첫 분해) 또는 [TASK-27 M9 상담일지](#task-27-m9-상담일지). 공통 기반(TASK-28)이 끝나 M6·M7의 선행이 해소되었다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 39건 완료. 시각 설계(TASK-44~48)와 모바일 대응(TASK-53)이 완료되었다. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-31 문항 분할·LlmAdapter·분석](#task-31-문항-분할llmadapter분석). 기본 공급자는 `test`이며 API 키 없이 완료할 수 있다.
 
 ## 문서 연결
 
@@ -100,15 +100,15 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │      ├─ [✓] TASK-51 반 수정·활성 여부 (API 보완) . 2026-09-24 01:20
 │      └─ [✓] TASK-52 수강 배정·해제 화면 .......... 2026-09-24 01:25
 │
-└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (5/18)
+└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (6/18)
    ├─ [✓] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... 2026-09-22 23:53
    ├─ [✓] TASK-24 M5 성적 통계 (분해 2) .............. 2026-09-24 02:05
    │   ├─ [✓] TASK-25 통계 집계 API와 엑셀 내보내기 ... 2026-09-24 01:45
    │   └─ [✓] TASK-26 통계 화면 ...................... 2026-09-24 02:05
    ├─ [ ] TASK-27 M9 상담일지 ........................ depends: TASK-23
    ├─ [✓] TASK-28 공통 기반 — Storage·업로드·TaskRunner  2026-09-24 02:30
-   ├─ [ ] TASK-29 M6 시험지 분석 (분해 3) ............ depends: TASK-28
-   │   ├─ [ ] TASK-30 DocumentIngest 4포맷 정규화
+   ├─ [~] TASK-29 M6 시험지 분석 (분해 3) ............ depends: TASK-28
+   │   ├─ [✓] TASK-30 DocumentIngest 4포맷 정규화
    │   ├─ [ ] TASK-31 문항 분할·LlmAdapter·분석 ...... depends: TASK-30
    │   └─ [ ] TASK-32 시험 등록·문항 확인 화면 ....... depends: TASK-31
    ├─ [ ] TASK-33 M7 OMR 채점 (분해 3) ............... depends: TASK-28
@@ -190,8 +190,8 @@ flowchart TD
     T24 --> T26["TASK-26 통계 화면"]:::done
     C2 --> T27["TASK-27 M9 상담일지"]:::todo
     C2 --> T28["TASK-28 공통 기반 Storage·TaskRunner"]:::done
-    C2 --> T29["TASK-29 M6 시험지 분석"]:::todo
-    T29 --> T30["TASK-30 DocumentIngest 4포맷"]:::todo
+    C2 --> T29["TASK-29 M6 시험지 분석"]:::active
+    T29 --> T30["TASK-30 DocumentIngest 4포맷"]:::done
     T29 --> T31["TASK-31 문항 분할·LLM 분석"]:::todo
     T29 --> T32["TASK-32 시험 등록·문항 확인 화면"]:::todo
     C2 --> T33["TASK-33 M7 OMR 채점"]:::todo
@@ -829,7 +829,7 @@ flowchart TD
 
 ### TASK-30: DocumentIngest 4포맷 정규화
 
-- 상태: pending
+- 상태: completed (2026-09-24 02:55)
 - 상위: TASK-29
 - 목표: `.hwp`·`.hwpx`·`.pdf`·이미지를 공통 구조로 정규화하고 텍스트 추출 불가 시 이미지 경로로 폴백한다.
 - 관련 요구사항과 설계: [FR-27](./requirements.md#fr-27-상세), [DES-11](./design.md#컴포넌트와-책임), [ADR-004](./work/20260922-mathdesk-baseline/ADR-004-문서-입력-정규화-파이프라인.md)
@@ -838,6 +838,10 @@ flowchart TD
 - 위험: `.hwp` 파서 품질 한계
 - 검증 방법: 선행 테스트 — [AC-21](./requirements.md#인수-조건)을 고정 픽스처 단위 테스트로 전환(`.hwpx`·`.pdf` 추출 성공, 암호 `.hwp` 오류 사유 반환)
 - 완료 조건: AC-21 통과, 픽스처 미확보 포맷은 미검증으로 명시
+- 결과: `ingest.py`의 `normalize(data, filename) -> NormalizedDocument`. `.pdf`는 줄 단위 텍스트 블록과 좌표를, 텍스트 레이어가 없는 페이지는 페이지 이미지를 준다. 이미지는 단일 페이지 이미지로, `.hwpx`는 OWPML 섹션을 페이지로 보고 텍스트·수식 스크립트 블록을 만든다(수식은 원문 보존)
+- **검증 범위(사용자 확인 2026-09-24 — 실파일 없음)**: `.pdf` 2종은 실제 PDF로 검증했다(Chromium 인쇄본·이미지 PDF). `.hwpx`는 공개 규격대로 만든 합성 파일로만, 암호 `.hwp`는 FileHeader 비트 해석 단위로만 검증했다. **`.hwp`·`.hwpx` 실파일 경로는 미검증이다**
+- 새 의존성: `pypdfium2`(BSD-3/Apache-2.0), `olefile`(BSD). PyMuPDF는 한 라이브러리로 전부 되지만 AGPL이라 선택하지 않았다
+- AC-21의 업로드→정규화 연결은 [TASK-31](#task-31-문항-분할llmadapter분석)의 분석 작업에서 닫는다. 이 작업은 정규화 로직까지다
 
 ### TASK-31: 문항 분할·LlmAdapter·분석
 
