@@ -43,19 +43,19 @@ export function ClassesPage() {
 
       <Card className="mb-5">
         <CardContent className="py-4">
-          <form className="flex items-end gap-3" onSubmit={submit}>
-            <Field label="반 이름" htmlFor="class-name">
+          <form className="flex flex-wrap items-end gap-3" onSubmit={submit}>
+            <Field label="반 이름" htmlFor="class-name" className="min-w-40 flex-1 xl:flex-none">
               <Input
                 id="class-name"
-                className="w-48"
+                className="w-full xl:w-48"
                 value={form.name}
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
               />
             </Field>
-            <Field label="학년" htmlFor="class-grade">
+            <Field label="학년" htmlFor="class-grade" className="min-w-28 flex-1 xl:flex-none">
               <Input
                 id="class-grade"
-                className="w-28"
+                className="w-full xl:w-28"
                 value={form.grade}
                 onChange={(event) => setForm({ ...form, grade: event.target.value })}
               />

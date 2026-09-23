@@ -1,0 +1,108 @@
+"""VER-35 — 좁은 화면에서 조회·발송 화면에 페이지 본문 가로 넘침이 없는지 실측한다(AC-35).
+
+jsdom은 레이아웃을 계산하지 않아 vitest로는 잴 수 없다. 실제 브라우저로 잰다.
+API는 가로채서 고정 응답을 주므로 백엔드도 자격 증명도 필요 없다.
+
+실행:
+    cd apps/web && npm run build
+    cd ../api && uv run python ../../ops/verify/responsive.py
+
+CI에 넣지 않았다. 웹 빌드 산출물과 Chromium이 함께 필요해 단위 테스트 체계와 결합도가 높다.
+웹 레이아웃을 바꾼 뒤에는 이 스크립트를 돌려 AC-35를 확인한다.
+
+폭은 VER35_WIDTHS로 바꾼다(기본 390,768,1280). 390px는 NFR-14의 최소 지원 폭이다.
+"""
+import asyncio, json, os, subprocess, sys, time
+from pathlib import Path
+from playwright.async_api import async_playwright
+
+DIST = Path(os.environ.get("VER35_DIST", Path(__file__).resolve().parents[2] / "apps/web/dist")).resolve()
+PORT = 8799
+WIDTHS = [int(w) for w in os.environ.get("VER35_WIDTHS", "390,768,1280").split(",")]
+
+BROWSE = [("종합 대시보드", "/"), ("알림문자", "/messages"),
+          ("학생/반 관리", "/students"), ("학원 설정", "/settings")]
+DESKTOP_ONLY = [("일일 입력", "/daily")]
+
+USER = {"id": 1, "login_id": "director", "display_name": "원장", "role": "director"}
+CLASSES = [{"id": i, "name": n, "grade": "고2", "teacher_id": 1, "is_active": True,
+            "schedules": [{"weekday": 4, "start_time": "18:00:00", "end_time": "22:00:00"}]}
+           for i, n in enumerate(["고3 윤A", "고2 윤B", "고2 윤C", "고1 윤D"], 1)]
+STUDENTS = [{"id": i, "name": f"학생{i:02d}", "school": "한영고등학교", "grade": "고2",
+             "phone": None, "status": "enrolled", "omr_number": f"1000{i:02d}00"}
+            for i in range(1, 48)]
+RECORDS = [{"student_id": i, "name": f"학생{i:02d}", "attendance_status": "present",
+            "attendance_reason": None, "homework_grade": "B",
+            "recheck": {"target": False, "prev_grade": None, "prev_date": None, "result": None},
+            "test_score_num": 70 + i, "test_score_text": None} for i in range(1, 14)]
+DAILY = {"session": {"id": 9, "class_id": 1, "session_date": "2026-09-23",
+                     "progress": [{"period": 1, "content": "2024 광문고 기출 시행"}],
+                     "homework": "기출 풀어오기", "video_url": None, "teacher_note": None,
+                     "test_name": "4차연합고사", "test_max_score": 100,
+                     "attendance_confirmed_at": None},
+         "records": RECORDS,
+         "summary": {"enrolled": 13, "attending": 13, "test_average": 77.5, "test_count": 13}}
+DASHBOARD = {"campus": {"enrolled_students": 47, "active_classes": 4},
+             "attendance": {"attending": 13, "enrolled": 13},
+             "homework": {"completion_rate": 93.8, "delta_points": 2.4, "missing": 0,
+                          "recheck_targets": 1},
+             "test": {"average": 82.6, "count": 84, "max": 100, "max_count": 4, "min": 58},
+             "last_session": {"session_date": "2026-09-22",
+                              "progress": [{"period": 1, "content": "2024 광문고 기출 시행"}],
+                              "homework": "기출 풀어오기"}}
+LOGS = [{"id": i, "requested_at": "2026-09-23T18:30:00", "recipient_phone": "010-1234-5678",
+         "channel": "sms", "status": "sent", "is_test": True} for i in range(1, 6)]
+BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3457F", "logo_data_url": None}
+
+
+def body_for(path: str):
+    if "/auth/me" in path: return USER
+    if "/classes" in path: return CLASSES
+    if "/students" in path: return STUDENTS
+    if "/dashboard" in path: return DASHBOARD
+    if "/daily" in path: return DAILY
+    if "/messages/preview" in path: return {"body": "김나윤학생 학습피드백\n\n■ 출결: 출석"}
+    if "/messages/logs" in path: return LOGS
+    if "/settings/brand" in path: return BRAND
+    return {}
+
+
+async def main() -> int:
+    server = subprocess.Popen([sys.executable, "-m", "http.server", str(PORT), "-d", str(DIST)],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(1.0)
+    failures = []
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(args=["--no-sandbox"])
+            for width in WIDTHS:
+                page = await browser.new_page(viewport={"width": width, "height": 844})
+                await page.route("**/api/**", lambda route: asyncio.ensure_future(
+                    route.fulfill(status=200, content_type="application/json",
+                                  body=json.dumps(body_for(route.request.url)))))
+                print(f"\n{width}px\n{'화면':<20}{'본문폭':>8}{'뷰포트':>8}   판정")
+                for name, path in BROWSE + DESKTOP_ONLY:
+                    # SPA이므로 루트로 들어가 해시 없는 경로를 직접 연다
+                    await page.goto(f"http://localhost:{PORT}/index.html", wait_until="load")
+                    await page.evaluate(f"history.pushState({{}}, '', '{path}')")
+                    await page.evaluate("window.dispatchEvent(new PopStateEvent('popstate'))")
+                    await page.wait_for_timeout(700)
+                    scroll, client = await page.evaluate(
+                        "[document.documentElement.scrollWidth, document.documentElement.clientWidth]")
+                    over = scroll - client
+                    target = any(name == n for n, _ in BROWSE)
+                    mark = "통과" if over <= 0 else f"넘침 {over}px"
+                    if not target:
+                        mark += " (데스크톱 전제)"
+                    elif over > 0:
+                        failures.append(f"{width}px {name} {over}px")
+                    print(f"{name:<18}{scroll:>8}{client:>8}   {mark}")
+                await page.close()
+            await browser.close()
+    finally:
+        server.terminate()
+    print("\nVER-35:", "통과" if not failures else "실패 — " + ", ".join(failures))
+    return 0 if not failures else 1
+
+if __name__ == "__main__":
+    sys.exit(asyncio.run(main()))

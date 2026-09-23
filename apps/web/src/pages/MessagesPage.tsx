@@ -118,7 +118,7 @@ export function MessagesPage() {
         </Field>
       </PageHeader>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
         <Card>
           <CardContent className="p-0">
             <div role="tablist" className="flex gap-1 border-b px-3 pt-3">

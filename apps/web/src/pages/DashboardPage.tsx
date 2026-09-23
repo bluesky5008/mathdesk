@@ -103,7 +103,7 @@ export function DashboardPage() {
       </PageHeader>
 
       {kpi && (
-        <div className="mb-5 grid grid-cols-4 gap-4">
+        <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Stat title="총 재원생 & 반 현황" value={`${kpi.campus.enrolled_students}명`}>
             <span>{`활성 ${kpi.campus.active_classes}개 반`}</span>
           </Stat>
@@ -139,7 +139,7 @@ export function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader>
             <CardTitle>반별 출결 체크</CardTitle>

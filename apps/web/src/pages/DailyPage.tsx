@@ -154,7 +154,7 @@ export function DailyPage() {
       </PageHeader>
 
       {daily.data && (
-        <div className="mb-5 grid grid-cols-4 gap-4">
+        <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Stat
             title="등원 현황"
             value={`${daily.data.summary.attending} / ${daily.data.summary.enrolled}명`}
@@ -289,7 +289,7 @@ export function DailyPage() {
         <CardHeader>
           <CardTitle>오늘 진도 &amp; 코멘트</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {PERIODS.map((period) => (
             <Field key={period} label={`${period}교시`} htmlFor={`period-${period}`}>
               <Textarea
@@ -332,7 +332,7 @@ export function DailyPage() {
               />
             </Field>
           ))}
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <Button type="button" onClick={() => saveNotes.mutate()} disabled={!session}>
               메모 저장
             </Button>

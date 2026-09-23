@@ -55,12 +55,12 @@ export function StudentsPage() {
 
       <Card className="mb-5">
         <CardContent className="py-4">
-          <form className="flex items-end gap-3" onSubmit={submit}>
+          <form className="flex flex-wrap items-end gap-3" onSubmit={submit}>
             {FIELDS.map(([field, label]) => (
-              <Field key={field} label={label} htmlFor={field}>
+              <Field key={field} label={label} htmlFor={field} className="min-w-36 flex-1 xl:flex-none">
                 <Input
                   id={field}
-                  className="w-36"
+                  className="w-full xl:w-36"
                   value={form[field]}
                   onChange={(event) => setForm({ ...form, [field]: event.target.value })}
                 />
@@ -94,7 +94,7 @@ export function StudentsPage() {
             <TableBody>
               {students.data?.map((student) => (
                 <TableRow key={student.id}>
-                  <TableCell className="font-medium">{student.name}</TableCell>
+                  <TableCell className="font-medium whitespace-nowrap">{student.name}</TableCell>
                   <TableCell className="text-muted-fg">{student.school}</TableCell>
                   <TableCell className="text-muted-fg">{student.grade}</TableCell>
                   <TableCell className="tabular-nums">{student.omr_number}</TableCell>
