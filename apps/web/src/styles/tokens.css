@@ -23,6 +23,8 @@
 
   --md-color-success: oklch(0.58 0.13 155);
   --md-color-warning: oklch(0.72 0.15 75);
+  /* warning은 전 팔레트에서 밝은 색이라 그 위의 글자는 항상 어두워야 한다 */
+  --md-color-warning-fg: oklch(0.21 0.02 260);
   --md-color-danger: oklch(0.56 0.19 25);
 
   /* 타이포 — 1.125~1.25 비율의 좁은 스케일. 업무 도구는 밀도가 우선이다 */
@@ -63,14 +65,96 @@
   --md-shadow-lg: 0 10px 24px -6px oklch(0.21 0.02 260 / 0.14);
 }
 
-/* 다크 모드는 토큰 레벨에서만 지원한다(DES-24). 기본값은 라이트이며 opt-in이다 */
-.dark {
+/*
+ * 테마 팔레트 (FR-41 / AC-34, ADR-012)
+ *
+ * 규칙 세 가지를 지킨다. tokens.test.ts가 강제한다.
+ *   1. 팔레트는 색 토큰만 덮어쓴다. 타이포·간격·라운드·그림자는 :root에만 있고
+ *      어느 팔레트도 건드리지 않는다. 이 스케일이 웹과 리포트 카드의 공유 기반이다(NFR-18).
+ *   2. 모든 팔레트가 :root와 동일한 색 토큰 집합을 정의한다. 하나라도 빠지면
+ *      그 테마에서만 색이 어긋난다.
+ *   3. 속성 선택자만 쓴다. 전처리 문법이 없어야 카드 템플릿이 그대로 인라인할 수 있다.
+ *
+ * 리포트 카드는 data-theme를 지정하지 않아 :root 라이트 팔레트를 쓰고
+ * --md-color-brand만 학원 시그니처 색(FR-40)으로 덮어쓴다.
+ */
+
+/* 다크 — 색상값을 반전하지 않고 어두운 표면 위에 대비를 다시 잡는다 */
+[data-theme='dark'] {
   --md-color-bg: oklch(0.18 0.015 260);
   --md-color-surface: oklch(0.23 0.018 260);
   --md-color-fg: oklch(0.96 0.003 260);
   --md-color-muted-fg: oklch(0.7 0.012 260);
   --md-color-border: oklch(0.32 0.015 260);
   --md-color-accent: oklch(0.28 0.018 260);
+
   --md-color-brand: oklch(0.68 0.14 258);
   --md-color-brand-fg: oklch(0.18 0.015 260);
+  --md-color-ring: var(--md-color-brand);
+
+  /* 어두운 표면에서는 상태색도 밝기를 올려야 읽힌다 */
+  --md-color-success: oklch(0.72 0.15 155);
+  --md-color-warning: oklch(0.8 0.15 75);
+  --md-color-warning-fg: oklch(0.18 0.015 260);
+  --md-color-danger: oklch(0.68 0.19 25);
+}
+
+/*
+ * 블루·그린·핑크는 색조를 입힌 라이트 테마다. 주색만 바꾸면 테마가 아니라
+ * 강조색 변경으로 읽히므로 배경·표면·테두리에도 같은 색조를 옅게 넣는다.
+ * 상태색은 출결 구분 등 의미 전달이 목적이라 재정의하지 않고 :root 값을 쓴다.
+ */
+
+[data-theme='blue'] {
+  --md-color-bg: oklch(0.975 0.012 240);
+  --md-color-surface: oklch(0.995 0.004 240);
+  --md-color-fg: oklch(0.22 0.035 245);
+  --md-color-muted-fg: oklch(0.54 0.035 245);
+  --md-color-border: oklch(0.9 0.02 240);
+  --md-color-accent: oklch(0.95 0.025 240);
+
+  --md-color-brand: oklch(0.55 0.15 235);
+  --md-color-brand-fg: oklch(0.99 0 0);
+  --md-color-ring: var(--md-color-brand);
+
+  --md-color-success: oklch(0.58 0.13 155);
+  --md-color-warning: oklch(0.72 0.15 75);
+  --md-color-warning-fg: oklch(0.21 0.02 260);
+  --md-color-danger: oklch(0.56 0.19 25);
+}
+
+[data-theme='green'] {
+  --md-color-bg: oklch(0.975 0.014 150);
+  --md-color-surface: oklch(0.995 0.005 150);
+  --md-color-fg: oklch(0.22 0.03 160);
+  --md-color-muted-fg: oklch(0.53 0.03 160);
+  --md-color-border: oklch(0.9 0.022 150);
+  --md-color-accent: oklch(0.95 0.028 150);
+
+  --md-color-brand: oklch(0.52 0.12 158);
+  --md-color-brand-fg: oklch(0.99 0 0);
+  --md-color-ring: var(--md-color-brand);
+
+  --md-color-success: oklch(0.58 0.13 155);
+  --md-color-warning: oklch(0.72 0.15 75);
+  --md-color-warning-fg: oklch(0.21 0.02 260);
+  --md-color-danger: oklch(0.56 0.19 25);
+}
+
+[data-theme='pink'] {
+  --md-color-bg: oklch(0.975 0.014 350);
+  --md-color-surface: oklch(0.995 0.005 350);
+  --md-color-fg: oklch(0.23 0.035 350);
+  --md-color-muted-fg: oklch(0.55 0.035 350);
+  --md-color-border: oklch(0.91 0.022 350);
+  --md-color-accent: oklch(0.955 0.028 350);
+
+  --md-color-brand: oklch(0.58 0.17 355);
+  --md-color-brand-fg: oklch(0.99 0 0);
+  --md-color-ring: var(--md-color-brand);
+
+  --md-color-success: oklch(0.58 0.13 155);
+  --md-color-warning: oklch(0.72 0.15 75);
+  --md-color-warning-fg: oklch(0.21 0.02 260);
+  --md-color-danger: oklch(0.56 0.19 25);
 }

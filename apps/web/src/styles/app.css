@@ -18,6 +18,7 @@
   --color-ring: var(--md-color-ring);
   --color-success: var(--md-color-success);
   --color-warning: var(--md-color-warning);
+  --color-warning-fg: var(--md-color-warning-fg);
   --color-danger: var(--md-color-danger);
 
   --font-sans: var(--md-font-sans);

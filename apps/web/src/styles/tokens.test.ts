@@ -69,3 +69,43 @@ describe('디자인 토큰 단일 소스', () => {
     expect(read('./app.css')).toContain('./tokens.css')
   })
 })
+
+// AC-34 / VER-32, AC-31 / VER-30 — ADR-012.
+// 팔레트는 색만 덮어쓰고 스케일은 건드리지 않는다. 스케일이 웹과 카드의 공유 기반이므로
+// 팔레트가 스케일을 재정의하는 순간 NFR-18이 깨진다.
+describe('테마 팔레트', () => {
+  const tokens = read('./tokens.css')
+  const THEMES = ['dark', 'blue', 'green', 'pink']
+
+  /** 선택자 블록 안에서 선언된 토큰 이름을 모은다. */
+  const declaredIn = (selector: string) => {
+    const match = tokens.match(new RegExp(`${selector}\\s*\\{([^}]*)\\}`))
+    if (!match) return null
+    return new Set(Array.from(match[1].matchAll(/^\s*(--[\w-]+)\s*:/gm), (m) => m[1]))
+  }
+
+  const isColor = (name: string) => name.startsWith('--md-color-')
+
+  it('라이트는 :root이고 나머지 테마는 data-theme 속성으로 전환한다', () => {
+    expect(declaredIn(':root')).not.toBeNull()
+    for (const theme of THEMES) {
+      expect(declaredIn(`\\[data-theme='${theme}'\\]`), `${theme} 팔레트가 없다`).not.toBeNull()
+    }
+  })
+
+  it('5개 팔레트가 동일한 색 토큰 집합을 정의한다', () => {
+    const base = [...declaredIn(':root')!].filter(isColor).sort()
+    expect(base.length).toBeGreaterThan(0)
+    for (const theme of THEMES) {
+      const palette = [...declaredIn(`\\[data-theme='${theme}'\\]`)!].filter(isColor).sort()
+      expect(palette, `${theme} 팔레트의 색 토큰이 라이트와 다르다`).toEqual(base)
+    }
+  })
+
+  it('팔레트는 타이포·간격·라운드·그림자 스케일을 재정의하지 않는다', () => {
+    for (const theme of THEMES) {
+      const offenders = [...declaredIn(`\\[data-theme='${theme}'\\]`)!].filter((n) => !isColor(n))
+      expect(offenders, `${theme} 팔레트가 스케일을 덮어쓴다`).toEqual([])
+    }
+  })
+})

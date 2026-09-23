@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router'
 
+import { ThemeSelect } from './ThemeSelect'
 import { Button } from './ui/button'
 
 const NAV = [
@@ -49,6 +50,7 @@ export function AppShell({
           </nav>
 
           <div className="ml-auto flex items-center gap-3">
+            <ThemeSelect />
             <span className="text-sm text-muted-fg">
               {userName} ({userRole})
             </span>
