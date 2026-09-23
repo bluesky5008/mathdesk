@@ -127,3 +127,22 @@ def test_withdrawn_student_leaves_the_enrolled_list_but_keeps_past_records(api, 
     records = api.get("/api/daily", params=params).json()["records"]
     kept = next(record for record in records if record["student_id"] == student_id)
     assert kept["homework_grade"] == "A"
+
+
+def test_inactive_class_leaves_the_default_list_and_the_active_count(api, klass):
+    """FR-07: 반은 지우지 않고 비활성으로 내린다. 과거 기록은 그대로 열린다."""
+    class_id = klass["class_id"]
+    params = {"class_id": class_id, "date": "2026-09-18"}
+
+    updated = api.patch(
+        f"/api/classes/{class_id}",
+        json={"name": "고2 윤B", "grade": "고2", "is_active": False},
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["is_active"] is False
+    assert api.get("/api/classes").json() == []
+    listed = api.get("/api/classes", params={"include_inactive": True}).json()
+    assert [klass_out["id"] for klass_out in listed] == [class_id]
+    assert api.get("/api/dashboard", params=params).json()["campus"]["active_classes"] == 0
+    assert api.get("/api/daily", params=params).status_code == 200

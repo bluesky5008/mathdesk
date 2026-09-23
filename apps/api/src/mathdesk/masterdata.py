@@ -68,6 +68,7 @@ class ClassIn(BaseModel):
     name: str = Field(min_length=1, max_length=50)
     grade: str | None = Field(default=None, max_length=20)
     teacher_id: int | None = None
+    is_active: bool = True
     schedules: list[ScheduleIn] = Field(default_factory=list)
 
 
@@ -219,8 +220,14 @@ async def _class_out(session: AsyncSession, klass: Klass) -> ClassOut:
 
 
 @router.get("/classes")
-async def list_classes(scope: CurrentScope, session: Db) -> list[ClassOut]:
-    classes = list(await session.scalars(_visible_classes(scope)))
+async def list_classes(
+    scope: CurrentScope, session: Db, include_inactive: bool = False
+) -> list[ClassOut]:
+    # 비활성 반은 반 선택 목록에서 빠져야 한다. 과거 기록 조회는 반 단건 경로를 쓰므로 영향이 없다.
+    statement = _visible_classes(scope)
+    if not include_inactive:
+        statement = statement.where(Klass.is_active)
+    classes = list(await session.scalars(statement))
     return [await _class_out(session, klass) for klass in classes]
 
 
@@ -232,6 +239,7 @@ async def create_class(payload: ClassIn, scope: CurrentScope, session: Db) -> Cl
         name=payload.name,
         grade=payload.grade,
         teacher_id=payload.teacher_id,
+        is_active=payload.is_active,
     )
     session.add(klass)
     await session.flush()
@@ -248,6 +256,7 @@ async def update_class(
     scope.require_director()
     klass = await _repo(session, scope).get(Klass, class_id)
     klass.name, klass.grade, klass.teacher_id = payload.name, payload.grade, payload.teacher_id
+    klass.is_active = payload.is_active
     for existing in await session.scalars(
         select(ClassSchedule).where(ClassSchedule.class_id == class_id)
     ):

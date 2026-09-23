@@ -42,7 +42,7 @@ function today(): string {
 
 export function MessagesPage() {
   const queryClient = useQueryClient()
-  const classes = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
+  const classes = useQuery({ queryKey: ['classes'], queryFn: () => fetchClasses() })
   const [classId, setClassId] = useState<number | null>(null)
   const [date, setDate] = useState(today())
   const activeClassId = classId ?? classes.data?.[0]?.id ?? null

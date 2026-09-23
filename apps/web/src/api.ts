@@ -72,16 +72,24 @@ export function updateStudent(id: number, payload: Partial<Student>): Promise<St
   return request<Student>(`/students/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
 }
 
-export function fetchClasses(): Promise<Klass[]> {
-  return request<Klass[]>('/classes')
+export function fetchClasses(includeInactive = false): Promise<Klass[]> {
+  return request<Klass[]>(`/classes${includeInactive ? '?include_inactive=true' : ''}`)
 }
 
-export function createClass(payload: {
+export type ClassPayload = {
   name: string
   grade: string | null
+  teacher_id?: number | null
+  is_active?: boolean
   schedules: Schedule[]
-}): Promise<Klass> {
+}
+
+export function createClass(payload: ClassPayload): Promise<Klass> {
   return request<Klass>('/classes', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export function updateClass(id: number, payload: ClassPayload): Promise<Klass> {
+  return request<Klass>(`/classes/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
 }
 
 export type Recheck = {
