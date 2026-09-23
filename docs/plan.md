@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 52건 중 28건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-45 리포트 카드 HTML 렌더러 전환](#task-45-리포트-카드-html-렌더러-전환)을 시작한다. 이후 TASK-46, 그다음 [TASK-49 마스터 데이터 수정 기능 보완](#task-49-마스터-데이터-수정-기능-보완). **모바일 지원 범위(NFR-14) 재검토가 사용자와 논의 중이며, 확정되면 DCR-005로 처리한다.** 시각 설계를 M5~M9 기능 작업보다 먼저 두는 [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)의 기준은 그대로다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 28건 완료. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-45 리포트 카드 HTML 렌더러 전환](#task-45-리포트-카드-html-렌더러-전환)을 시작한다. 이후 TASK-46, 그다음 [TASK-49 마스터 데이터 수정 기능 보완](#task-49-마스터-데이터-수정-기능-보완). 모바일 대응([TASK-53](#task-53-화면별-차등-모바일-대응))은 [DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md)로 승인되었으나 **사용자 지시로 후순위**이며 카드 작업 뒤에 둔다. 시각 설계를 M5~M9 기능 작업보다 먼저 두는 [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md)의 기준은 그대로다.
 
 ## 문서 연결
 
@@ -24,13 +24,14 @@
 | input | change | [DCR-002: M6 LLM 공급자 중립화와 Claude 연결](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) | TASK-23, TASK-31, TASK-43 | 기준선 v3가 바꾼 작업 |
 | input | change | [DCR-003: 브랜드 자산으로서의 시각 설계](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) | TASK-44~TASK-47 | 기준선 v4가 추가한 작업 |
 | input | change | [DCR-004: 웹 테마 선택과 브랜드 색의 역할 분리](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md) | TASK-48 | 기준선 v5가 추가한 작업 |
+| input | change | [DCR-005: 화면별 차등 모바일 지원](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) | TASK-53 | 기준선 v6가 추가한 작업 (후순위) |
 | output | implementation | [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md) | document | 이 계획의 수행·검증 기록 |
 
 ## 기준선
 
-- 관련 요구사항: [REQ-mathdesk](./requirements.md) 기준선 `v5` (2026-09-23 재승인)
-- 관련 설계: [DESIGN-mathdesk](./design.md) 기준선 `v5` (2026-09-23 재승인)
-- 관련 ADR·DCR: [ADR-001~ADR-012](./decisions.md#등록부) (`approved`), [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) (v2), [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) (v3), [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) (v4), [DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md) (v5)
+- 관련 요구사항: [REQ-mathdesk](./requirements.md) 기준선 `v6` (2026-09-23 재승인)
+- 관련 설계: [DESIGN-mathdesk](./design.md) 기준선 `v6` (2026-09-23 재승인)
+- 관련 ADR·DCR: [ADR-001~ADR-012](./decisions.md#등록부) (`approved`), [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) (v2), [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) (v3), [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) (v4), [DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md) (v5), [DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) (v6)
 
 ## 작업 정의
 
@@ -89,6 +90,9 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │  ├─ [✓] TASK-48 테마 팔레트와 선택 UI ............. 2026-09-23 20:20
 │  ├─ [ ] TASK-45 리포트 카드 HTML 렌더러 전환 ...... depends: TASK-44
 │  └─ [ ] TASK-46 카드 재설계·브랜드 (시안 확인) .... depends: TASK-45
+│
+├─ 모바일 대응 (DCR-005, 후순위) ................... pending (0/1)
+│  └─ [ ] TASK-53 화면별 차등 모바일 대응 .......... depends: TASK-46
 │
 ├─ 마스터 데이터 수정 기능 보완 .................... pending (0/4)
 │  └─ [ ] TASK-49 마스터 데이터 수정 보완 (분해 3) .. depends: TASK-47
@@ -214,7 +218,7 @@ flowchart TD
     classDef gate fill:#ffcdd2,stroke:#c62828
 ```
 
-시각 설계와 마스터 데이터 보완 (노드 11)
+시각 설계·모바일·마스터 데이터 보완 (노드 13)
 
 ```mermaid
 flowchart TD
@@ -224,6 +228,9 @@ flowchart TD
     V --> T48["TASK-48 테마 팔레트·선택 UI"]:::done
     V --> T45["TASK-45 카드 HTML 렌더러 전환"]:::active
     V --> T46["TASK-46 카드 재설계·브랜드"]:::todo
+    MO["모바일 대응 (후순위)"]:::todo
+    MO --> T53["TASK-53 화면별 차등 모바일"]:::todo
+    T46 -. depends .-> T53
     M["마스터 데이터 수정 보완"]:::todo
     M --> T49["TASK-49 수정 보완 (분해 3)"]:::todo
     T49 --> T50["TASK-50 학생 수정·퇴원 화면"]:::todo
@@ -314,6 +321,19 @@ flowchart TD
 - 검증 방법: 선행 테스트 — (1) 5개 팔레트가 동일한 색 토큰 집합을 정의함(VER-32), (2) 타이포·간격·라운드·그림자 스케일이 어느 팔레트에서도 재정의되지 않음(AC-31, 기존 `tokens.test.ts` 확장), (3) 테마를 고르면 `data-theme`가 바뀌고 `localStorage`에 저장되며 재마운트 후에도 유지됨(VER-33). 기존 웹 테스트 29건 전량 통과 유지
 - 완료 조건: `npm test`·`npm run build` 통과, AC-33·AC-34 통과, 5개 테마의 시안을 사용자가 확인. **색값 확정은 사용자 판단 항목이므로 그 지점에서 멈추고 묻는다**
 - 결과: `[data-theme='dark'|'blue'|'green'|'pink']` 4벌 추가(라이트는 `:root`). 속성 선택자만 써서 카드 인라인 제약을 유지. `src/theme.ts`와 `components/ThemeSelect.tsx`를 앱 셸 헤더에 배치하고 `localStorage`에 유지, `index.html` 인라인 스크립트로 첫 페인트 번쩍임 제거. 자체 리뷰에서 다크 테마의 지각(warning) 토글 대비 결함(명도차 0.16)을 찾아 `--md-color-warning-fg` 신설로 0.62까지 올렸다. 웹 36건(기존 29 + 팔레트 3 + 테마 4)·API 78건·`npm run build` 통과. 번들 CSS 17.34 → 19.19 kB. **사용자가 5개 테마 스크린샷으로 시안 확인 완료(2026-09-23)**
+
+### TASK-53: 화면별 차등 모바일 대응
+
+- 상태: pending
+- 상위: 없음
+- 목표: 최소 390px까지 지원한다. 조회·발송 화면(대시보드·알림문자·학생/반 목록)은 휴대폰에서 페이지 본문의 가로 스크롤 없이 조작 가능하게 하고, 밀집 입력 화면(일일 입력·등록 폼)은 데스크톱 전제를 유지하되 표를 가로 스크롤로 읽을 수 있게 한다.
+- 관련 요구사항과 설계: [NFR-14](./requirements.md#비기능-요구사항), [NFR-14 상세](./requirements.md#nfr-14-상세), [NFR-13](./requirements.md#비기능-요구사항), [AC-35](./requirements.md#인수-조건), [DES-24 상세](./design.md#des-24-상세), [DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md)
+- 변경 대상: `apps/web/src/components/AppShell.tsx`, `PageHeader.tsx`, `ui/stat.tsx`, `apps/web/src/pages/` 전체의 레이아웃 클래스
+- 의존성: TASK-46
+- 위험: 반응형 분기가 레이아웃 클래스를 넘어 마크업 구조까지 바꾸면 기존 테스트가 깨진다. **역할·레이블은 건드리지 않는다.** 일일 입력을 억지로 좁은 폭에 맞추려 하면 NFR-13의 키보드 이동과 충돌한다 — 그 화면은 데스크톱 전제를 지킨다
+- 검증 방법: 선행 테스트 — 390px 뷰포트에서 조회·발송 화면 렌더 시 페이지 본문에 가로 넘침이 없음을 확인(VER-35). 기존 웹 테스트 36건 **수정 없이** 전량 통과
+- 완료 조건: AC-35 통과, 기존 테스트 36건 무수정 통과, `npm run build` 통과, 실제 휴대폰에서 사용자 확인
+- 우선순위: **후순위.** [DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) 승인 시 사용자가 리포트 카드(TASK-45·46) 이후로 지정했다
 
 ### TASK-49: 마스터 데이터 수정 기능 보완
 
@@ -948,11 +968,12 @@ flowchart TD
 | VER-30 | AC-31 | TASK-44, TASK-45, TASK-48 | 웹 번들과 카드 템플릿이 같은 토큰 파일을 참조하고, 타이포·간격·라운드·그림자 스케일이 어느 팔레트에서도 재정의되지 않음을 테스트로 확인 |
 | VER-32 | AC-34 | TASK-48 | `tokens.css`를 파싱해 5개 팔레트가 동일한 색 토큰 집합을 정의함을 확인 |
 | VER-33 | AC-33 | TASK-48 | 테마 선택 → `data-theme` 전환과 `localStorage` 저장 → 재마운트 후 유지 확인 |
+| VER-35 | AC-35 | TASK-53 | 390px 뷰포트에서 조회·발송 화면 렌더 → 페이지 본문 가로 넘침 없음 확인 |
 | VER-34 | FR-05, FR-07, FR-08 | TASK-50, TASK-51, TASK-52 | 퇴원 학생이 기본 목록에서 빠지되 과거 기록 보존, 비활성 반이 활성 반 수에서 제외, 수강 해제 후에도 과거 수업일 소속 반 재현 |
 | VER-31 | AC-32, NFR-19 | TASK-45 | warm 상태에서 카드 30장 연속 생성 p95 측정 |
 | VER-28 | NFR-15 | TASK-31, TASK-43 | 호출 로그의 공급자·입출력·캐시 토큰·비용 기록, 상한 초과 시 중단. Anthropic 실호출 실측은 TASK-43 |
 
-자동화하지 않는 시나리오 검증: 화면 ①~④의 시각적 재현 확인(TASK-15·TASK-12·TASK-20·TASK-32), 실발송·실스캔 검증(Q-02·Q-03·Q-08 해소 시점까지 보류), Claude 실호출 검증(TASK-43 — API 키 확보 시점까지 보류), 카드 시안 심미 확인(TASK-46 — 사용자 판단 항목), **테마 팔레트 색값과 다크 모드 대비 확인(TASK-48 — 사용자 판단 항목)**.
+자동화하지 않는 시나리오 검증: 화면 ①~④의 시각적 재현 확인(TASK-15·TASK-12·TASK-20·TASK-32), 실발송·실스캔 검증(Q-02·Q-03·Q-08 해소 시점까지 보류), Claude 실호출 검증(TASK-43 — API 키 확보 시점까지 보류), 카드 시안 심미 확인(TASK-46 — 사용자 판단 항목), 테마 팔레트 색값과 다크 모드 대비 확인(TASK-48 — 완료), **실제 휴대폰에서의 조작 확인(TASK-53 — 사용자 판단 항목)**.
 
 ## 마이그레이션과 롤백
 

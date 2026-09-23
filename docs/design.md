@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v5`
+> 기준선: `v6`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-23`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -189,7 +189,9 @@
 - **공통 컴포넌트:** shadcn/ui 패턴으로 소스를 저장소에 둔다. 라이브러리 의존이 아니라 코드 소유다.
 - **표 기반 입력:** NFR-13의 키보드 이동·즉시 저장 동작은 이 컴포넌트가 소유하며 외부 라이브러리 동작에 맞추지 않는다.
 - **의미 구조 보존:** 재작성 시 역할과 레이블을 유지해 기존 테스트가 그대로 통과해야 한다. 통과하지 않으면 마크업이 잘못된 것으로 본다.
-- **대상 환경:** 1280px 이상 데스크톱 전용(NFR-14). 모바일 반응형은 범위 밖.
+- **대상 환경:** 최소 390px까지 지원하되 화면 부류별 목표가 다르다([NFR-14 상세](./requirements.md#nfr-14-상세)). 조회·발송 화면(대시보드·알림문자·목록)은 휴대폰에서 완전히 사용 가능해야 하고, 밀집 입력 화면(일일 입력·등록 폼)은 데스크톱을 전제로 한다.
+- **좁은 폭 레이아웃 방침:** 페이지 본문이 가로로 밀리지 않는 것을 기준으로 삼는다. 열이 많은 표 자체의 가로 스크롤은 허용한다(`Table`이 이미 `overflow-x-auto`를 갖는다). 반응형 분기는 [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md)이 정한 Tailwind 유틸리티로 표현하며 새 의존성을 들이지 않는다.
+- **의미 구조 불변:** 반응형 분기는 레이아웃 클래스만 바꾸고 역할·레이블을 건드리지 않는다. 기존 테스트가 수정 없이 통과해야 한다.
 
 ## 데이터와 인터페이스
 
@@ -481,6 +483,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v2` (2026-09-22): [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) 재승인으로 테스트 운영 노출 경계(DES-23)와 보안 속성이 반영되었고 [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)이 `approved`로 전이되었다.
 
+기준선 `v6` (2026-09-23): [DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) 재승인으로 DES-24 상세의 대상 환경이 화면 부류별 차등 목표로 바뀌고 좁은 폭 레이아웃 방침이 추가되었다.
+
 기준선 `v5` (2026-09-23): [DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md) 재승인으로 DES-24 상세에 테마 팔레트·스케일 분리·저장 위치가 추가되고 DES-08에 카드의 팔레트 고정이 명시되었으며 [ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md)가 `approved`로 전이되었다.
 
 기준선 `v4` (2026-09-23): [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) 재승인으로 DES-08이 HTML/Chromium 렌더링으로 바뀌고 DES-24(디자인 시스템)가 신설되었으며 [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md)·[ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md)이 `approved`로 전이되었다. Q-10은 재개 후 재해소되었다.
@@ -499,6 +503,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-09-22 | DES-14 공급자 중립 계약화, DES-14 상세 신설, `llm_call_log` 컬럼 3개 추가, 시험지 분석 흐름에 `refusal` 처리 추가 | [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md), [ADR-009](./work/20260922-mathdesk-baseline/ADR-009-LLM-공급자-추상화와-Claude-연결.md) | approved 유지, 기준선 v2 → v3 | Claude / 사용자 |
 | 2026-09-23 | DES-08 HTML/Chromium 렌더링 전환과 상세 신설, DES-24 디자인 시스템 신설, Q-10 재개 후 재해소 | [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md), [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md), [ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) | approved 유지, 기준선 v3 → v4 | Claude / 사용자 |
 | 2026-09-23 | DES-24 상세에 테마 팔레트·스케일 분리·저장 위치 추가, DES-08에 카드 팔레트 고정 명시 | [DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md), [ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md) | approved 유지, 기준선 v4 → v5 | Claude / 사용자 |
+| 2026-09-23 | DES-24 상세의 대상 환경을 화면 부류별 차등으로 교체, 좁은 폭 레이아웃 방침 추가 | [DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) | approved 유지, 기준선 v5 → v6 | Claude / 사용자 |
 
 ## 인계
 
