@@ -146,3 +146,35 @@ def test_inactive_class_leaves_the_default_list_and_the_active_count(api, klass)
     assert [klass_out["id"] for klass_out in listed] == [class_id]
     assert api.get("/api/dashboard", params=params).json()["campus"]["active_classes"] == 0
     assert api.get("/api/daily", params=params).status_code == 200
+
+
+def test_released_enrollment_leaves_the_roster_but_past_sessions_stay(api, klass):
+    """FR-08: 해제는 배정 기간을 끝내는 것이며 그 이전 수업일의 명단은 그대로다."""
+    class_id, student_id = klass["class_id"], klass["student_ids"][0]
+    enrollment_id = api.get(f"/api/classes/{class_id}/enrollments").json()[0]["id"]
+
+    released = api.patch(
+        f"/api/classes/{class_id}/enrollments/{enrollment_id}",
+        json={"end_date": "2026-09-17"},
+    )
+
+    assert released.status_code == 200
+    assert released.json()["end_date"] == "2026-09-17"
+    current = api.get(f"/api/classes/{class_id}/enrollments", params={"on": "2026-09-18"}).json()
+    assert student_id not in [row["student_id"] for row in current]
+    after = api.get("/api/daily", params={"class_id": class_id, "date": "2026-09-18"}).json()
+    assert student_id not in [record["student_id"] for record in after["records"]]
+    before = api.get("/api/daily", params={"class_id": class_id, "date": "2026-09-11"}).json()
+    assert student_id in [record["student_id"] for record in before["records"]]
+
+
+def test_enrollment_cannot_end_before_it_starts(api, klass):
+    class_id = klass["class_id"]
+    enrollment_id = api.get(f"/api/classes/{class_id}/enrollments").json()[0]["id"]
+
+    rejected = api.patch(
+        f"/api/classes/{class_id}/enrollments/{enrollment_id}",
+        json={"end_date": "2026-03-01"},
+    )
+
+    assert rejected.status_code == 422

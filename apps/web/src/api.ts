@@ -88,6 +88,40 @@ export function createClass(payload: ClassPayload): Promise<Klass> {
   return request<Klass>('/classes', { method: 'POST', body: JSON.stringify(payload) })
 }
 
+export type Enrollment = {
+  id: number
+  student_id: number
+  start_date: string
+  end_date: string | null
+}
+
+export function fetchEnrollments(classId: number, on?: string): Promise<Enrollment[]> {
+  return request<Enrollment[]>(`/classes/${classId}/enrollments${on ? `?on=${on}` : ''}`)
+}
+
+export function createEnrollment(
+  classId: number,
+  studentId: number,
+  startDate: string,
+): Promise<Enrollment> {
+  return request<Enrollment>(`/classes/${classId}/enrollments`, {
+    method: 'POST',
+    body: JSON.stringify({ student_id: studentId, start_date: startDate }),
+  })
+}
+
+/** 해제는 삭제가 아니라 배정 기간의 종료다. 과거 수업일의 명단이 유지된다. */
+export function endEnrollment(
+  classId: number,
+  enrollmentId: number,
+  endDate: string,
+): Promise<Enrollment> {
+  return request<Enrollment>(`/classes/${classId}/enrollments/${enrollmentId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ end_date: endDate }),
+  })
+}
+
 export function updateClass(id: number, payload: ClassPayload): Promise<Klass> {
   return request<Klass>(`/classes/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
 }

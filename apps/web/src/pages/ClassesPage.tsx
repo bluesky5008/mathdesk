@@ -9,7 +9,18 @@ import { Field } from '../components/ui/field'
 import { Input } from '../components/ui/input'
 import { Select } from '../components/ui/select'
 import { Toggle } from '../components/ui/toggle'
-import { createClass, fetchClasses, updateClass, type Klass, type Schedule } from '../api'
+import {
+  createClass,
+  createEnrollment,
+  endEnrollment,
+  fetchClasses,
+  fetchEnrollments,
+  fetchStudents,
+  updateClass,
+  type Klass,
+  type Schedule,
+} from '../api'
+import { today } from '../lib/date'
 
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 
@@ -22,6 +33,105 @@ export function describeSchedules(schedules: Schedule[]): string {
     .join(', ')
 }
 
+/** 오늘 기준 명단을 보여주고, 배정은 오늘부터·해제는 오늘까지로 기간을 끊는다. */
+function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const on = today()
+  const enrollments = useQuery({
+    queryKey: ['enrollments', klass.id, on],
+    queryFn: () => fetchEnrollments(klass.id, on),
+  })
+  const students = useQuery({ queryKey: ['students'], queryFn: fetchStudents })
+  const [picked, setPicked] = useState('')
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['enrollments', klass.id] })
+  const assign = useMutation({
+    mutationFn: (studentId: number) => createEnrollment(klass.id, studentId, on),
+    onSuccess: () => {
+      setPicked('')
+      void refresh()
+    },
+  })
+  const release = useMutation({
+    mutationFn: (enrollmentId: number) => endEnrollment(klass.id, enrollmentId, on),
+    onSuccess: () => void refresh(),
+  })
+
+  const byId = new Map((students.data ?? []).map((student) => [student.id, student]))
+  const enrolled = new Set((enrollments.data ?? []).map((row) => row.student_id))
+  const error = assign.error ?? release.error
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogTitle className="mb-4 text-base font-semibold">반 명단 — {klass.name}</DialogTitle>
+
+        <div className="mb-4 flex items-end gap-2">
+          <Field label="학생" htmlFor="roster-student" className="flex-1">
+            <Select
+              id="roster-student"
+              className="w-full"
+              value={picked}
+              onChange={(event) => setPicked(event.target.value)}
+            >
+              <option value="">학생 선택</option>
+              {(students.data ?? [])
+                .filter((student) => !enrolled.has(student.id) && student.status !== 'withdrawn')
+                .map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.name}
+                  </option>
+                ))}
+            </Select>
+          </Field>
+          <Button type="button" disabled={!picked} onClick={() => assign.mutate(Number(picked))}>
+            배정
+          </Button>
+        </div>
+
+        <ul className="divide-y border-t">
+          {(enrollments.data ?? []).map((row) => (
+            <li key={row.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <span>
+                {byId.get(row.student_id)?.name ?? `학생 ${row.student_id}`}
+                <span className="ml-2 text-xs text-muted-fg">
+                  {row.end_date ? `${row.end_date} 종료` : `${row.start_date} 배정`}
+                </span>
+              </span>
+              {!row.end_date && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => release.mutate(row.id)}
+                >
+                  해제
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {enrollments.data?.length === 0 && (
+          <p className="py-3 text-sm text-muted-fg">배정된 학생이 없습니다.</p>
+        )}
+
+        {error && (
+          <p role="alert" className="mt-3 text-sm text-danger">
+            {error.message}
+          </p>
+        )}
+        <div className="mt-4 flex justify-end">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              닫기
+            </Button>
+          </DialogClose>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function ClassesPage() {
   const queryClient = useQueryClient()
   const [showInactive, setShowInactive] = useState(false)
@@ -31,6 +141,7 @@ export function ClassesPage() {
   })
   const [form, setForm] = useState({ name: '', grade: '' })
   const [edit, setEdit] = useState<Klass | null>(null)
+  const [roster, setRoster] = useState<Klass | null>(null)
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['classes'] })
 
@@ -119,14 +230,26 @@ export function ClassesPage() {
                   {describeSchedules(klass.schedules) || '시간표 없음'}
                   {!klass.is_active && <span className="ml-2 text-muted-fg">(비활성)</span>}
                 </span>
-                <Button type="button" variant="outline" size="sm" onClick={() => setEdit(klass)}>
-                  수정
-                </Button>
+                <span className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRoster(klass)}
+                  >
+                    명단
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setEdit(klass)}>
+                    수정
+                  </Button>
+                </span>
               </li>
             ))}
           </ul>
         </CardContent>
       </Card>
+
+      {roster && <RosterDialog klass={roster} onClose={() => setRoster(null)} />}
 
       <Dialog open={edit !== null} onOpenChange={(open) => !open && setEdit(null)}>
         <DialogContent>

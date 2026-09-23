@@ -91,6 +91,10 @@ class EnrollmentOut(EnrollmentIn):
     id: int
 
 
+class EnrollmentUpdate(BaseModel):
+    end_date: date | None = None
+
+
 def _forbidden() -> HTTPException:
     return HTTPException(status.HTTP_403_FORBIDDEN, "접근 권한이 없습니다.")
 
@@ -295,11 +299,9 @@ async def create_enrollment(
     return EnrollmentOut.model_validate(enrollment, from_attributes=True)
 
 
-@router.delete("/classes/{class_id}/enrollments/{enrollment_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_enrollment(
-    class_id: int, enrollment_id: int, scope: CurrentScope, session: Db
-) -> None:
-    scope.require_director()
+async def _enrollment(
+    session: AsyncSession, scope: Scope, class_id: int, enrollment_id: int
+) -> Enrollment:
     await _visible_class(session, scope, class_id)
     enrollment = await session.scalar(
         select(Enrollment).where(
@@ -308,5 +310,35 @@ async def delete_enrollment(
     )
     if enrollment is None:
         raise _forbidden()
+    return enrollment
+
+
+@router.patch("/classes/{class_id}/enrollments/{enrollment_id}")
+async def update_enrollment(
+    class_id: int,
+    enrollment_id: int,
+    payload: EnrollmentUpdate,
+    scope: CurrentScope,
+    session: Db,
+) -> EnrollmentOut:
+    """해제는 삭제가 아니라 배정 기간의 종료다. 과거 수업일의 명단은 기간으로 재현한다."""
+    scope.require_director()
+    enrollment = await _enrollment(session, scope, class_id, enrollment_id)
+    if payload.end_date is not None and payload.end_date < enrollment.start_date:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "종료일은 배정 시작일보다 빠를 수 없습니다."
+        )
+    enrollment.end_date = payload.end_date
+    await session.commit()
+    return EnrollmentOut.model_validate(enrollment, from_attributes=True)
+
+
+@router.delete("/classes/{class_id}/enrollments/{enrollment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_enrollment(
+    class_id: int, enrollment_id: int, scope: CurrentScope, session: Db
+) -> None:
+    """오등록 취소 전용이다. 수강을 끝내는 것은 PATCH의 종료일이다."""
+    scope.require_director()
+    enrollment = await _enrollment(session, scope, class_id, enrollment_id)
     await session.delete(enrollment)
     await session.commit()
