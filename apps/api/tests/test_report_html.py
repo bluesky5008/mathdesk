@@ -86,3 +86,48 @@ def test_brand_colour_must_be_a_colour(context):
 
     # 정상 형식은 통과한다
     assert "#C2185B" in render_report_html(context, brand_colour="#C2185B")
+
+
+# ── 시안 B(컬러 헤더형) 확정에 따른 계약 ──────────────────────────────────
+
+def test_header_text_stays_readable_on_a_bright_brand_colour(context):
+    """헤더는 브랜드 색 배경 위에 글자를 얹는다. 밝은 색이면 흰 글씨가 안 읽힌다.
+
+    시그니처 색은 원장이 자유롭게 고르므로(FR-40) 글자색을 색에 맞춰 뒤집어야 한다.
+    """
+    from mathdesk.report import header_ink
+
+    assert header_ink("#1D4ED8") == "light"   # 진한 파랑 → 흰 글씨
+    assert header_ink("#C3457F") == "light"   # 핑크 스킨 → 흰 글씨
+    assert header_ink("#FFEB3B") == "dark"    # 밝은 노랑 → 어두운 글씨
+    assert header_ink("#FFFFFF") == "dark"
+
+
+def test_card_without_a_logo_falls_back_to_the_academy_name(context):
+    """로고 미설정 시 학원명 텍스트로 대체한다(FR-40)."""
+    html = render_report_html(context)
+
+    assert "<img" not in html
+    assert escape_ok(html, context.campus_name)
+
+
+def test_card_shows_the_logo_when_one_is_set(context):
+    html = render_report_html(context, logo_data_url="data:image/png;base64,AAAA")
+
+    assert 'src="data:image/png;base64,AAAA"' in html
+
+
+def test_empty_record_says_so_instead_of_leaving_a_blank_band(context):
+    """기록이 없는 학생의 카드가 빈 띠만 남긴 채 학부모에게 나간 일이 있었다."""
+    bare = MessageContext(
+        student_name="학생01", campus_name="한영수학", teacher_name="윤",
+        session_date=date(2026, 9, 23),
+    )
+    html = render_report_html(bare)
+
+    assert "오늘 기록된 내용이 없습니다" in html
+
+
+def escape_ok(html: str, text: str) -> bool:
+    from html import escape as _e
+    return _e(text) in html
