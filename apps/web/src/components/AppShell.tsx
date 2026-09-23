@@ -25,10 +25,11 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-bg">
       <header className="sticky top-0 z-10 border-b bg-surface">
-        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-8 px-6">
-          <span className="text-lg font-semibold tracking-tight text-brand">mathdesk</span>
+        {/* 화면이 좁아도 메뉴가 한 줄을 유지한다. 폭이 모자라면 줄을 접지 않고 가로로 스크롤한다 */}
+        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-8 overflow-x-auto px-6">
+          <span className="shrink-0 text-lg font-semibold tracking-tight text-brand">mathdesk</span>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex shrink-0 items-center gap-1">
             {NAV.map(({ to, label }) => (
               <NavLink
                 key={to}
@@ -36,7 +37,7 @@ export function AppShell({
                 end={to === '/'}
                 className={({ isActive }) =>
                   [
-                    'rounded-md px-3 py-1.5 text-sm transition-colors',
+                    'rounded-md px-3 py-1.5 text-sm whitespace-nowrap transition-colors',
                     'outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                     isActive
                       ? 'bg-accent font-medium text-fg'
@@ -49,9 +50,9 @@ export function AppShell({
             ))}
           </nav>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-3">
             <ThemeSelect />
-            <span className="text-sm text-muted-fg">
+            <span className="text-sm whitespace-nowrap text-muted-fg">
               {userName} ({userRole})
             </span>
             <Button type="button" variant="outline" size="sm" onClick={onLogout}>
