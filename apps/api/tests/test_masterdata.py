@@ -103,3 +103,27 @@ def test_teacher_reads_own_class_and_its_students(api):
 
     assert [row["id"] for row in api.get("/api/classes").json()] == [class_id]
     assert [s["id"] for s in api.get("/api/students").json()] == [student_id]
+
+
+def test_withdrawn_student_leaves_the_enrolled_list_but_keeps_past_records(api, klass):
+    """FR-05: 퇴원은 상태 전이이며 과거 기록을 지우지 않는다."""
+    student_id = klass["student_ids"][0]
+    params = {"class_id": klass["class_id"], "date": "2026-09-18"}
+    session_id = api.get("/api/daily", params=params).json()["session"]["id"]
+    api.put(
+        f"/api/daily/{session_id}/records",
+        json={"records": [{"student_id": student_id, "homework_grade": "A"}]},
+    )
+
+    updated = api.patch(
+        f"/api/students/{student_id}",
+        json={"name": "김나윤", "omr_number": "10000100", "status": "withdrawn"},
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["status"] == "withdrawn"
+    enrolled = api.get("/api/students", params={"status": "enrolled"}).json()
+    assert [student["id"] for student in enrolled] == klass["student_ids"][1:]
+    records = api.get("/api/daily", params=params).json()["records"]
+    kept = next(record for record in records if record["student_id"] == student_id)
+    assert kept["homework_grade"] == "A"

@@ -68,6 +68,10 @@ export function createStudent(payload: Partial<Student>): Promise<Student> {
   return request<Student>('/students', { method: 'POST', body: JSON.stringify(payload) })
 }
 
+export function updateStudent(id: number, payload: Partial<Student>): Promise<Student> {
+  return request<Student>(`/students/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
 export function fetchClasses(): Promise<Klass[]> {
   return request<Klass[]>('/classes')
 }
