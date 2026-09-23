@@ -27,6 +27,15 @@
   --md-color-warning-fg: oklch(0.21 0.02 260);
   --md-color-danger: oklch(0.56 0.19 25);
 
+  /*
+   * 차트 계열색 — 통계 화면(TASK-26)의 데이터 계열에만 쓴다.
+   * 브랜드색과 분리한 이유: 브랜드는 테마·학원별로 바뀌는데 계열 구분은 어느 테마에서나
+   * 같은 만큼 벌어져 있어야 한다. 상태색(success·warning·danger)도 의미가 예약되어 쓰지 않는다.
+   * 두 색은 색각 이상과 정상 시각 모두에서 분리되는 것을 표면색 기준으로 검증해 골랐다.
+   */
+  --md-color-chart-1: oklch(0.52 0.16 258);
+  --md-color-chart-2: oklch(0.6 0.11 195);
+
   /* 타이포 — 1.125~1.25 비율의 좁은 스케일. 업무 도구는 밀도가 우선이다 */
   --md-font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
     'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
@@ -97,6 +106,10 @@
   --md-color-warning: oklch(0.8 0.15 75);
   --md-color-warning-fg: oklch(0.18 0.015 260);
   --md-color-danger: oklch(0.68 0.19 25);
+
+  /* 어두운 표면에서는 두 계열색이 서로 붙어 보여, 밝기 폭을 벌린 별도 단계를 쓴다 */
+  --md-color-chart-1: oklch(0.55 0.17 258);
+  --md-color-chart-2: oklch(0.66 0.13 190);
 }
 
 /*
@@ -121,6 +134,9 @@
   --md-color-warning: oklch(0.72 0.15 75);
   --md-color-warning-fg: oklch(0.21 0.02 260);
   --md-color-danger: oklch(0.56 0.19 25);
+
+  --md-color-chart-1: oklch(0.52 0.16 258);
+  --md-color-chart-2: oklch(0.6 0.11 195);
 }
 
 [data-theme='green'] {
@@ -139,6 +155,9 @@
   --md-color-warning: oklch(0.72 0.15 75);
   --md-color-warning-fg: oklch(0.21 0.02 260);
   --md-color-danger: oklch(0.56 0.19 25);
+
+  --md-color-chart-1: oklch(0.52 0.16 258);
+  --md-color-chart-2: oklch(0.6 0.11 195);
 }
 
 [data-theme='pink'] {
@@ -157,4 +176,7 @@
   --md-color-warning: oklch(0.72 0.15 75);
   --md-color-warning-fg: oklch(0.21 0.02 260);
   --md-color-danger: oklch(0.56 0.19 25);
+
+  --md-color-chart-1: oklch(0.52 0.16 258);
+  --md-color-chart-2: oklch(0.6 0.11 195);
 }

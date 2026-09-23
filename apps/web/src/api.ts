@@ -301,3 +301,61 @@ export function fetchBrand(): Promise<Brand> {
 export function saveBrand(payload: Brand): Promise<Brand> {
   return request<Brand>('/settings/brand', { method: 'PUT', body: JSON.stringify(payload) })
 }
+
+export type StudentWeek = {
+  week_start: string
+  test_average: number | null
+  class_test_average: number | null
+  homework_grades: string[]
+  homework_completion: number | null
+  class_homework_completion: number | null
+  attendance_rate: number | null
+}
+
+export type StudentHistory = {
+  student: { id: number; name: string }
+  klass: { id: number; name: string } | null
+  weeks: StudentWeek[]
+}
+
+export type StudentStatRow = {
+  student_id: number
+  name: string
+  test_average: number | null
+  homework_completion: number | null
+  attendance_rate: number | null
+}
+
+export type PeriodStats = {
+  start: string
+  end: string
+  students: StudentStatRow[]
+  test: { average: number | null; count: number; distribution: { bucket: string; count: number }[] }
+  homework: { completion_rate: number | null; distribution: Record<string, number> }
+  attendance_rate: number | null
+}
+
+export type ClassStats = {
+  klass: { id: number; name: string }
+  period: PeriodStats
+  compare: PeriodStats | null
+}
+
+export function fetchClassStats(classId: number, start: string, end: string): Promise<ClassStats> {
+  return request<ClassStats>(`/stats/classes/${classId}?start=${start}&end=${end}`)
+}
+
+export function fetchStudentHistory(
+  studentId: number,
+  to: string,
+  classId: number,
+): Promise<StudentHistory> {
+  return request<StudentHistory>(
+    `/stats/students/${studentId}?to=${to}&weeks=8&class_id=${classId}`,
+  )
+}
+
+/** 내려받기는 브라우저가 직접 받아야 하므로 fetch가 아니라 링크 주소를 준다. */
+export function statsExportUrl(classId: number, start: string, end: string): string {
+  return `/api/stats/export?class_id=${classId}&start=${start}&end=${end}`
+}

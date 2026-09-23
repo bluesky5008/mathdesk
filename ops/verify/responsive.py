@@ -21,7 +21,7 @@ PORT = 8799
 WIDTHS = [int(w) for w in os.environ.get("VER35_WIDTHS", "390,768,1280").split(",")]
 
 BROWSE = [("종합 대시보드", "/"), ("알림문자", "/messages"),
-          ("학생/반 관리", "/students"), ("학원 설정", "/settings")]
+          ("학생/반 관리", "/students"), ("성적 통계", "/stats"), ("학원 설정", "/settings")]
 DESKTOP_ONLY = [("일일 입력", "/daily")]
 
 USER = {"id": 1, "login_id": "director", "display_name": "원장", "role": "director"}
@@ -50,6 +50,24 @@ DASHBOARD = {"campus": {"enrolled_students": 47, "active_classes": 4},
              "last_session": {"session_date": "2026-09-22",
                               "progress": [{"period": 1, "content": "2024 광문고 기출 시행"}],
                               "homework": "기출 풀어오기"}}
+STAT_ROWS = [{"student_id": i, "name": f"학생{i:02d}", "test_average": 70.0 + i,
+              "homework_completion": 90.0, "attendance_rate": 100.0} for i in range(1, 14)]
+CLASS_STATS = {"klass": {"id": 1, "name": "고2 윤B"},
+               "period": {"start": "2026-07-27", "end": "2026-09-23", "students": STAT_ROWS,
+                          "test": {"average": 77.0, "count": 39,
+                                   "distribution": [{"bucket": f"{b}~{100 if b == 90 else b + 9}", "count": c}
+                                                    for b, c in [(50, 2), (60, 5), (70, 12),
+                                                                 (80, 14), (90, 6)]]},
+                          "homework": {"completion_rate": 90.0,
+                                       "distribution": {"A": 12, "B": 20, "C": 7}},
+                          "attendance_rate": 96.2},
+               "compare": None}
+HISTORY = {"student": {"id": 1, "name": "학생01"}, "klass": {"id": 1, "name": "고2 윤B"},
+           "weeks": [{"week_start": f"2026-0{7 + i // 4}-{1 + (i % 4) * 7:02d}",
+                      "test_average": 70.0 + i * 3, "class_test_average": 75.0 + i,
+                      "homework_grades": ["B"], "homework_completion": 100.0,
+                      "class_homework_completion": 90.0, "attendance_rate": 100.0}
+                     for i in range(8)]}
 LOGS = [{"id": i, "requested_at": "2026-09-23T18:30:00", "recipient_phone": "010-1234-5678",
          "channel": "sms", "status": "sent", "is_test": True} for i in range(1, 6)]
 BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3457F", "logo_data_url": None}
@@ -57,6 +75,9 @@ BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3
 
 def body_for(path: str):
     if "/auth/me" in path: return USER
+    if "/stats/export" in path: return {}
+    if "/stats/students" in path: return HISTORY
+    if "/stats/classes" in path: return CLASS_STATS
     if "/classes" in path: return CLASSES
     if "/students" in path: return STUDENTS
     if "/dashboard" in path: return DASHBOARD

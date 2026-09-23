@@ -32,6 +32,8 @@ describe('디자인 토큰 단일 소스', () => {
       '--md-color-success',
       '--md-color-warning',
       '--md-color-danger',
+      '--md-color-chart-1',
+      '--md-color-chart-2',
       '--md-font-sans',
       '--md-text-xs',
       '--md-text-sm',

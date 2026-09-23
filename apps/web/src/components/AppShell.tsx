@@ -8,6 +8,7 @@ const NAV = [
   { to: '/', label: '종합 대시보드' },
   { to: '/daily', label: '일일 수업 & 성적 입력' },
   { to: '/students', label: '학생/반 관리' },
+  { to: '/stats', label: '성적 통계' },
   { to: '/messages', label: '알림문자' },
   { to: '/settings', label: '학원 설정' },
 ]

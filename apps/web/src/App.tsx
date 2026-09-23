@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { Route, Routes } from 'react-router'
 
 import { fetchCurrentUser, logout, type CurrentUser } from './api'
@@ -10,6 +10,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { MessagesPage } from './pages/MessagesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { StudentsPage } from './pages/StudentsPage'
+
+// 통계 화면만 차트 라이브러리를 쓴다. 같이 묶으면 모든 화면의 첫 로딩이 두 배로 무거워진다.
+const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })))
 
 export function App() {
   const [user, setUser] = useState<CurrentUser | null>(null)
@@ -39,6 +42,14 @@ export function App() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/daily" element={<DailyPage />} />
+        <Route
+          path="/stats"
+          element={
+            <Suspense fallback={<p className="p-6 text-sm text-muted-fg">불러오는 중</p>}>
+              <StatsPage />
+            </Suspense>
+          }
+        />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route
