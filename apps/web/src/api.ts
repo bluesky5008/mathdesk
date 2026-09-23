@@ -5,6 +5,12 @@ export type CurrentUser = {
   role: string
 }
 
+export type Brand = {
+  campus_name: string
+  brand_colour: string | null
+  logo_data_url: string | null
+}
+
 export type Student = {
   id: number
   name: string
@@ -240,4 +246,12 @@ export function sendMessage(
 
 export function fetchMessageLogs(): Promise<MessageLog[]> {
   return request<MessageLog[]>('/messages/logs')
+}
+
+export function fetchBrand(): Promise<Brand> {
+  return request<Brand>('/settings/brand')
+}
+
+export function saveBrand(payload: Brand): Promise<Brand> {
+  return request<Brand>('/settings/brand', { method: 'PUT', body: JSON.stringify(payload) })
 }

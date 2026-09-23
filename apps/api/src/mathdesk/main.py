@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from .auth import ensure_initial_director, router as auth_router
+from .branding import router as branding_router
 from .daily import router as daily_router
 from .db import create_engine
 from .masterdata import router as masterdata_router
@@ -64,6 +65,7 @@ def create_app(web_dist: Path | str | None = None) -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(users_router)
+    app.include_router(branding_router)
     app.include_router(masterdata_router)
     app.include_router(daily_router)
     app.include_router(stats_router)

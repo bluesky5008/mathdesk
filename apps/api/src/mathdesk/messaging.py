@@ -251,9 +251,15 @@ async def preview(
 async def report_image(
     request: Request, session_id: int, student_id: int, scope: CurrentScope, session: Db
 ) -> Response:
+    from .branding import load_brand
+
     context = await _context(session_id, student_id, scope, session)
+    colour, logo = await load_brand(session, scope.campus_id)
     renderer = request.app.state.report_renderer
-    return Response(await renderer.render_png(context), media_type="image/png")
+    return Response(
+        await renderer.render_png(context, brand_colour=colour, logo_data_url=logo),
+        media_type="image/png",
+    )
 
 
 async def _recipients_for(

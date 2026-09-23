@@ -9,6 +9,7 @@ const NAV = [
   { to: '/daily', label: '일일 수업 & 성적 입력' },
   { to: '/students', label: '학생/반 관리' },
   { to: '/messages', label: '알림문자' },
+  { to: '/settings', label: '학원 설정' },
 ]
 
 export function AppShell({

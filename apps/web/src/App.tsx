@@ -8,6 +8,7 @@ import { ClassesPage } from './pages/ClassesPage'
 import { DailyPage } from './pages/DailyPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { MessagesPage } from './pages/MessagesPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { StudentsPage } from './pages/StudentsPage'
 
 export function App() {
@@ -39,6 +40,7 @@ export function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/daily" element={<DailyPage />} />
         <Route path="/messages" element={<MessagesPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route
           path="/students"
           element={
