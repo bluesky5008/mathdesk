@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, type FormEvent } from 'react'
 
 import { PageHeader } from '../components/PageHeader'
+import { OmrSection } from './OmrSection'
 import { Button, buttonStyles } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '../components/ui/dialog'
@@ -490,6 +491,7 @@ export function ExamsPage() {
           <ExamInfo key={`${exam.data.id}-${exam.data.status}`} exam={exam.data} />
           <DifficultyTable exam={exam.data} />
           <QuestionTable examId={exam.data.id} />
+          <OmrSection examId={exam.data.id} />
         </>
       )}
     </section>

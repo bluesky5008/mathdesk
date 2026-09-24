@@ -154,9 +154,14 @@ def test_pdf_pages_are_read_into_scans_and_a_bad_page_does_not_stop_the_rest(
     assert (first.page_no, second.page_no) == (1, 2)
     assert first.read_payload["exam_number"] == truth["exam_number"]
     assert first.read_payload["answers"]["30"] == truth["answers"][30]
-    assert {f["field"]: f["code"] for f in first.flags} == {"3": "multi", "22": "blank"}
+    # 수험번호가 등록된 학생이 없으므로 매칭 실패가 함께 붙는다(TASK-35)
+    assert {f["field"]: f["code"] for f in first.flags} == {
+        "3": "multi", "22": "blank", "student": "unmatched"
+    }
     assert second.read_payload["error"]
-    assert second.flags == [{"field": "sheet", "code": "low_confidence"}]
+    assert second.flags == [
+        {"field": "sheet", "code": "low_confidence"}, {"field": "student", "code": "unmatched"}
+    ]
     assert no_llm == []
 
 

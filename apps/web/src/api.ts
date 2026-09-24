@@ -466,3 +466,57 @@ export function fetchTask(id: number): Promise<Task> {
 export function difficultyCardUrl(examId: number): string {
   return `/api/exams/${examId}/difficulty-card`
 }
+
+export type OmrFlag = { field: string; code: 'blank' | 'multi' | 'low_confidence' | 'unmatched' }
+
+export type OmrScan = {
+  id: number
+  file_id: number | null
+  page_no: number
+  status: 'read' | 'needs_review' | 'applied'
+  student: { id: number; name: string } | null
+  exam_number: string | null
+  form: 'odd' | 'even' | null
+  answers: Record<string, number | null>
+  flags: OmrFlag[]
+  error: string | null
+}
+
+export type OmrScanPatch = {
+  student_id?: number
+  exam_number?: string
+  form?: 'odd' | 'even'
+  answers?: Record<string, number | null>
+}
+
+export function fetchOmrScans(examId: number): Promise<OmrScan[]> {
+  return request<OmrScan[]>(`/exams/${examId}/omr/scans`)
+}
+
+export function updateOmrScan(examId: number, scanId: number, patch: OmrScanPatch): Promise<OmrScan> {
+  return request<OmrScan>(`/exams/${examId}/omr/scans/${scanId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+}
+
+export function omrImageUrl(examId: number, scanId: number, field?: string): string {
+  const base = `/api/exams/${examId}/omr/scans/${scanId}/image`
+  return field ? `${base}?field=${field}` : base
+}
+
+export async function uploadOmr(examId: number, file: File): Promise<{ file_id: number; task_id: number }> {
+  const form = new FormData()
+  form.append('file', file)
+  // multipart 경계는 브라우저가 정한다(registerExam과 같은 이유로 fetch를 직접 쓴다)
+  const response = await fetch(`/api/exams/${examId}/omr/uploads`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    body: form,
+  })
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body.detail ?? '파일을 올리지 못했습니다.')
+  }
+  return (await response.json()) as { file_id: number; task_id: number }
+}

@@ -3,7 +3,7 @@
 [프로토타입](../../../../prototype/omr/omr_reader.py)을 이식했다.
 정합(모서리 마크 호모그래피) → R채널 드롭아웃 → 버블 농도 → 필드 판정·플래그.
 전부 로컬 CPU에서 돈다. 이 모듈에는 외부 네트워크 호출이 없어야 한다(NFR-04, AC-27).
-학생 매칭·`needs_review` 전이·검수는 DES-16(TASK-35)이 맡는다.
+판독 직후 수험번호로 학생을 매칭하고 상태를 정한다. 검수 API는 `omr_review`(DES-16)에 있다.
 """
 import asyncio
 import io
@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
 from .files import save_upload
-from .models import BackgroundTask, Exam, OmrScan, StoredFile
+from .models import BackgroundTask, Exam, OmrScan, StoredFile, Student
 from .scope import CurrentScope, ScopedRepository
 from .storage import storage
 from .tasks import task_handler
@@ -231,6 +231,70 @@ class TemplateOmrReader:
         return marked, "ok"
 
 
+def field_box(tpl: dict, name: str) -> tuple[int, int, int, int] | None:
+    """필드 버블들을 감싸는 기준 캔버스 좌표(x0, y0, x1, y1).
+
+    검수자가 무엇을 보는지 알도록 객관식은 왼쪽의 문항 번호를, 단답형은 위쪽의
+    문항 머리글을 함께 담는다. 이웃 문항 행은 넣지 않는다.
+    """
+    kinds = {"multiple_choice": (12, 3, 1.6, 1.6), "short_answer": (3, 3, 8, 2),
+             "digit_columns": (3, 3, 4, 2), "single": (12, 3, 2, 2)}  # 왼·오·위·아래(버블 반지름 배)
+    if name.isdigit():
+        picked = [(f, b) for f in tpl["fields"] for b in f["bubbles"] if b.get("q") == int(name)]
+    elif name == "exam_number":
+        picked = [(f, b) for f in tpl["fields"] if f["kind"] == "digit_columns" for b in f["bubbles"]]
+    elif name == "form":
+        picked = [(f, b) for f in tpl["fields"] if f["name"].startswith("form_") for b in f["bubbles"]]
+    else:
+        picked = []
+    if not picked:
+        return None
+    left, right, top, bottom = kinds[picked[0][0]["kind"]]
+    rx, ry = tpl["bubble_radius"]["rx"] * CANVAS_W, tpl["bubble_radius"]["ry"] * CANVAS_H
+    xs = [b["x"] * CANVAS_W for _, b in picked]
+    ys = [b["y"] * CANVAS_H for _, b in picked]
+    return (
+        max(0, int(min(xs) - left * rx)), max(0, int(min(ys) - top * ry)),
+        min(CANVAS_W, int(max(xs) + right * rx)), min(CANVAS_H, int(max(ys) + bottom * ry)),
+    )
+
+
+def review_image(page: bytes, template_id: str, name: str | None) -> bytes:
+    """검수 화면의 원본 대조 이미지(FR-35). 필드를 주면 정합한 쪽에서 그 부분만 자른다.
+    정합하지 못한 쪽은 무엇이 문제인지 보이도록 원본 전체를 준다."""
+    tpl = load_template(template_id)
+    img = cv2.imdecode(np.frombuffer(page, np.uint8), cv2.IMREAD_COLOR)
+    try:
+        aligned = _register(img, tpl)
+    except OmrRegistrationError:
+        aligned, name = None, None
+    box = field_box(tpl, name) if name else None
+    if box:
+        x0, y0, x1, y1 = box
+        out = aligned[y0:y1, x0:x1]
+    else:
+        out = aligned if aligned is not None else img
+        out = cv2.resize(out, (1754, round(out.shape[0] * 1754 / out.shape[1])))
+    return cv2.imencode(".png", out)[1].tobytes()
+
+
+# ── 매칭(DES-16) ────────────────────────────────────────────────────
+
+
+async def match_student(session: AsyncSession, campus_id: int, number: str | None) -> Student | None:
+    """수험번호로 같은 캠퍼스의 학생을 찾는다. 번호는 클라이언트가 부여·관리한다(Q-04)."""
+    if not number or "?" in number:
+        return None
+    return await session.scalar(
+        select(Student).where(Student.campus_id == campus_id, Student.omr_number == number)
+    )
+
+
+def settle(scan: OmrScan) -> None:
+    """플래그가 하나라도 있으면 검수 대기다. 검수 전에는 채점에 반영하지 않는다(FR-33, AC-25)."""
+    scan.status = "needs_review" if scan.flags else "read"
+
+
 # ── 페이지 분리 ─────────────────────────────────────────────────────
 
 
@@ -294,9 +358,15 @@ async def run_omr_read(session: AsyncSession, task: BackgroundTask) -> dict:
         # CPU 작업이 이벤트 루프를 붙잡지 않게 스레드에서 돌린다
         payload, flags = await asyncio.to_thread(_read_page, reader, data, suffix, index)
         failed += "error" in payload
-        session.add(OmrScan(
-            exam_id=exam_id, file_id=file_id, page_no=index + 1, read_payload=payload, flags=flags
-        ))
+        student = await match_student(session, task.campus_id, payload.get("exam_number"))
+        if student is None:
+            flags = [*flags, {"field": "student", "code": "unmatched"}]
+        scan = OmrScan(
+            exam_id=exam_id, file_id=file_id, page_no=index + 1, read_payload=payload, flags=flags,
+            matched_student_id=student.id if student else None,
+        )
+        settle(scan)
+        session.add(scan)
         task.progress = (index + 1) * 100 // total
         await session.commit()
     return {"pages": total, "failed": failed}

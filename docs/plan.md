@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 43건 완료. 시각 설계(TASK-44~48)와 모바일 대응(TASK-53)이 완료되었다. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-35 학생 매칭·검수·라벨 교정](#task-35-학생-매칭검수라벨-교정) 또는 [TASK-27 M9 상담일지](#task-27-m9-상담일지). TASK-34(OmrReader 이식)는 완료했다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 44건 완료. 시각 설계(TASK-44~48)와 모바일 대응(TASK-53)이 완료되었다. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-36 채점 엔진과 문항별 통계](#task-36-채점-엔진과-문항별-통계) 또는 [TASK-27 M9 상담일지](#task-27-m9-상담일지). TASK-34·35(판독·검수)는 완료했다.
 
 ## 문서 연결
 
@@ -52,7 +52,7 @@
 <!-- generated -->
 
 ```text
-mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progress (43/53)
+mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progress (44/53)
 │
 ├─ [✓] 사이클 1 — MVP (M0~M4) ....................... completed (23/23) 2026-09-22 20:05
 │  ├─ [▶] TASK-01 M0 기반 (분해 5, 4/5)
@@ -100,7 +100,7 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │      ├─ [✓] TASK-51 반 수정·활성 여부 (API 보완) . 2026-09-24 01:20
 │      └─ [✓] TASK-52 수강 배정·해제 화면 .......... 2026-09-24 01:25
 │
-└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (10/18)
+└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (11/18)
    ├─ [✓] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... 2026-09-22 23:53
    ├─ [✓] TASK-24 M5 성적 통계 (분해 2) .............. 2026-09-24 02:05
    │   ├─ [✓] TASK-25 통계 집계 API와 엑셀 내보내기 ... 2026-09-24 01:45
@@ -111,9 +111,9 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
    │   ├─ [✓] TASK-30 DocumentIngest 4포맷 정규화
    │   ├─ [✓] TASK-31 문항 분할·LlmAdapter·분석 ...... 2026-09-24 03:30
    │   └─ [✓] TASK-32 시험 등록·문항 확인 화면 ....... 2026-09-24 04:10
-   ├─ [▶] TASK-33 M7 OMR 채점 (분해 3, 1/3) .......... depends: TASK-28
+   ├─ [▶] TASK-33 M7 OMR 채점 (분해 3, 2/3) .......... depends: TASK-28
    │   ├─ [✓] TASK-34 OmrReader 제품 이식 ............ 2026-09-24 10:55
-   │   ├─ [ ] TASK-35 학생 매칭·검수·라벨 교정 ....... depends: TASK-34
+   │   ├─ [✓] TASK-35 학생 매칭·검수·라벨 교정 ....... 2026-09-24 11:54
    │   └─ [ ] TASK-36 채점 엔진과 문항별 통계 ........ depends: TASK-35, TASK-32
    ├─ [ ] TASK-37 M8 카카오 알림톡 ................... depends: TASK-19
    ├─ [ ] TASK-38 전체 통합·비기능 검증 .............. depends: TASK-26, 27, 32, 36, 37
@@ -196,7 +196,7 @@ flowchart TD
     T29 --> T32["TASK-32 시험 등록·문항 확인 화면"]:::done
     C2 --> T33["TASK-33 M7 OMR 채점"]:::active
     T33 --> T34["TASK-34 OmrReader 이식"]:::done
-    T33 --> T35["TASK-35 매칭·검수·라벨 교정"]:::todo
+    T33 --> T35["TASK-35 매칭·검수·라벨 교정"]:::done
     T33 --> T36["TASK-36 채점 엔진·문항 통계"]:::todo
     C2 --> T37["TASK-37 M8 알림톡"]:::todo
     C2 --> T38["TASK-38 전체 통합·비기능 검증"]:::todo
@@ -902,7 +902,7 @@ flowchart TD
 
 ### TASK-35: 학생 매칭·검수·라벨 교정
 
-- 상태: pending
+- 상태: completed (2026-09-24 11:54)
 - 상위: TASK-33
 - 목표: 수험번호 학생 매칭, 플래그 기반 `needs_review` 상태, 원본 크롭 대조 검수 화면, 교정값의 `label_correction` 저장을 구현한다.
 - 관련 요구사항과 설계: [FR-34·FR-35](./requirements.md#기능-요구사항), [DES-16](./design.md#컴포넌트와-책임)
@@ -911,6 +911,8 @@ flowchart TD
 - 위험: 검수를 건너뛰고 반영되면 오채점이 그대로 성적이 된다
 - 검증 방법: 선행 테스트 — 플래그가 있는 스캔이 검수 전 채점에 반영되지 않는 통합 테스트([AC-25](./requirements.md#인수-조건) 전반부)
 - 완료 조건: 미매칭 수동 지정과 교정 기록 저장이 동작
+- 결과: 판독 직후 수험번호로 학생을 매칭하고(실패 시 `student` 필드 `unmatched`), 플래그가 있으면 `needs_review`다. [`omr_review.py`](../apps/api/src/mathdesk/omr_review.py)에 `GET /exams/{id}/omr/scans`, `PATCH /exams/{id}/omr/scans/{scan_id}`(답·문형·수험번호 교정, 학생 지정, 원장만), `GET …/scans/{scan_id}/image?field=`(원본 대조 크롭)을 넣었다. 판독값을 바꾼 교정만 `label_correction`에 남는다. 웹은 시험지 화면 아래 [`OmrSection`](../apps/web/src/pages/OmrSection.tsx)(업로드·스캔 표·검수 대화상자)
+- 범위 밖: 채점 반영(`POST /omr/apply`)과 `needs_review` 제외 검사는 TASK-36이다
 
 ### TASK-36: 채점 엔진과 문항별 통계
 

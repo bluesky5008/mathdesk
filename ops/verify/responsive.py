@@ -77,6 +77,11 @@ EXAM = {**EXAMS[0], "max_score": 100, "answer_key_odd": None, "answer_key_even":
 QUESTIONS = [{"no": n, "unit": "함수의 극한과 연속", "sub_type": f"공통 객관식 {n}번 — 사차함수의 음의 실근 개수",
               "difficulty": "mid", "rationale": "극점에서의 함숫값을 구하고 부호 변화를 조사한다",
               "points": 4, "confidence": 0.9, "needs_review": n % 7 == 0} for n in range(1, 31)]
+OMR_SCANS = [{"id": i, "file_id": 1, "page_no": i, "status": "needs_review" if i % 4 == 0 else "read",
+              "student": {"id": i, "name": f"학생{i:02d}"}, "exam_number": f"1000{i:02d}00", "form": "odd",
+              "answers": {str(q): 1 for q in range(1, 31)},
+              "flags": [{"field": "3", "code": "multi"}, {"field": "22", "code": "blank"}] if i % 4 == 0 else [],
+              "error": None} for i in range(1, 13)]
 LOGS = [{"id": i, "requested_at": "2026-09-23T18:30:00", "recipient_phone": "010-1234-5678",
          "channel": "sms", "status": "sent", "is_test": True} for i in range(1, 6)]
 BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3457F", "logo_data_url": None}
@@ -84,6 +89,7 @@ BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3
 
 def body_for(path: str):
     if "/auth/me" in path: return USER
+    if "/omr/scans" in path: return OMR_SCANS
     if "/questions" in path: return QUESTIONS
     if "/api/exams/" in path: return EXAM
     if path.endswith("/api/exams"): return EXAMS
