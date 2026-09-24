@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v8`
+> 기준선: `v9`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-24`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -121,9 +121,9 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
 └─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (3/13)
-   ├─ [ ] TASK-64 강사 계정 관리 화면 (FR-02) ......... 선행
+   ├─ [▶] TASK-64 강사 계정 관리 화면 (FR-02) ......... 선행
    ├─ [ ] TASK-65 반 담당 강사 지정 (FR-07) ........... 선행
-   ├─ [ ] TASK-66 주간 시간표 (DCR-008) ............... depends: TASK-64, 65, DCR-008 승인
+   ├─ [ ] TASK-66 주간 시간표 (DCR-008) ............... depends: TASK-64, 65 (기준선 v9)
    ├─ [✓] TASK-63 반 시간표 입력 (DCR-007) ............ 2026-09-24 21:42
    ├─ [✓] TASK-62 학생·반 삭제 (DCR-006) ............. 2026-09-24 18:08
    ├─ [✓] TASK-61 클라이언트 안내문 작성 ............. 2026-09-24 19:55
@@ -238,7 +238,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     C3["사이클 3 — 운영 이관"]:::todo
-    C3 --> T64["TASK-64 강사 계정 관리 (FR-02)"]:::todo
+    C3 --> T64["TASK-64 강사 계정 관리 (FR-02)"]:::active
     C3 --> T65["TASK-65 반 담당 강사 지정 (FR-07)"]:::todo
     C3 --> T66["TASK-66 주간 시간표 (DCR-008)"]:::todo
     T64 -. depends .-> T66
@@ -1035,7 +1035,7 @@ flowchart TD
 
 ### TASK-64: 강사 계정 관리 화면 (FR-02)
 
-- 상태: pending
+- 상태: in-progress
 - 상위: 없음
 - 목표: 원장이 계정을 만들고(아이디·이름·역할·초기 비밀번호), 이름·역할을 고치고, 비활성화하는 화면을 만든다. API(`GET/POST/PATCH /users`)는 있고 화면이 없던 승인된 요구사항이다.
 - 관련 요구사항과 설계: [FR-02](./requirements.md#기능-요구사항)
@@ -1059,10 +1059,10 @@ flowchart TD
 
 ### TASK-66: 주간 시간표 (DCR-008)
 
-- 상태: pending — DCR-008 승인 대기
+- 상태: pending — DCR-008 승인(2026-09-24, 기준선 v9). 선행 작업 뒤 착수
 - 상위: 없음
 - 목표: 요일 × 시간 축 격자의 주간 시간표 탭, 원장의 강사 이름·강사별 보기, 수업 길이 설정.
-- 관련 요구사항과 설계: [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md)(승인 시 FR-42·AC-38)
+- 관련 요구사항과 설계: [FR-42·AC-38](./requirements.md#인수-조건), [REST 주간 시간표](./design.md#rest-계약), [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md)
 - 변경 대상: `GET /timetable`, `PUT /settings/class-minutes`, 웹 `/timetable`·학원 설정
 - 의존성: TASK-64, TASK-65, DCR-008 승인
 - 위험: 좁은 화면 배치, 같은 시간대 수업이 겹칠 때의 배치
@@ -1231,6 +1231,7 @@ flowchart TD
 | VER-35 | AC-35 | TASK-53 | 390px 뷰포트에서 조회·발송 화면 렌더 → 페이지 본문 가로 넘침 없음 확인 — **통과** (390·768·1280px, `ops/verify/responsive.py`) |
 | VER-34 | FR-05, FR-07, FR-08 | TASK-50, TASK-51, TASK-52 | 퇴원 학생이 기본 목록에서 빠지되 과거 기록 보존, 비활성 반이 활성 반 수에서 제외, 수강 해제 후에도 과거 수업일 소속 반 재현 |
 | VER-31 | AC-32, NFR-19 | TASK-45 | warm 상태에서 카드 30장 연속 생성 p95 측정 — **컨테이너 p95 86ms (기준 3000ms), 통과** |
+| VER-38 | AC-38 | TASK-66 | 역할별 `GET /timetable`·종료 시각 계산·수업 길이 변경·미등록/비활성 처리 API 테스트 + 격자·강사별 보기·390px 목록 웹 테스트 |
 | VER-37 | AC-37 | TASK-63 | 시간표 저장·조회(종료 시각 없음)·중복 거부 API 테스트 + 등록·수정 편집과 표시 웹 테스트 — **통과** (`test_class_schedule.py` 4건, 웹 2건) |
 | VER-36 | AC-36 | TASK-62 | 삭제 선행 조건·기록째 삭제·다른 학생 불변·시험 보존·이름 확인 통합 테스트 + 외래키 전수 분류 테스트 — **통과** (`test_deletion.py` 9건) |
 | VER-28 | NFR-15 | TASK-31, TASK-43 | 호출 로그의 공급자·입출력·캐시 토큰·비용 기록, 상한 초과 시 중단. Anthropic 실호출 실측은 TASK-43 |

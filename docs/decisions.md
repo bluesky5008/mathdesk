@@ -44,7 +44,7 @@
 | DCR-005 | dcr | 화면별 차등 모바일 지원 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) | ADR-010 관련 |
 | DCR-006 | dcr | 퇴원·비활성 학생과 반의 삭제 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md) | — |
 | DCR-007 | dcr | 시작 시각만 쓰는 반 시간표 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-007](./work/20260922-mathdesk-baseline/DCR-007-시작-시각만-쓰는-반-시간표.md) | — |
-| DCR-008 | dcr | 주간 시간표 | awaiting-approval | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | DCR-007 관련 |
+| DCR-008 | dcr | 주간 시간표 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | DCR-007 관련 |
 
 ## 번호 발행 규칙
 
