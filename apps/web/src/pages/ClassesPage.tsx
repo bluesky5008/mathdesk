@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { Fragment, useState, type FormEvent } from 'react'
 
 import { PageHeader } from '../components/PageHeader'
 import { Button } from '../components/ui/button'
@@ -344,10 +344,23 @@ export function ClassesPage() {
           <ul className="divide-y">
             {classes.data?.map((klass) => (
               <li key={klass.id} className="flex items-center justify-between gap-3 px-5 py-3">
-                <span className="text-sm">
-                  {klass.name} · {klass.grade} ·{' '}
-                  {describeSchedules(klass.schedules) || '시간표 없음'}
-                  {!klass.is_active && <span className="ml-2 text-muted-fg">(비활성)</span>}
+                {/* 첫 줄은 반, 둘째 줄은 시간표 — 시간표가 길어도 반 이름 줄이 흔들리지 않는다 */}
+                <span className="grid min-w-0 gap-0.5 text-sm">
+                  <span>
+                    {[klass.name, klass.grade].filter(Boolean).join(' · ')}
+                    {!klass.is_active && <span className="ml-2 text-muted-fg">(비활성)</span>}
+                  </span>
+                  <span className="text-xs text-muted-fg tabular-nums">
+                    {klass.schedules.length === 0
+                      ? '시간표 없음'
+                      : klass.schedules.map((schedule, index) => (
+                          // 수업 하나("화 18:00")는 줄바꿈으로 쪼개지 않는다
+                          <Fragment key={index}>
+                            {index > 0 && ' · '}
+                            <span className="whitespace-nowrap">{describeSchedules([schedule])}</span>
+                          </Fragment>
+                        ))}
+                  </span>
                 </span>
                 <span className="flex gap-2">
                   <Button
