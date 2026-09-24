@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v7`
+> 기준선: `v8`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-24`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (2/9)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (2/10)
+   ├─ [▶] TASK-63 반 시간표 입력 (DCR-007) ............ 기준선 v8
    ├─ [✓] TASK-62 학생·반 삭제 (DCR-006) ............. 2026-09-24 18:08
    ├─ [✓] TASK-61 클라이언트 안내문 작성 ............. 2026-09-24 19:55
    ├─ [ ] TASK-54 클라이언트 피드백 반영 (반복) ...... 현재 테스트 운영
@@ -229,11 +230,12 @@ flowchart TD
     classDef gate fill:#ffcdd2,stroke:#c62828
 ```
 
-사이클 3 (노드 10)
+사이클 3 (노드 11)
 
 ```mermaid
 flowchart TD
     C3["사이클 3 — 운영 이관"]:::todo
+    C3 --> T63["TASK-63 반 시간표 입력 (DCR-007)"]:::active
     C3 --> T62["TASK-62 학생·반 삭제 (DCR-006)"]:::done
     C3 --> T61["TASK-61 클라이언트 안내문"]:::done
     C3 --> T54["TASK-54 클라이언트 피드백 반영"]:::todo
@@ -1023,6 +1025,18 @@ flowchart TD
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
 
+### TASK-63: 반 시간표 입력 (DCR-007)
+
+- 상태: in-progress
+- 상위: 없음
+- 목표: 반 등록·수정에서 요일·시작 시각으로 시간표를 입력·수정·삭제하고, 목록에 시작 시각만 표시한다. `class_schedule.end_time`을 선택 항목으로 바꾼다.
+- 관련 요구사항과 설계: [FR-07·AC-37](./requirements.md#인수-조건), [데이터 모델](./design.md#데이터-모델), [DCR-007](./work/20260922-mathdesk-baseline/DCR-007-시작-시각만-쓰는-반-시간표.md)
+- 변경 대상: 마이그레이션(`end_time` NULL 허용), `models/masterdata.py`, `masterdata.py`(`ScheduleIn`·중복 검증), `apps/web/src/pages/ClassesPage.tsx`, `api.ts`
+- 의존성: 없음
+- 위험: `PATCH /classes`는 전치환이라 시간표 편집이 담당 강사·활성 여부를 지우지 않게 함께 보내야 한다
+- 검증 방법: 선행 테스트 — API(`end_time` 없이 저장·재조회, 기존처럼 보내도 저장, 중복 422), 웹(등록·수정 편집, 표시 문자열), 마이그레이션 왕복
+- 완료 조건: AC-37 통과(VER-37), 테스트 운영 배포
+
 ### TASK-62: 학생·반 삭제 (DCR-006)
 
 - 상태: completed (2026-09-24 18:08)
@@ -1172,6 +1186,7 @@ flowchart TD
 | VER-35 | AC-35 | TASK-53 | 390px 뷰포트에서 조회·발송 화면 렌더 → 페이지 본문 가로 넘침 없음 확인 — **통과** (390·768·1280px, `ops/verify/responsive.py`) |
 | VER-34 | FR-05, FR-07, FR-08 | TASK-50, TASK-51, TASK-52 | 퇴원 학생이 기본 목록에서 빠지되 과거 기록 보존, 비활성 반이 활성 반 수에서 제외, 수강 해제 후에도 과거 수업일 소속 반 재현 |
 | VER-31 | AC-32, NFR-19 | TASK-45 | warm 상태에서 카드 30장 연속 생성 p95 측정 — **컨테이너 p95 86ms (기준 3000ms), 통과** |
+| VER-37 | AC-37 | TASK-63 | 시간표 저장·조회(종료 시각 없음)·중복 거부 API 테스트 + 등록·수정 편집과 표시 웹 테스트 |
 | VER-36 | AC-36 | TASK-62 | 삭제 선행 조건·기록째 삭제·다른 학생 불변·시험 보존·이름 확인 통합 테스트 + 외래키 전수 분류 테스트 — **통과** (`test_deletion.py` 9건) |
 | VER-28 | NFR-15 | TASK-31, TASK-43 | 호출 로그의 공급자·입출력·캐시 토큰·비용 기록, 상한 초과 시 중단. Anthropic 실호출 실측은 TASK-43 |
 

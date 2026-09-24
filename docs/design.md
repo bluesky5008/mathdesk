@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v7`
+> 기준선: `v8`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-24`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -229,7 +229,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | `student` | `id`, `campus_id`, `name`, `school`, `grade`, `phone`, `status`, `omr_number` | `omr_number`는 캠퍼스 내 유일, 자리별 범위 검증(FR-05) |
 | `guardian` | `id`, `student_id`, `relation`, `name`, `phone`, `is_notify_target` | |
 | `class` | `id`, `campus_id`, `name`, `grade`, `teacher_id`, `is_active` | |
-| `class_schedule` | `id`, `class_id`, `weekday`, `start_time`, `end_time` | |
+| `class_schedule` | `id`, `class_id`, `weekday`, `start_time`, `end_time` | `end_time`은 선택(NULL 허용) — 시작 시각만 입력·표시한다(FR-07, [DCR-007](./work/20260922-mathdesk-baseline/DCR-007-시작-시각만-쓰는-반-시간표.md)). 같은 반에서 요일·시작 시각 중복 불가 |
 | `enrollment` | `id`, `class_id`, `student_id`, `start_date`, `end_date` | 기간 이력 보존 |
 | `class_session` | `id`, `class_id`, `session_date`, `homework`, `video_url`, `teacher_note`, `test_name`, `test_max_score`, `attendance_confirmed_at`, `attendance_confirmed_by` | `(class_id, session_date)` 유일 |
 | `class_session_progress` | `session_id`, `period`, `content` | 교시 1~4 |
@@ -464,7 +464,7 @@ ADR로 분리하지 않은 설계 판단
 | [FR-01, FR-02](./requirements.md#기능-요구사항) | [DES-03](#컴포넌트와-책임) | [AC-01](./requirements.md#인수-조건) |
 | [FR-03](./requirements.md#fr-03-상세), [NFR-07](./requirements.md#비기능-요구사항) | [DES-03](#des-03-상세) | [AC-02, AC-03](./requirements.md#인수-조건) |
 | [FR-04](./requirements.md#기능-요구사항) | [DES-20](#컴포넌트와-책임) | [AC-23](./requirements.md#인수-조건) |
-| [FR-05~FR-08, FR-39](./requirements.md#기능-요구사항) | [DES-04](#컴포넌트와-책임) | [AC-04, AC-05, AC-36](./requirements.md#인수-조건) |
+| [FR-05~FR-08, FR-39](./requirements.md#기능-요구사항) | [DES-04](#컴포넌트와-책임) | [AC-04, AC-05, AC-36, AC-37](./requirements.md#인수-조건) |
 | [FR-09~FR-14](./requirements.md#fr-09-상세) | [DES-05](#des-05-상세) | [AC-06~AC-12](./requirements.md#인수-조건) |
 | [FR-15~FR-17, FR-24~FR-26](./requirements.md#fr-15-상세) | [DES-06](#컴포넌트와-책임), [DES-22](#컴포넌트와-책임) | [AC-07, AC-13, AC-19, AC-20](./requirements.md#인수-조건) |
 | [FR-18~FR-22](./requirements.md#fr-18-상세) | [DES-07](#컴포넌트와-책임), [DES-08](#컴포넌트와-책임) | [AC-14~AC-16](./requirements.md#인수-조건) |
@@ -493,6 +493,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v2` (2026-09-22): [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) 재승인으로 테스트 운영 노출 경계(DES-23)와 보안 속성이 반영되었고 [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)이 `approved`로 전이되었다.
 
+기준선 `v8` (2026-09-24): [DCR-007](./work/20260922-mathdesk-baseline/DCR-007-시작-시각만-쓰는-반-시간표.md) 재승인으로 `class_schedule.end_time`이 선택 항목이 되고 `POST`·`PATCH /classes`의 시간표 항목에서 종료 시각이 선택화되었다(요일·시작 시각 중복 시 422).
+
 기준선 `v7` (2026-09-24): [DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md) 재승인으로 DES-04 상세에 퇴원 학생·비활성 반의 삭제 규칙(기록째 삭제, 시험 보존, 미리보기·이름 확인)이 신설되고 REST 계약에 삭제·미리보기가 추가되었다.
 
 기준선 `v6` (2026-09-23): [DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) 재승인으로 DES-24 상세의 대상 환경이 화면 부류별 차등 목표로 바뀌고 좁은 폭 레이아웃 방침이 추가되었다.
@@ -516,6 +518,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-09-23 | DES-08 HTML/Chromium 렌더링 전환과 상세 신설, DES-24 디자인 시스템 신설, Q-10 재개 후 재해소 | [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md), [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md), [ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) | approved 유지, 기준선 v3 → v4 | Claude / 사용자 |
 | 2026-09-23 | DES-24 상세에 테마 팔레트·스케일 분리·저장 위치 추가, DES-08에 카드 팔레트 고정 명시 | [DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md), [ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md) | approved 유지, 기준선 v4 → v5 | Claude / 사용자 |
 | 2026-09-23 | DES-24 상세의 대상 환경을 화면 부류별 차등으로 교체, 좁은 폭 레이아웃 방침 추가 | [DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) | approved 유지, 기준선 v5 → v6 | Claude / 사용자 |
+| 2026-09-24 | `class_schedule.end_time` 선택화, 시간표 입력의 요일·시작 시각 중복 검증 | [DCR-007](./work/20260922-mathdesk-baseline/DCR-007-시작-시각만-쓰는-반-시간표.md) | approved 유지, 기준선 v7 → v8 | Claude / 사용자 |
 | 2026-09-24 | DES-04 상세에 학생·반 삭제 규칙 신설, REST 계약에 삭제·미리보기 4개 추가 | [DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md) | approved 유지, 기준선 v6 → v7 | Claude / 사용자 |
 
 ## 인계
