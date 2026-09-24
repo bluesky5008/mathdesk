@@ -8,6 +8,7 @@ import { Field } from '../components/ui/field'
 import { Input } from '../components/ui/input'
 import { fetchBrand, saveBrand, type Brand } from '../api'
 import { AccountsSection } from './AccountsSection'
+import { ClassMinutesSetting } from './ClassMinutesSetting'
 
 const EMPTY: Brand = { campus_name: '', brand_colour: null, logo_data_url: null }
 
@@ -97,6 +98,7 @@ export function SettingsPage({ account }: { account?: { currentUserId: number } 
         </CardContent>
       </Card>
 
+      {account && <ClassMinutesSetting />}
       {account && <AccountsSection currentUserId={account.currentUserId} />}
     </section>
   )

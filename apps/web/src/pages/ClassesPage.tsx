@@ -27,7 +27,7 @@ import {
 import { today } from '../lib/date'
 import { DeleteDialog } from './DeleteDialog'
 
-const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
+export const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 
 export function describeSchedules(schedules: Schedule[]): string {
   // 수업 길이가 같아 시작 시각만 보여 준다(FR-07, DCR-007)

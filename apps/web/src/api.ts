@@ -98,6 +98,40 @@ export function updateUser(
   return request<AppUserAccount>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
 }
 
+// 주간 시간표(FR-42, DCR-008). 강사는 담당 반만, 원장은 캠퍼스 전체를 받는다.
+// end_time은 저장값이 아니라 서버가 시작 시각 + 수업 길이로 계산한 값이다
+export type TimetableTeacher = { id: number; name: string }
+
+export type TimetableClass = {
+  class_id: number
+  class_name: string
+  grade: string | null
+  teacher: TimetableTeacher | null
+}
+
+export type TimetableSlot = TimetableClass & {
+  weekday: number
+  start_time: string
+  end_time: string
+}
+
+export type Timetable = {
+  class_minutes: number
+  slots: TimetableSlot[]
+  unscheduled: TimetableClass[]
+}
+
+export function fetchTimetable(): Promise<Timetable> {
+  return request<Timetable>('/timetable')
+}
+
+export function saveClassMinutes(classMinutes: number): Promise<{ class_minutes: number }> {
+  return request<{ class_minutes: number }>('/settings/class-minutes', {
+    method: 'PUT',
+    body: JSON.stringify({ class_minutes: classMinutes }),
+  })
+}
+
 export function resetUserPassword(id: number, newPassword: string): Promise<void> {
   return request<void>(`/users/${id}/password`, {
     method: 'POST',

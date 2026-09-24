@@ -12,6 +12,7 @@ import { ExamsPage } from './pages/ExamsPage'
 import { MessagesPage } from './pages/MessagesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { StudentsPage } from './pages/StudentsPage'
+import { TimetablePage } from './pages/TimetablePage'
 
 // 통계 화면만 차트 라이브러리를 쓴다. 같이 묶으면 모든 화면의 첫 로딩이 두 배로 무거워진다.
 const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })))
@@ -59,6 +60,7 @@ export function App() {
             </Suspense>
           }
         />
+        <Route path="/timetable" element={<TimetablePage isDirector={user.role === 'director'} />} />
         <Route path="/exams" element={<ExamsPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route
