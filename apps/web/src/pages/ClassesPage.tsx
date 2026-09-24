@@ -10,6 +10,7 @@ import { Input } from '../components/ui/input'
 import { Select } from '../components/ui/select'
 import { Toggle } from '../components/ui/toggle'
 import {
+  cancelEnrollment,
   createClass,
   deleteClass,
   fetchClassDeletionPreview,
@@ -114,20 +115,25 @@ function ScheduleEditor({
   )
 }
 
-/** 오늘 기준 명단을 보여주고, 배정은 오늘부터·해제는 오늘까지로 기간을 끊는다. */
+/**
+ * 오늘 이후에도 이어지는 배정(시작 전인 배정 포함)을 보여 준다. 배정은 고른 날짜부터(기본 오늘, FR-08),
+ * 해제는 오늘까지로 기간을 끊는다. 시작 전인 배정은 끊을 기간이 없어 취소(삭제)한다.
+ */
 function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void }) {
   const queryClient = useQueryClient()
   const on = today()
   const enrollments = useQuery({
-    queryKey: ['enrollments', klass.id, on],
-    queryFn: () => fetchEnrollments(klass.id, on),
+    queryKey: ['enrollments', klass.id],
+    queryFn: () => fetchEnrollments(klass.id),
+    select: (rows) => rows.filter((row) => !row.end_date || row.end_date >= on),
   })
   const students = useQuery({ queryKey: ['students'], queryFn: fetchStudents })
   const [picked, setPicked] = useState('')
+  const [startDate, setStartDate] = useState(on)
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['enrollments', klass.id] })
   const assign = useMutation({
-    mutationFn: (studentId: number) => createEnrollment(klass.id, studentId, on),
+    mutationFn: (studentId: number) => createEnrollment(klass.id, studentId, startDate),
     onSuccess: () => {
       setPicked('')
       void refresh()
@@ -137,10 +143,14 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
     mutationFn: (enrollmentId: number) => endEnrollment(klass.id, enrollmentId, on),
     onSuccess: () => void refresh(),
   })
+  const cancel = useMutation({
+    mutationFn: (enrollmentId: number) => cancelEnrollment(klass.id, enrollmentId),
+    onSuccess: () => void refresh(),
+  })
 
   const byId = new Map((students.data ?? []).map((student) => [student.id, student]))
   const enrolled = new Set((enrollments.data ?? []).map((row) => row.student_id))
-  const error = assign.error ?? release.error
+  const error = assign.error ?? release.error ?? cancel.error
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -165,7 +175,20 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
                 ))}
             </Select>
           </Field>
-          <Button type="button" disabled={!picked} onClick={() => assign.mutate(Number(picked))}>
+          <Field label="시작일" htmlFor="roster-start">
+            <Input
+              id="roster-start"
+              type="date"
+              className="w-40"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+            />
+          </Field>
+          <Button
+            type="button"
+            disabled={!picked || !startDate}
+            onClick={() => assign.mutate(Number(picked))}
+          >
             배정
           </Button>
         </div>
@@ -179,15 +202,26 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
                   {row.end_date ? `${row.end_date} 종료` : `${row.start_date} 배정`}
                 </span>
               </span>
-              {!row.end_date && (
+              {row.start_date > on ? (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => release.mutate(row.id)}
+                  onClick={() => cancel.mutate(row.id)}
                 >
-                  해제
+                  취소
                 </Button>
+              ) : (
+                !row.end_date && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => release.mutate(row.id)}
+                  >
+                    해제
+                  </Button>
+                )
               )}
             </li>
           ))}

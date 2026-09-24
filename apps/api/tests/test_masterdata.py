@@ -178,3 +178,29 @@ def test_enrollment_cannot_end_before_it_starts(api, klass):
     )
 
     assert rejected.status_code == 422
+
+
+def test_enrollment_cannot_overlap_an_existing_period(api, klass):
+    """TASK-71: 배정 시작일을 고를 수 있게 되며 같은 반에 기간이 겹치는 배정이 생기면 일일 명단에 두 번 나온다."""
+    class_id, student_id = klass["class_id"], klass["student_ids"][0]
+    enrollment_id = api.get(f"/api/classes/{class_id}/enrollments").json()[0]["id"]
+    api.patch(f"/api/classes/{class_id}/enrollments/{enrollment_id}", json={"end_date": "2026-09-17"})
+
+    overlapping = api.post(
+        f"/api/classes/{class_id}/enrollments",
+        json={"student_id": student_id, "start_date": "2026-09-10"},
+    )
+    earlier_open = api.post(
+        f"/api/classes/{class_id}/enrollments",
+        json={"student_id": klass["student_ids"][1], "start_date": "2026-01-05"},
+    )
+    after_end = api.post(
+        f"/api/classes/{class_id}/enrollments",
+        json={"student_id": student_id, "start_date": "2026-09-18"},
+    )
+
+    assert overlapping.status_code == 422
+    assert earlier_open.status_code == 422
+    assert after_end.status_code == 201
+    daily = api.get("/api/daily", params={"class_id": class_id, "date": "2026-09-11"}).json()
+    assert [record["student_id"] for record in daily["records"]].count(student_id) == 1

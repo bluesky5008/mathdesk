@@ -173,6 +173,84 @@ describe('ClassesPage', () => {
     expect(posted[0].body).toEqual({ student_id: 2, start_date: today() })
   })
 
+  // TASK-71: 지난 수업일에도 학생이 나오도록 배정 시작일을 고른다(FR-08)
+  it('assigns a student from a chosen start date', async () => {
+    const posted: { url: string; body: Record<string, unknown> }[] = []
+    stubRoster([], posted)
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '명단' }))
+
+    const dialog = within(await screen.findByRole('dialog'))
+    expect(dialog.getByLabelText('시작일')).toHaveValue(today())
+    await userEvent.selectOptions(await dialog.findByLabelText('학생'), '2')
+    await userEvent.clear(dialog.getByLabelText('시작일'))
+    await userEvent.type(dialog.getByLabelText('시작일'), '2026-09-01')
+    await userEvent.click(dialog.getByRole('button', { name: '배정' }))
+
+    await waitFor(() => expect(posted).toHaveLength(1))
+    expect(posted[0].body).toEqual({ student_id: 2, start_date: '2026-09-01' })
+  })
+
+  it('keeps a future-dated assignment in the roster and drops ended ones', async () => {
+    const rows = [
+      { id: 21, student_id: 1, start_date: '2020-03-02', end_date: '2020-12-31' },
+      { id: 22, student_id: 2, start_date: '2099-03-02', end_date: null },
+    ]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('/enrollments')) {
+          // 서버와 같은 기준: on이 있으면 start_date <= on <= end_date(없으면 무기한)
+          const on = new URL(url, 'http://x').searchParams.get('on')
+          return Response.json(
+            on ? rows.filter((r) => r.start_date <= on && (!r.end_date || r.end_date >= on)) : rows,
+          )
+        }
+        return Response.json(url.includes('/students') ? roster : [active])
+      }),
+    )
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '명단' }))
+
+    const dialog = within(await screen.findByRole('dialog'))
+    expect(await dialog.findByText('김정현')).toBeInTheDocument()
+    expect(dialog.getByText('2099-03-02 배정')).toBeInTheDocument()
+    expect(dialog.queryByRole('option', { name: '김정현' })).not.toBeInTheDocument()
+    expect(dialog.queryByText('2020-12-31 종료')).not.toBeInTheDocument()
+    expect(dialog.getByRole('option', { name: '김나윤' })).toBeInTheDocument()
+  })
+
+  // 시작 전인 배정은 종료일(오늘)이 시작일보다 앞서 해제할 수 없다. 이력이 없으니 취소(삭제)한다
+  it('cancels a not-yet-started assignment instead of ending it', async () => {
+    const calls: string[] = []
+    let rows = [{ id: 22, student_id: 2, start_date: '2099-03-02', end_date: null as string | null }]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method) calls.push(`${init.method} ${url}`)
+        if (init?.method === 'DELETE') {
+          rows = []
+          return new Response(null, { status: 204 })
+        }
+        if (url.includes('/enrollments')) return Response.json(rows)
+        return Response.json(url.includes('/students') ? roster : [active])
+      }),
+    )
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '명단' }))
+
+    const dialog = within(await screen.findByRole('dialog'))
+    await dialog.findByText('2099-03-02 배정')
+    expect(dialog.queryByRole('button', { name: '해제' })).not.toBeInTheDocument()
+    await userEvent.click(dialog.getByRole('button', { name: '취소' }))
+
+    await waitFor(() => expect(calls).toContain('DELETE /api/classes/1/enrollments/22'))
+    expect(await dialog.findByText('배정된 학생이 없습니다.')).toBeInTheDocument()
+  })
+
   it('deactivates a class straight from the row after confirming', async () => {
     const patched: { url: string; body: Record<string, unknown> }[] = []
     vi.stubGlobal(

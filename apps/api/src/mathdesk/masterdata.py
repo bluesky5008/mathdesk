@@ -358,6 +358,19 @@ async def create_enrollment(
     scope.require_director()
     await _visible_class(session, scope, class_id)
     await _repo(session, scope).get(Student, payload.student_id)
+    # 같은 반에 기간이 겹치는 배정이 둘이면 그 날짜의 명단에 학생이 두 번 나온다
+    overlap = await session.scalar(
+        select(Enrollment.id).where(
+            Enrollment.class_id == class_id,
+            Enrollment.student_id == payload.student_id,
+            or_(Enrollment.end_date.is_(None), Enrollment.end_date >= payload.start_date),
+            *([Enrollment.start_date <= payload.end_date] if payload.end_date else []),
+        )
+    )
+    if overlap is not None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "이 반에 기간이 겹치는 배정이 이미 있습니다."
+        )
     enrollment = Enrollment(class_id=class_id, **payload.model_dump())
     session.add(enrollment)
     await session.commit()

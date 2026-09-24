@@ -212,6 +212,11 @@ export function endEnrollment(
   })
 }
 
+/** 시작 전인 배정의 취소(오등록 취소). 이미 시작한 배정은 endEnrollment로 끝낸다. */
+export function cancelEnrollment(classId: number, enrollmentId: number): Promise<void> {
+  return request<void>(`/classes/${classId}/enrollments/${enrollmentId}`, { method: 'DELETE' })
+}
+
 export function updateClass(id: number, payload: ClassPayload): Promise<Klass> {
   return request<Klass>(`/classes/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
 }
