@@ -42,7 +42,7 @@
 | DCR-003 | dcr | 브랜드 자산으로서의 시각 설계 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) | ADR-010, ADR-011 |
 | DCR-004 | dcr | 웹 테마 선택과 브랜드 색의 역할 분리 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md) | ADR-012 |
 | DCR-005 | dcr | 화면별 차등 모바일 지원 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) | ADR-010 관련 |
-| DCR-006 | dcr | 기록이 없는 학생과 반의 삭제 | awaiting-approval | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-006](./work/20260922-mathdesk-baseline/DCR-006-기록-없는-학생과-반의-삭제.md) | — |
+| DCR-006 | dcr | 퇴원·비활성 학생과 반의 삭제 | awaiting-approval | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md) | — |
 
 ## 번호 발행 규칙
 
