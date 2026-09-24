@@ -25,7 +25,10 @@ BROWSE = [("종합 대시보드", "/"), ("알림문자", "/messages"),
           ("시험지 분석", "/exams"), ("학원 설정", "/settings")]
 DESKTOP_ONLY = [("일일 입력", "/daily")]
 
-USER = {"id": 1, "login_id": "director", "display_name": "원장", "role": "director"}
+USER = {"id": 1, "login_id": "director", "display_name": "원장", "role": "director",
+        "must_change_password": False}
+ACCOUNTS = [{"id": i, "login_id": f"teacher{i:02d}", "display_name": f"강사{i:02d}",
+             "role": "director" if i == 1 else "teacher", "is_active": i != 5} for i in range(1, 7)]
 CLASSES = [{"id": i, "name": n, "grade": "고2", "teacher_id": 1, "is_active": True,
             "schedules": [{"weekday": 4, "start_time": "18:00:00", "end_time": "22:00:00"}]}
            for i, n in enumerate(["고3 윤A", "고2 윤B", "고2 윤C", "고1 윤D"], 1)]
@@ -129,6 +132,7 @@ def body_for(path: str):
     if "/messages/logs" in path: return LOGS
     if "/messages/templates" in path: return ALIMTALK
     if "/settings/brand" in path: return BRAND
+    if path.endswith("/api/users"): return ACCOUNTS
     return {}
 
 

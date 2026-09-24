@@ -1,8 +1,10 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router'
 
+import { PasswordChangeForm } from '../PasswordChange'
 import { ThemeSelect } from './ThemeSelect'
 import { Button } from './ui/button'
+import { Dialog, DialogContent, DialogTitle } from './ui/dialog'
 
 const NAV = [
   { to: '/', label: '종합 대시보드' },
@@ -25,6 +27,9 @@ export function AppShell({
   onLogout: () => void
   children: ReactNode
 }) {
+  const [changing, setChanging] = useState(false)
+  const [changed, setChanged] = useState(false)
+
   return (
     <div className="min-h-screen bg-bg">
       <header className="sticky top-0 z-10 border-b bg-surface">
@@ -58,12 +63,40 @@ export function AppShell({
             <span className="text-sm whitespace-nowrap text-muted-fg">
               {userName} ({userRole})
             </span>
+            {changed && (
+              <span role="status" className="text-sm whitespace-nowrap text-success">
+                비밀번호를 바꿨습니다
+              </span>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setChanged(false)
+                setChanging(true)
+              }}
+            >
+              비밀번호 변경
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={onLogout}>
               로그아웃
             </Button>
           </div>
         </div>
       </header>
+
+      <Dialog open={changing} onOpenChange={setChanging}>
+        <DialogContent className="max-w-sm">
+          <DialogTitle className="mb-4 text-base font-semibold">비밀번호 변경</DialogTitle>
+          <PasswordChangeForm
+            onDone={() => {
+              setChanging(false)
+              setChanged(true)
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <main className="mx-auto max-w-[1440px] px-6 py-6">{children}</main>
     </div>

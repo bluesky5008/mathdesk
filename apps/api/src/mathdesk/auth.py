@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -46,6 +46,16 @@ class CurrentUser(BaseModel):
     login_id: str
     display_name: str
     role: str
+    must_change_password: bool
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+def _current_user_out(user: AppUser) -> CurrentUser:
+    return CurrentUser.model_validate(user, from_attributes=True)
 
 
 def _token_hash(token: str) -> str:
@@ -103,19 +113,7 @@ async def login(payload: LoginRequest, response: Response, session: Db) -> Curre
     )
     if not verify_password(usable_hash, payload.password) or user is None:
         if user is not None:
-            user.failed_login_count += 1
-            if user.failed_login_count >= _max_attempts():
-                user.locked_until = now + _lockout()
-                user.failed_login_count = 0
-                session.add(
-                    AuditLog(
-                        actor_id=user.id,
-                        action="auth.lockout",
-                        target=f"app_user:{user.id}",
-                        detail=f"연속 실패 {_max_attempts()}회, {_lockout().seconds}초 잠금",
-                    )
-                )
-            await session.commit()
+            await _record_failure(session, user, now)
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "자격 증명이 올바르지 않습니다."
         )
@@ -134,12 +132,23 @@ async def login(payload: LoginRequest, response: Response, session: Db) -> Curre
         samesite="lax",
         max_age=int(IDLE_TIMEOUT.total_seconds()),
     )
-    return CurrentUser(
-        id=user.id,
-        login_id=user.login_id,
-        display_name=user.display_name,
-        role=user.role,
-    )
+    return _current_user_out(user)
+
+
+async def _record_failure(session: AsyncSession, user: AppUser, now: datetime) -> None:
+    user.failed_login_count += 1
+    if user.failed_login_count >= _max_attempts():
+        user.locked_until = now + _lockout()
+        user.failed_login_count = 0
+        session.add(
+            AuditLog(
+                actor_id=user.id,
+                action="auth.lockout",
+                target=f"app_user:{user.id}",
+                detail=f"연속 실패 {_max_attempts()}회, {_lockout().seconds}초 잠금",
+            )
+        )
+    await session.commit()
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -154,12 +163,31 @@ async def logout(response: Response, session: Db, token: SessionToken = None) ->
 
 @router.get("/me")
 async def me(user: CurrentAppUser) -> CurrentUser:
-    return CurrentUser(
-        id=user.id,
-        login_id=user.login_id,
-        display_name=user.display_name,
-        role=user.role,
+    return _current_user_out(user)
+
+
+@router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    payload: PasswordChange, user: CurrentAppUser, session: Db, token: SessionToken = None
+) -> None:
+    """본인 변경. 이 세션만 남기고 다른 기기의 로그인은 끊는다."""
+    if not verify_password(user.password_hash, payload.current_password):
+        await _record_failure(session, user, datetime.now(UTC))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "현재 비밀번호가 올바르지 않습니다.")
+    if payload.new_password == payload.current_password:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "새 비밀번호는 현재 비밀번호와 달라야 합니다."
+        )
+
+    user.password_hash = hash_password(payload.new_password)
+    user.must_change_password = False
+    await session.execute(
+        delete(UserSession).where(
+            UserSession.user_id == user.id, UserSession.token_hash != _token_hash(token or "")
+        )
     )
+    session.add(AuditLog(actor_id=user.id, action="password.change", target=f"app_user:{user.id}"))
+    await session.commit()
 
 
 async def ensure_initial_director(
@@ -180,6 +208,7 @@ async def ensure_initial_director(
                     password_hash=hash_password(password),
                     display_name="원장",
                     role="director",
+                    must_change_password=True,
                 )
             )
         elif user.password_hash == UNUSABLE_PASSWORD:

@@ -3,6 +3,16 @@ export type CurrentUser = {
   login_id: string
   display_name: string
   role: string
+  // 원장이 정한 비밀번호로 들어왔으면 참 — 새 비밀번호를 정하기 전에는 다른 API가 403이다(DCR-009)
+  must_change_password: boolean
+}
+
+export type AppUserAccount = {
+  id: number
+  login_id: string
+  display_name: string
+  role: string
+  is_active: boolean
 }
 
 export type Brand = {
@@ -59,6 +69,40 @@ export function login(loginId: string, password: string): Promise<CurrentUser> {
 
 export function logout(): Promise<void> {
   return request<void>('/auth/logout', { method: 'POST' })
+}
+
+export function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  return request<void>('/auth/password', {
+    method: 'POST',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  })
+}
+
+export function fetchUsers(): Promise<AppUserAccount[]> {
+  return request<AppUserAccount[]>('/users')
+}
+
+export function createUser(payload: {
+  login_id: string
+  display_name: string
+  role: string
+  password: string
+}): Promise<AppUserAccount> {
+  return request<AppUserAccount>('/users', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export function updateUser(
+  id: number,
+  payload: { display_name: string; role: string; is_active: boolean },
+): Promise<AppUserAccount> {
+  return request<AppUserAccount>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
+export function resetUserPassword(id: number, newPassword: string): Promise<void> {
+  return request<void>(`/users/${id}/password`, {
+    method: 'POST',
+    body: JSON.stringify({ new_password: newPassword }),
+  })
 }
 
 export function fetchStudents(): Promise<Student[]> {

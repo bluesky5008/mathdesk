@@ -38,6 +38,9 @@ async def current_scope(
     session: Db,
     campus_id: Annotated[int | None, Header(alias="X-Campus-Id")] = None,
 ) -> Scope:
+    # 원장이 정한 비밀번호로 들어온 사용자는 본인 비밀번호를 정하기 전까지 아무 기능도 쓰지 못한다.
+    if user.must_change_password:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "비밀번호를 먼저 바꿔 주세요.")
     accessible = list(
         await session.scalars(
             select(AppUserCampus.campus_id).where(AppUserCampus.user_id == user.id)

@@ -1,6 +1,6 @@
 from datetime import date, datetime, time
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Time, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Time, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, enum_column
@@ -25,6 +25,8 @@ class AppUser(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     failed_login_count: Mapped[int] = mapped_column(default=0, server_default="0")
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 원장이 정한 비밀번호(새 계정·재설정·최초 원장)면 참 — 본인이 바꾸기 전에는 공통 스코프 검사가 막는다.
+    must_change_password: Mapped[bool] = mapped_column(default=False, server_default=false())
 
 
 class AppUserCampus(Base):

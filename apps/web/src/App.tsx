@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router'
 
 import { fetchCurrentUser, logout, type CurrentUser } from './api'
 import { LoginForm } from './LoginForm'
+import { ForcedPasswordChange } from './PasswordChange'
 import { AppShell } from './components/AppShell'
 import { ClassesPage } from './pages/ClassesPage'
 import { DailyPage } from './pages/DailyPage'
@@ -32,14 +33,21 @@ export function App() {
     return <LoginForm onLoggedIn={setUser} />
   }
 
+  const signOut = () => {
+    void logout().then(() => setUser(null))
+  }
+
+  if (user.must_change_password) {
+    return (
+      <ForcedPasswordChange
+        onDone={() => void fetchCurrentUser().then(setUser)}
+        onLogout={signOut}
+      />
+    )
+  }
+
   return (
-    <AppShell
-      userName={user.display_name}
-      userRole={user.role}
-      onLogout={() => {
-        void logout().then(() => setUser(null))
-      }}
-    >
+    <AppShell userName={user.display_name} userRole={user.role} onLogout={signOut}>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/daily" element={<DailyPage />} />
@@ -53,7 +61,14 @@ export function App() {
         />
         <Route path="/exams" element={<ExamsPage />} />
         <Route path="/messages" element={<MessagesPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route
+          path="/settings"
+          element={
+            <SettingsPage
+              account={user.role === 'director' ? { currentUserId: user.id } : undefined}
+            />
+          }
+        />
         <Route
           path="/students"
           element={

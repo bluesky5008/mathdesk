@@ -7,10 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Field } from '../components/ui/field'
 import { Input } from '../components/ui/input'
 import { fetchBrand, saveBrand, type Brand } from '../api'
+import { AccountsSection } from './AccountsSection'
 
 const EMPTY: Brand = { campus_name: '', brand_colour: null, logo_data_url: null }
 
-export function SettingsPage() {
+// 계정 관리는 원장에게만 보인다(서버도 원장 외에는 403)
+export function SettingsPage({ account }: { account?: { currentUserId: number } } = {}) {
   const queryClient = useQueryClient()
   const brand = useQuery({ queryKey: ['brand'], queryFn: fetchBrand })
   // 편집 전에는 서버 값을 그대로 보여준다. effect로 폼을 덮어쓰면 응답이 늦게 올 때
@@ -94,6 +96,8 @@ export function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      {account && <AccountsSection currentUserId={account.currentUserId} />}
     </section>
   )
 }

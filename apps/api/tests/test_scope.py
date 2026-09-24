@@ -7,7 +7,13 @@ from mathdesk.main import app
 from mathdesk.models import AppUser, Student
 from mathdesk.scope import Scope, ScopedRepository, current_scope
 
-UNSCOPED_PATHS = {"/api/health", "/api/auth/login", "/api/auth/logout", "/api/auth/me"}
+UNSCOPED_PATHS = {
+    "/api/health",
+    "/api/auth/login",
+    "/api/auth/logout",
+    "/api/auth/me",
+    "/api/auth/password",
+}
 
 
 def _depends_on(dependant, target) -> bool:
