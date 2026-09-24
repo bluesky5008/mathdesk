@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v9`
+> 기준선: `v10`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-24`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -224,7 +224,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | 테이블 | 주요 컬럼 | 비고 |
 |---|---|---|
 | `campus` | `id`, `name`, `is_active` | 모든 도메인 테이블의 스코프 기준 |
-| `app_user` | `id`, `login_id`, `password_hash`, `display_name`, `role`, `is_active` | 역할 `director`·`teacher` |
+| `app_user` | `id`, `login_id`, `password_hash`, `display_name`, `role`, `is_active` | 역할 `director`·`teacher` `must_change_password`(원장이 정한 비밀번호면 참 — 참인 동안 `GET /auth/me`·로그아웃·`POST /auth/password` 외 요청은 공통 스코프 검사에서 403, [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md)) |
 | `app_user_campus` | `user_id`, `campus_id` | 접근 가능 캠퍼스 |
 | `student` | `id`, `campus_id`, `name`, `school`, `grade`, `phone`, `status`, `omr_number` | `omr_number`는 캠퍼스 내 유일, 자리별 범위 검증(FR-05) |
 | `guardian` | `id`, `student_id`, `relation`, `name`, `phone`, `is_notify_target` | |
@@ -267,8 +267,8 @@ campus 1─* stored_file,  campus 1─* integration_setting
 
 | 그룹 | 엔드포인트 |
 |---|---|
-| 인증 | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` |
-| 사용자·캠퍼스 | `GET/POST/PATCH /users`, `GET /campuses` |
+| 인증 | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/password`(본인 변경, 현재 비밀번호 확인, 다른 세션 삭제) |
+| 사용자·캠퍼스 | `GET/POST/PATCH /users`, `GET /campuses`, `POST /users/{id}/password`(원장, 같은 캠퍼스, 임시 비밀번호·변경 강제·세션 전부 삭제·잠금 해제) |
 | 학생·보호자 | `GET/POST /students`, `GET/PATCH/DELETE /students/{id}`, `GET /students/{id}/deletion-preview`, `GET/POST/PATCH /students/{id}/guardians` |
 | 반·수강 | `GET/POST /classes`, `PATCH/DELETE /classes/{id}`, `GET /classes/{id}/deletion-preview`, `GET/POST/DELETE /classes/{id}/enrollments` |
 | 주간 시간표 | `GET /timetable`(역할 스코프: 강사는 담당 반, 원장은 전체. `{class_minutes, slots[{class_id, class_name, grade, teacher, weekday, start_time, end_time}], unscheduled[]}`, `end_time`=시작+수업 길이 계산값), `PUT /settings/class-minutes`(원장, 30~480분, `integration_setting.class_minutes`, 기본 120) — [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) |
@@ -494,6 +494,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v2` (2026-09-22): [DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) 재승인으로 테스트 운영 노출 경계(DES-23)와 보안 속성이 반영되었고 [ADR-008](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md)이 `approved`로 전이되었다.
 
+기준선 `v10` (2026-09-24): [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) 재승인으로 `POST /auth/password`·`POST /users/{id}/password`와 `app_user.must_change_password`가 신설되고, 변경 강제 중에는 공통 스코프 검사가 요청을 거부한다.
+
 기준선 `v9` (2026-09-24): [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) 재승인으로 주간 시간표 `GET /timetable`과 수업 길이 설정 `PUT /settings/class-minutes`(`integration_setting.class_minutes`)이 신설되었다.
 
 기준선 `v8` (2026-09-24): [DCR-007](./work/20260922-mathdesk-baseline/DCR-007-시작-시각만-쓰는-반-시간표.md) 재승인으로 `class_schedule.end_time`이 선택 항목이 되고 `POST`·`PATCH /classes`의 시간표 항목에서 종료 시각이 선택화되었다(요일·시작 시각 중복 시 422).
@@ -521,6 +523,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-09-23 | DES-08 HTML/Chromium 렌더링 전환과 상세 신설, DES-24 디자인 시스템 신설, Q-10 재개 후 재해소 | [DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md), [ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md), [ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) | approved 유지, 기준선 v3 → v4 | Claude / 사용자 |
 | 2026-09-23 | DES-24 상세에 테마 팔레트·스케일 분리·저장 위치 추가, DES-08에 카드 팔레트 고정 명시 | [DCR-004](./work/20260922-mathdesk-baseline/DCR-004-웹-테마-선택.md), [ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md) | approved 유지, 기준선 v4 → v5 | Claude / 사용자 |
 | 2026-09-23 | DES-24 상세의 대상 환경을 화면 부류별 차등으로 교체, 좁은 폭 레이아웃 방침 추가 | [DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) | approved 유지, 기준선 v5 → v6 | Claude / 사용자 |
+| 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |
 | 2026-09-24 | `class_schedule.end_time` 선택화, 시간표 입력의 요일·시작 시각 중복 검증 | [DCR-007](./work/20260922-mathdesk-baseline/DCR-007-시작-시각만-쓰는-반-시간표.md) | approved 유지, 기준선 v7 → v8 | Claude / 사용자 |
 | 2026-09-24 | DES-04 상세에 학생·반 삭제 규칙 신설, REST 계약에 삭제·미리보기 4개 추가 | [DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md) | approved 유지, 기준선 v6 → v7 | Claude / 사용자 |
