@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 승인된 기준선 `v1`(요구사항 FR-01~39 / 설계 DES-01~22)을 구현 작업으로 번역하고 검증·통합 경로를 고정한다.
-- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 42건 완료. 시각 설계(TASK-44~48)와 모바일 대응(TASK-53)이 완료되었다. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
-- 다음 행동: [TASK-33 M7 OMR 채점](#task-33-m7-omr-채점)(분해 — TASK-34부터) 또는 [TASK-27 M9 상담일지](#task-27-m9-상담일지). M6 시험지 분석(TASK-29~32)은 완료했다.
+- 현재 결론 또는 상태: **사이클 1(MVP)이 2026-09-22 사용자 승인으로 완료**되었다. 작업 53건 중 43건 완료. 시각 설계(TASK-44~48)와 모바일 대응(TASK-53)이 완료되었다. 사이클 2(M5~M9) 착수 단계다. [DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md)로 기준선 `v3`가 발행되어 TASK-23·TASK-31이 갱신되고 TASK-43이 신설되었다.
+- 다음 행동: [TASK-35 학생 매칭·검수·라벨 교정](#task-35-학생-매칭검수라벨-교정) 또는 [TASK-27 M9 상담일지](#task-27-m9-상담일지). TASK-34(OmrReader 이식)는 완료했다.
 
 ## 문서 연결
 
@@ -52,7 +52,7 @@
 <!-- generated -->
 
 ```text
-mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progress (24/42)
+mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progress (43/53)
 │
 ├─ [✓] 사이클 1 — MVP (M0~M4) ....................... completed (23/23) 2026-09-22 20:05
 │  ├─ [▶] TASK-01 M0 기반 (분해 5, 4/5)
@@ -100,7 +100,7 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
 │      ├─ [✓] TASK-51 반 수정·활성 여부 (API 보완) . 2026-09-24 01:20
 │      └─ [✓] TASK-52 수강 배정·해제 화면 .......... 2026-09-24 01:25
 │
-└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (9/18)
+└─ 사이클 2 — 확장 (M5~M9) .......................... in-progress (10/18)
    ├─ [✓] TASK-23 스키마 2차 (시험·OMR·상담·파일) .... 2026-09-22 23:53
    ├─ [✓] TASK-24 M5 성적 통계 (분해 2) .............. 2026-09-24 02:05
    │   ├─ [✓] TASK-25 통계 집계 API와 엑셀 내보내기 ... 2026-09-24 01:45
@@ -111,8 +111,8 @@ mathdesk 구현 (기준선 v2, 작업 20260922-mathdesk-baseline)     in-progres
    │   ├─ [✓] TASK-30 DocumentIngest 4포맷 정규화
    │   ├─ [✓] TASK-31 문항 분할·LlmAdapter·분석 ...... 2026-09-24 03:30
    │   └─ [✓] TASK-32 시험 등록·문항 확인 화면 ....... 2026-09-24 04:10
-   ├─ [ ] TASK-33 M7 OMR 채점 (분해 3) ............... depends: TASK-28
-   │   ├─ [ ] TASK-34 OmrReader 제품 이식
+   ├─ [▶] TASK-33 M7 OMR 채점 (분해 3, 1/3) .......... depends: TASK-28
+   │   ├─ [✓] TASK-34 OmrReader 제품 이식 ............ 2026-09-24 10:55
    │   ├─ [ ] TASK-35 학생 매칭·검수·라벨 교정 ....... depends: TASK-34
    │   └─ [ ] TASK-36 채점 엔진과 문항별 통계 ........ depends: TASK-35, TASK-32
    ├─ [ ] TASK-37 M8 카카오 알림톡 ................... depends: TASK-19
@@ -194,8 +194,8 @@ flowchart TD
     T29 --> T30["TASK-30 DocumentIngest 4포맷"]:::done
     T29 --> T31["TASK-31 문항 분할·LLM 분석"]:::done
     T29 --> T32["TASK-32 시험 등록·문항 확인 화면"]:::done
-    C2 --> T33["TASK-33 M7 OMR 채점"]:::todo
-    T33 --> T34["TASK-34 OmrReader 이식"]:::todo
+    C2 --> T33["TASK-33 M7 OMR 채점"]:::active
+    T33 --> T34["TASK-34 OmrReader 이식"]:::done
     T33 --> T35["TASK-35 매칭·검수·라벨 교정"]:::todo
     T33 --> T36["TASK-36 채점 엔진·문항 통계"]:::todo
     C2 --> T37["TASK-37 M8 알림톡"]:::todo
@@ -876,7 +876,7 @@ flowchart TD
 
 ### TASK-33: M7 OMR 채점
 
-- 상태: pending
+- 상태: in-progress
 - 상위: 없음
 - 목표: OMR PDF 업로드부터 채점 반영까지를 검수 단계와 함께 제공한다.
 - 관련 요구사항과 설계: [FR-32~FR-36](./requirements.md#fr-33-상세), [DES-15~DES-17](./design.md#컴포넌트와-책임), [ADR-006](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md)
@@ -888,7 +888,7 @@ flowchart TD
 
 ### TASK-34: OmrReader 제품 이식
 
-- 상태: pending
+- 상태: completed (2026-09-24 10:55)
 - 상위: TASK-33
 - 목표: [prototype/omr](../prototype/omr/)의 템플릿 JSON과 판독기를 `OmrReader` 인터페이스 뒤의 제품 코드로 이식하고 PDF 페이지 분리를 연결한다. 임계값은 설정값으로 노출한다.
 - 관련 요구사항과 설계: [FR-32·FR-33](./requirements.md#fr-33-상세), [NFR-03·NFR-16](./requirements.md#비기능-요구사항), [DES-15](./design.md#컴포넌트와-책임)
@@ -897,6 +897,8 @@ flowchart TD
 - 위험: 실제 스캔본 미확보([Q-08](./requirements.md#가정과-미해결-질문))로 현장 정확도는 미검증으로 남는다
 - 검증 방법: 선행 테스트 — [prototype/omr/test_omr.py](../prototype/omr/test_omr.py)의 합성 왜곡 테스트를 제품 테스트로 이식해 [AC-24](./requirements.md#인수-조건)로 전환
 - 완료 조건: AC-24 통과, 30쪽 처리 시간 측정치 기록, 실스캔 미검증 사실 명시
+- 결과: [`omr.py`](../apps/api/src/mathdesk/omr.py)에 `OmrReader` 프로토콜과 `TemplateOmrReader`, 임계값 설정(`MATHDESK_OMR_ABS_TH`·`_REL`·`_MARGIN`), PDF 페이지 분리, 배경 작업 `omr_read`, `POST /exams/{id}/omr/uploads`(20MB·30쪽, 원장만)를 넣었다. 템플릿은 `omr_templates/ksat-2027-math.json`. 판독 결과는 페이지마다 `omr_scan`(상태 `read`)에 남는다. AC-24 통과, AC-27 OMR 경로 검사 추가. 30쪽 판독 2.0초(Apple M4, 컨테이너 2.1초)
+- 범위 밖: 학생 매칭·`unmatched`·`needs_review` 전이·`GET /omr/scans`는 TASK-35다. **실제 학생 스캔본으로는 검증하지 않았다**([Q-08](./requirements.md#가정과-미해결-질문)) — 임계값은 합성 기준값이다
 
 ### TASK-35: 학생 매칭·검수·라벨 교정
 

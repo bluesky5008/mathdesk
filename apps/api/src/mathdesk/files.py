@@ -4,6 +4,7 @@
 업로드 경로는 신뢰 경계라 크기·확장자·저장 키를 서버가 정한다.
 """
 import hashlib
+from collections.abc import Callable
 from pathlib import PurePosixPath
 from typing import Annotated
 
@@ -34,8 +35,17 @@ class StoredFileOut(BaseModel):
 
 
 async def save_upload(
-    session: AsyncSession, campus_id: int, kind: str, upload: UploadFile, suffixes: set[str]
+    session: AsyncSession,
+    campus_id: int,
+    kind: str,
+    upload: UploadFile,
+    suffixes: set[str],
+    *,
+    max_bytes: int | None = None,
+    validate: Callable[[bytes, str], None] | None = None,
 ) -> StoredFile:
+    """`validate`는 저장 전에 내용을 검사하고 거절하려면 HTTPException을 던진다."""
+    max_bytes = max_bytes or MAX_UPLOAD_BYTES  # 기본값을 호출 시점에 읽는다
     suffix = PurePosixPath(upload.filename or "").suffix.lower()
     if suffix not in suffixes:
         raise HTTPException(
@@ -43,13 +53,15 @@ async def save_upload(
             f"지원하지 않는 형식입니다: {suffix or '확장자 없음'}",
         )
     # 읽기 전에 막는다. 다 읽고 나서 재면 큰 파일이 이미 메모리에 올라온 뒤다.
-    if upload.size is not None and upload.size > MAX_UPLOAD_BYTES:
+    if upload.size is not None and upload.size > max_bytes:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "파일이 너무 큽니다.")
     data = await upload.read()
-    if len(data) > MAX_UPLOAD_BYTES:
+    if len(data) > max_bytes:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "파일이 너무 큽니다.")
     if not data:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "빈 파일입니다.")
+    if validate is not None:
+        validate(data, suffix)
 
     digest = hashlib.sha256(data).hexdigest()
     # 저장 키를 서버가 정한다. 업로드 파일명을 경로에 쓰면 루트를 벗어나거나 서로 덮어쓴다.
