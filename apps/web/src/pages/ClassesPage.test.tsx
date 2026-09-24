@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -7,19 +7,20 @@ import { today } from '../lib/date'
 import { ClassesPage, describeSchedules } from './ClassesPage'
 
 describe('describeSchedules', () => {
-  it('formats weekday and time range', () => {
+  // 수업 길이가 같아 시작 시각만 보여 준다(FR-07, DCR-007). 종료 시각이 저장돼 있어도 쓰지 않는다
+  it('shows the weekday and start time only', () => {
     expect(
       describeSchedules([{ weekday: 4, start_time: '18:00:00', end_time: '22:00:00' }]),
-    ).toBe('금 18:00~22:00')
+    ).toBe('금 18:00')
   })
 
   it('joins multiple schedules', () => {
     expect(
       describeSchedules([
-        { weekday: 1, start_time: '18:00:00', end_time: '22:00:00' },
-        { weekday: 5, start_time: '10:00:00', end_time: '13:00:00' },
+        { weekday: 1, start_time: '18:00:00', end_time: null },
+        { weekday: 5, start_time: '10:00:00', end_time: null },
       ]),
-    ).toBe('화 18:00~22:00, 토 10:00~13:00')
+    ).toBe('화 18:00 · 토 10:00')
   })
 })
 
@@ -127,12 +128,13 @@ describe('ClassesPage', () => {
     await waitFor(() => expect(screen.queryByText(/고2 윤B/)).not.toBeInTheDocument())
     expect(patched).toHaveLength(1)
     expect(patched[0].url).toBe('/api/classes/1')
+    // 시간표는 요일·시작 시각만 보낸다(DCR-007). 종료 시각은 쓰이지 않아 싣지 않는다
     expect(patched[0].body).toEqual({
       name: '고2 윤B',
       grade: '고2',
       teacher_id: 7,
       is_active: false,
-      schedules: active.schedules,
+      schedules: [{ weekday: 4, start_time: '18:00' }],
     })
   })
 
@@ -250,5 +252,61 @@ describe('ClassesPage', () => {
 
     expect(within(screen.getByRole('dialog')).queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
   })
-})
 
+  it('registers a class with weekday and start-time slots', async () => {
+    const posted: Record<string, unknown>[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          posted.push(JSON.parse(String(init.body)))
+          return Response.json({ ...active, id: 9 }, { status: 201 })
+        }
+        return Response.json([])
+      }),
+    )
+
+    renderPage()
+    await userEvent.type(await screen.findByLabelText('반 이름'), '고1 인A')
+    await userEvent.click(screen.getByRole('button', { name: '시간 추가' }))
+    await userEvent.click(screen.getByRole('button', { name: '시간 추가' }))
+    await userEvent.selectOptions(screen.getByLabelText('1번째 수업 요일'), '화')
+    fireEvent.change(screen.getByLabelText('1번째 수업 시작 시각'), { target: { value: '18:00' } })
+    await userEvent.selectOptions(screen.getByLabelText('2번째 수업 요일'), '토')
+    fireEvent.change(screen.getByLabelText('2번째 수업 시작 시각'), { target: { value: '10:00' } })
+    await userEvent.click(screen.getByRole('button', { name: '반 등록' }))
+
+    await waitFor(() => expect(posted).toHaveLength(1))
+    expect(posted[0].schedules).toEqual([
+      { weekday: 1, start_time: '18:00' },
+      { weekday: 5, start_time: '10:00' },
+    ])
+  })
+
+  it('edits the schedule in the edit dialog', async () => {
+    const patched: Record<string, unknown>[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method === 'PATCH') {
+          patched.push(JSON.parse(String(init.body)))
+          return Response.json(active)
+        }
+        return Response.json([active])
+      }),
+    )
+
+    renderPage()
+    expect(await screen.findByText(/금 18:00/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    await userEvent.click(dialog.getByRole('button', { name: '시간 추가' }))
+    await userEvent.selectOptions(dialog.getByLabelText('2번째 수업 요일'), '토')
+    fireEvent.change(dialog.getByLabelText('2번째 수업 시작 시각'), { target: { value: '10:00' } })
+    await userEvent.click(dialog.getByRole('button', { name: '1번째 수업 삭제' }))
+    await userEvent.click(dialog.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(patched).toHaveLength(1))
+    expect(patched[0]).toMatchObject({ teacher_id: 7, is_active: true, schedules: [{ weekday: 5, start_time: '10:00' }] })
+  })
+})

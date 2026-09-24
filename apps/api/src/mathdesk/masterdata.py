@@ -2,7 +2,7 @@ from datetime import date, time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,7 +61,7 @@ class StudentOut(BaseModel):
 class ScheduleIn(BaseModel):
     weekday: int = Field(ge=0, le=6)
     start_time: time
-    end_time: time
+    end_time: time | None = None  # 선택 항목(DCR-007)
 
 
 class ClassIn(BaseModel):
@@ -70,6 +70,14 @@ class ClassIn(BaseModel):
     teacher_id: int | None = None
     is_active: bool = True
     schedules: list[ScheduleIn] = Field(default_factory=list)
+
+    @field_validator("schedules")
+    @classmethod
+    def no_duplicate_slots(cls, schedules: list[ScheduleIn]) -> list[ScheduleIn]:
+        slots = [(s.weekday, s.start_time) for s in schedules]
+        if len(slots) != len(set(slots)):
+            raise ValueError("같은 요일·시작 시각이 두 번 들어 있습니다.")
+        return schedules
 
 
 class ClassOut(BaseModel):

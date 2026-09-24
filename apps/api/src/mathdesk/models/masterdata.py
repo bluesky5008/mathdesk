@@ -80,7 +80,8 @@ class ClassSchedule(Base):
     class_id: Mapped[int] = mapped_column(ForeignKey("class.id"), index=True)
     weekday: Mapped[int] = mapped_column()
     start_time: Mapped[time] = mapped_column(Time)
-    end_time: Mapped[time] = mapped_column(Time)
+    # 수업 길이가 같아 종료 시각은 입력하지 않는다(FR-07, DCR-007). 예전 값은 남겨 둔다
+    end_time: Mapped[time | None] = mapped_column(Time, nullable=True)
 
 
 class Enrollment(Base):

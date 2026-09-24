@@ -28,12 +28,88 @@ import { DeleteDialog } from './DeleteDialog'
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 
 export function describeSchedules(schedules: Schedule[]): string {
+  // 수업 길이가 같아 시작 시각만 보여 준다(FR-07, DCR-007)
   return schedules
-    .map(
-      (schedule) =>
-        `${WEEKDAYS[schedule.weekday]} ${schedule.start_time.slice(0, 5)}~${schedule.end_time.slice(0, 5)}`,
-    )
-    .join(', ')
+    .map((schedule) => `${WEEKDAYS[schedule.weekday]} ${schedule.start_time.slice(0, 5)}`)
+    .join(' · ')
+}
+
+/** 시간표를 API로 보낼 모양으로 — 요일과 시작 시각(HH:MM)만. 종료 시각은 쓰지 않는다 */
+function slots(schedules: Schedule[]): Schedule[] {
+  return schedules.map(({ weekday, start_time }) => ({ weekday, start_time: start_time.slice(0, 5) }))
+}
+
+/** 요일·시작 시각 줄을 더하고 빼는 시간표 편집기(FR-07). 수업 길이가 같아 종료 시각은 받지 않는다 */
+function ScheduleEditor({
+  idPrefix,
+  schedules,
+  onChange,
+}: {
+  idPrefix: string
+  schedules: Schedule[]
+  onChange: (schedules: Schedule[]) => void
+}) {
+  function update(index: number, patch: Partial<Schedule>) {
+    onChange(schedules.map((schedule, i) => (i === index ? { ...schedule, ...patch } : schedule)))
+  }
+
+  return (
+    <fieldset className="grid gap-2">
+      <legend className="mb-1 text-xs font-medium text-muted-fg">시간표</legend>
+      {schedules.map((schedule, index) => {
+        const nth = `${index + 1}번째 수업`
+        return (
+          <div key={index} className="flex flex-wrap items-center gap-2">
+            <Select
+              id={`${idPrefix}-weekday-${index}`}
+              aria-label={`${nth} 요일`}
+              value={schedule.weekday}
+              onChange={(event) => update(index, { weekday: Number(event.target.value) })}
+            >
+              {WEEKDAYS.map((label, weekday) => (
+                <option key={label} value={weekday}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+            <Input
+              id={`${idPrefix}-start-${index}`}
+              type="time"
+              aria-label={`${nth} 시작 시각`}
+              className="w-32"
+              value={schedule.start_time.slice(0, 5)}
+              onChange={(event) => update(index, { start_time: event.target.value })}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`${nth} 삭제`}
+              onClick={() => onChange(schedules.filter((_, i) => i !== index))}
+            >
+              삭제
+            </Button>
+          </div>
+        )
+      })}
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            onChange([
+              ...schedules,
+              // 새 줄은 마지막 줄의 시작 시각을 이어받는다(대개 같은 시각에 요일만 다르다)
+              { weekday: 0, start_time: schedules.at(-1)?.start_time.slice(0, 5) ?? '18:00' },
+            ])
+          }
+        >
+          시간 추가
+        </Button>
+      </div>
+    </fieldset>
+  )
 }
 
 /** 오늘 기준 명단을 보여주고, 배정은 오늘부터·해제는 오늘까지로 기간을 끊는다. */
@@ -150,7 +226,11 @@ export function ClassesPage() {
     queryKey: ['classes', showInactive],
     queryFn: () => fetchClasses(showInactive),
   })
-  const [form, setForm] = useState({ name: '', grade: '' })
+  const [form, setForm] = useState<{ name: string; grade: string; schedules: Schedule[] }>({
+    name: '',
+    grade: '',
+    schedules: [],
+  })
   const [edit, setEdit] = useState<Klass | null>(null)
   const [deleting, setDeleting] = useState<Klass | null>(null)
   const [roster, setRoster] = useState<Klass | null>(null)
@@ -158,9 +238,9 @@ export function ClassesPage() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['classes'] })
 
   const create = useMutation({
-    mutationFn: () => createClass({ name: form.name, grade: form.grade || null, schedules: [] }),
+    mutationFn: () => createClass({ name: form.name, grade: form.grade || null, schedules: slots(form.schedules) }),
     onSuccess: () => {
-      setForm({ name: '', grade: '' })
+      setForm({ name: '', grade: '', schedules: [] })
       void refresh()
     },
   })
@@ -173,7 +253,7 @@ export function ClassesPage() {
         grade: klass.grade,
         teacher_id: klass.teacher_id,
         is_active: klass.is_active,
-        schedules: klass.schedules,
+        schedules: slots(klass.schedules),
       }),
     onSuccess: () => {
       setEdit(null)
@@ -234,6 +314,13 @@ export function ClassesPage() {
                 onChange={(event) => setForm({ ...form, grade: event.target.value })}
               />
             </Field>
+            <div className="basis-full">
+              <ScheduleEditor
+                idPrefix="class-schedule"
+                schedules={form.schedules}
+                onChange={(schedules) => setForm({ ...form, schedules })}
+              />
+            </div>
             <Button type="submit">반 등록</Button>
           </form>
           {create.isError && (
@@ -332,9 +419,13 @@ export function ClassesPage() {
                   <option value="false">비활성</option>
                 </Select>
               </Field>
-              <p className="col-span-2 text-xs text-muted-fg">
-                시간표: {describeSchedules(edit.schedules) || '없음'}
-              </p>
+              <div className="col-span-2">
+                <ScheduleEditor
+                  idPrefix="edit-class-schedule"
+                  schedules={edit.schedules}
+                  onChange={(schedules) => setEdit({ ...edit, schedules })}
+                />
+              </div>
               {save.isError && (
                 <p role="alert" className="col-span-2 text-sm text-danger">
                   {save.error.message}

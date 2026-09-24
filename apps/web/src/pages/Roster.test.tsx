@@ -47,5 +47,5 @@ it('renders the seeded roster of 47 students in 4 classes', async () => {
 
   expect(await screen.findByText('총 47명')).toBeInTheDocument()
   expect(await screen.findByText('활성 4개 반')).toBeInTheDocument()
-  expect(screen.getByText('고2 윤B · 고2 · 금 18:00~22:00')).toBeInTheDocument()
+  expect(screen.getByText('고2 윤B · 고2 · 금 18:00')).toBeInTheDocument()
 })

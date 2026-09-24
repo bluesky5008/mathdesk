@@ -21,7 +21,8 @@ export type Student = {
   omr_number: string | null
 }
 
-export type Schedule = { weekday: number; start_time: string; end_time: string }
+// 종료 시각은 선택 항목이다(FR-07, DCR-007). 화면은 요일·시작 시각만 다룬다
+export type Schedule = { weekday: number; start_time: string; end_time?: string | null }
 
 export type Klass = {
   id: number
