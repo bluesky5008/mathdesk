@@ -1,0 +1,339 @@
+<meta charset="utf-8">
+<title>mathdesk 정식 운영 준비</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --ink: #1d2530;
+    --muted: #5b6676;
+    --line: #d8dde4;
+    --ground: #f5f7f9;
+    --surface: #ffffff;
+    --accent: #1f6f78;
+    --accent-soft: #e3f0f1;
+    --warn: #9a3b2a;
+    --warn-soft: #f7e9e5;
+    --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e6eaf0;
+      --muted: #9aa4b2;
+      --line: #2c3440;
+      --ground: #12161c;
+      --surface: #1a2028;
+      --accent: #6cbcc4;
+      --accent-soft: #1b3033;
+      --warn: #e59a88;
+      --warn-soft: #3a2420;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e6eaf0;
+    --muted: #9aa4b2;
+    --line: #2c3440;
+    --ground: #12161c;
+    --surface: #1a2028;
+    --accent: #6cbcc4;
+    --accent-soft: #1b3033;
+    --warn: #e59a88;
+    --warn-soft: #3a2420;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    padding-inline: 16px;
+    padding-block: 32px 64px;
+    word-break: keep-all;
+  }
+  .page { max-width: 760px; margin: 0 auto; display: grid; gap: 40px; }
+
+  header { display: grid; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+  .eyebrow { font-size: 13px; letter-spacing: 0.08em; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(26px, 5vw, 34px); line-height: 1.3; margin: 0; font-weight: 700; text-wrap: balance; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); font-size: 14px; }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  section { display: grid; gap: 16px; }
+  h2 { font-size: 21px; margin: 0; font-weight: 700; text-wrap: balance; display: flex; align-items: baseline; gap: 10px; }
+  h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
+  h3 { font-size: 17px; margin: 0; font-weight: 600; text-wrap: balance; }
+  h3 .time { color: var(--muted); font-weight: 400; font-size: 14px; margin-left: 6px; }
+  p { margin: 0; max-width: 65ch; }
+  .lead p + p { margin-top: 12px; }
+  strong { font-weight: 600; }
+  .muted { color: var(--muted); font-size: 14px; }
+
+  /* 전체 흐름: 실제 순서가 있는 단계라 번호를 쓴다 */
+  ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: step; }
+  ol.steps li {
+    counter-increment: step; display: grid; grid-template-columns: 40px 1fr; gap: 4px 12px;
+    padding: 14px 0; border-top: 1px solid var(--line);
+  }
+  ol.steps li:last-child { border-bottom: 1px solid var(--line); }
+  ol.steps li::before {
+    content: counter(step); grid-row: span 2; width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 14px; font-weight: 600;
+    background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+  .step-title { font-weight: 600; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+  .step-title span { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .note {
+    background: var(--accent-soft); border-radius: var(--radius); padding: 14px 16px; font-size: 15px;
+  }
+  .note.warn { background: var(--warn-soft); }
+  .note.warn strong { color: var(--warn); }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; background: var(--ground); white-space: nowrap; }
+  td.amount { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+  tr.total td { background: var(--accent-soft); font-weight: 600; }
+  td .sub { display: block; color: var(--muted); font-size: 13px; font-weight: 400; }
+
+  ul.assume { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+
+  /* 준비물: 보는 사람이 직접 체크하며 진행한다 */
+  .task { display: grid; gap: 12px; padding: 18px 18px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .task.optional { border-style: dashed; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
+  ul.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  ul.check li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+  ul.check input { width: 18px; height: 18px; margin: 4px 0 0; accent-color: var(--accent); }
+  ul.check label { cursor: pointer; }
+  ul.check input:checked + label { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+  ul.check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sub { display: grid; gap: 2px; margin-top: 4px; padding-left: 12px; border-left: 2px solid var(--line); color: var(--muted); font-size: 15px; }
+  .progress { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .progress b { color: var(--accent); }
+  .task-list { display: grid; gap: 12px; }
+  ol.choice { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+  code { font-size: 14px; background: var(--ground); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+
+  ul.facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  ul.facts li { padding-left: 14px; border-left: 3px solid var(--line); }
+  footer { border-top: 1px solid var(--line); padding-top: 20px; display: grid; gap: 6px; }
+  footer .sign { font-weight: 600; }
+
+  @media (max-width: 520px) {
+    body { font-size: 15px; }
+    th, td { padding: 9px 10px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    ul.check label { transition: color 0.15s; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">mathdesk · 운영 준비 안내</div>
+    <h1>mathdesk 정식 운영 준비 안내</h1>
+    <div class="meta">
+      <span>작성일 <b>2026-09-24</b></span>
+      <span>받는 분 <b>핑수</b></span>
+      <span>보내는 사람 <b>용스</b></span>
+    </div>
+  </header>
+
+  <section class="lead">
+    <p>핑수님, 안녕하세요. 용스입니다.</p>
+    <p>지금 확인하고 계신 mathdesk는 <strong>테스트용 서버</strong>(<code>mathdesk.yongs-wiki.com</code>)에서 돌아가고 있고, 안에 들어 있는 학생·반은 모두 <strong>가짜 데이터</strong>입니다. 핑수님께서 기능을 확인하고 "이대로 쓰겠다"고 승인해 주시면, 실제 학생 정보를 넣어 쓸 <strong>정식 서버</strong>로 옮깁니다.</p>
+    <p>이 안내문은 그 과정에서 <strong>핑수님께서 준비해 주셔야 할 것</strong>과 <strong>매달 드는 비용</strong>을 정리한 것입니다.</p>
+  </section>
+
+  <section id="flow">
+    <h2><span class="n">1</span>전체 흐름</h2>
+    <ol class="steps">
+      <li><div class="step-title">기능 확인 <span>지금 ~ 승인 전</span></div><p>테스트 서버에서 써 보시고 고칠 점을 알려 주세요. 요청하신 내용은 반영해서 바로 테스트 서버에 올립니다.</p></li>
+      <li><div class="step-title">계정 준비 <span>1번과 동시에, 1~2주</span></div><p>아래 3장의 준비물을 미리 만들어 두시면 승인 뒤 바로 옮길 수 있습니다. 심사 기간이 있는 항목이 있어 미리 시작하시는 게 좋습니다.</p></li>
+      <li><div class="step-title">승인</div><p>실제 쓰시는 순서대로 한 번 따라 해 보신 뒤 승인해 주세요.</p></li>
+      <li><div class="step-title">정식 서버 이전 <span>승인 후 하루</span></div><p>새 주소로 정식 서버를 열고, 문자 발송까지 확인한 뒤 계정을 드립니다.</p></li>
+      <li><div class="step-title">안정화 <span>이전 후 1~2주</span></div><p>백업·비용·오류를 지켜보며 문제가 없는지 확인합니다.</p></li>
+    </ol>
+    <p class="note">정식 서버는 <strong>빈 상태로 시작</strong>합니다. 테스트 서버의 가짜 데이터는 옮기지 않고, 학생·반·학부모 연락처는 정식 서버에서 새로 입력하시게 됩니다.</p>
+  </section>
+
+  <section id="cost">
+    <h2><span class="n">2</span>매달 드는 비용 (예상)</h2>
+    <p>아래 조건을 가정한 금액입니다. <strong>모든 금액은 부가세(10%) 포함</strong>입니다.</p>
+    <ul class="assume">
+      <li>반 <strong>8개</strong>, 반마다 학생 <strong>20명</strong>(총 160명)</li>
+      <li>학생 1명당 학부모 1명에게 <strong>주 8회</strong> 문자 발송 → 한 달 약 <strong>5,500건</strong></li>
+      <li>시험지 분석 <strong>하루 1회</strong>(한 달 30건)</li>
+    </ul>
+
+    <h3>항목별</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>항목</th><th>한 달 비용</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td>문자 발송 (장문 LMS)</td><td class="amount">약 15.8만 원</td><td>수업 피드백 문자는 길어서 대부분 장문으로 나갑니다(건당 25.9원+부가세)</td></tr>
+          <tr><td>시험지 분석 (AI)</td><td class="amount">약 2.4만 ~ 8.5만 원</td><td>시험지 1건에 약 800 ~ 2,800원(Claude·GPT의 상위 모델 기준). 한 단계 작은 모델이면 약 1만 ~ 3.4만 원. 정확한 금액은 첫 달에 실제로 재서 알려 드립니다</td></tr>
+          <tr><td>서버 (AWS)</td><td class="amount">약 2.1만 원</td><td>반 수와 관계없이 고정</td></tr>
+          <tr><td>인터넷 주소 (도메인)</td><td class="amount">약 0.1만 원</td><td>1년에 약 1.5만 원</td></tr>
+          <tr class="total"><td>합계</td><td class="amount">약 20만 ~ 27만 원</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>줄일 수 있는 방법</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>방법</th><th>한 달 합계</th><th>조건</th></tr></thead>
+        <tbody>
+          <tr><td>지금 방식 (장문 문자)</td><td class="amount">약 20만 ~ 27만 원</td><td>바로 가능</td></tr>
+          <tr><td>짧은 문자 위주로 보내기</td><td class="amount">약 10만 ~ 16만 원</td><td>문자 내용을 90바이트(한글 약 45자) 이하로 줄여야 합니다</td></tr>
+          <tr><td><strong>카카오 알림톡</strong>으로 보내기</td><td class="amount">약 10만 ~ 16만 원</td><td><strong>사업자등록증이 필요합니다.</strong> 아래 3장의 ⑥을 봐 주세요</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>처음에 한 번 드는 비용</h3>
+    <ul class="assume">
+      <li>문자 서비스(알리고) 첫 충전: 최소 5.5만 원. 5년 동안 쓸 수 있는 선불금입니다. 다만 위 발송량이면 <strong>열흘이면 다 쓰게 되니</strong>, 한 달에 20만 원 정도씩 충전하시는 걸 권합니다.</li>
+      <li>인터넷 주소 1년치: 약 1.5만 원</li>
+    </ul>
+    <p class="muted">참고: 서버(AWS)와 AI는 달러로 청구되어 환율에 따라 조금씩 달라집니다. 위 금액은 1달러 = 1,400원으로 계산했습니다.</p>
+  </section>
+
+  <section id="prepare">
+    <h2><span class="n">3</span>핑수님께서 준비해 주실 것</h2>
+    <p>체크하시면서 진행해 주세요. 막히는 부분은 언제든 말씀해 주시면 같이 하겠습니다. <span class="progress" id="progress"></span></p>
+    <p class="note warn"><strong>중요:</strong> 비밀번호·인증번호·API 키 같은 값은 <strong>메신저나 이메일로 보내지 말아 주세요.</strong> 이전 날 제가 직접 입력하거나, 화면을 같이 보면서 입력하는 방식으로 하겠습니다.</p>
+
+    <div class="task-list">
+      <div class="task">
+        <h3>① 인터넷 주소(도메인) 사기 <span class="time">소요 10분</span></h3>
+        <ul class="check">
+          <li><input type="checkbox" id="c-domain-1"><label for="c-domain-1">정식 서버 주소로 쓸 이름을 정합니다. 예: <code>○○math.com</code>, <code>○○수학.kr</code></label></li>
+          <li><input type="checkbox" id="c-domain-2"><label for="c-domain-2">가비아(gabia.com) 같은 도메인 판매 사이트나 Cloudflare에서 구입합니다(1년 약 1.5만 원).</label></li>
+          <li><input type="checkbox" id="c-domain-3"><label for="c-domain-3"><strong>핑수님 명의</strong>로 사 주세요. 주소는 핑수님의 자산입니다.</label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <h3>② Cloudflare 가입 <span class="time">소요 20분</span></h3>
+        <ul class="check">
+          <li><input type="checkbox" id="c-cf-1"><label for="c-cf-1">Cloudflare(cloudflare.com)에 <strong>무료 플랜</strong>으로 가입합니다.</label></li>
+          <li><input type="checkbox" id="c-cf-2"><label for="c-cf-2">산 도메인을 Cloudflare에 추가합니다. 도메인 판매 사이트에서 "네임서버"를 Cloudflare가 알려 주는 값으로 바꾸는 단계가 있습니다. 이 부분은 같이 하시면 쉽습니다.</label></li>
+          <li><input type="checkbox" id="c-cf-3"><label for="c-cf-3">저(용스)를 관리자로 초대해 주세요.</label></li>
+        </ul>
+        <p class="muted">이 서비스가 정식 서버 주소에 보안 연결(https)을 자동으로 붙여 줍니다.</p>
+      </div>
+
+      <div class="task">
+        <h3>③ 문자 서비스(알리고) 가입 <span class="time">소요 30분, 번호 승인 1~3시간</span></h3>
+        <ul class="check">
+          <li><input type="checkbox" id="c-sms-1"><label for="c-sms-1">알리고(smartsms.aligo.in)에 <strong>개인 회원</strong>으로 가입하고 충전합니다(최소 5.5만 원).</label></li>
+          <li><input type="checkbox" id="c-sms-2"><label for="c-sms-2"><strong>핑수님 본인 휴대폰 번호</strong>를 발신번호로 등록합니다. 본인인증만 하면 되고 서류는 필요 없습니다. 학부모님께는 이 번호로 문자가 갑니다.</label></li>
+          <li><input type="checkbox" id="c-sms-3"><label for="c-sms-3">쓰시는 통신사의 <strong>"번호도용 문자차단" 서비스</strong>가 켜져 있으면 해지해 주세요. 켜져 있으면 문자가 나가지 않습니다(해지 후 2~3일 뒤부터 가능).</label></li>
+          <li><input type="checkbox" id="c-sms-4"><label for="c-sms-4">이전 날, 알리고의 "API 키 발급"과 "발송 서버 IP 등록"을 같이 하겠습니다.</label></li>
+        </ul>
+        <p class="muted">학원 전화번호나 다른 사람 명의 번호로 보내려면 사업자 인증이 필요해서, 지금은 핑수님 본인 번호만 가능합니다.</p>
+      </div>
+
+      <div class="task">
+        <h3>④ 서버(AWS) 계정 만들기 <span class="time">소요 30분</span></h3>
+        <ul class="check">
+          <li><input type="checkbox" id="c-aws-1"><label for="c-aws-1">AWS(aws.amazon.com)에 가입합니다. <strong>국내 카드사에서 발급한 카드</strong>가 필요하고, 요금은 원화로 결제되며 부가세 10%가 붙습니다.</label></li>
+          <li><input type="checkbox" id="c-aws-2"><label for="c-aws-2">가입 직후 계정 보안(2단계 인증, MFA)을 켭니다.</label></li>
+          <li><input type="checkbox" id="c-aws-3"><label for="c-aws-3">제가 서버를 설정할 수 있게 관리자 사용자를 하나 만들어 주세요. 이 부분도 화면을 같이 보면서 하겠습니다.</label></li>
+          <li><input type="checkbox" id="c-aws-4"><label for="c-aws-4">가입하면 몇 달 동안 쓸 수 있는 무료 크레딧을 주는데, 기간이 끝나면 계정이 닫히는 경우가 있어 <strong>유료 플랜으로 전환</strong>해 두겠습니다.</label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <h3>⑤ 시험지 분석(AI) 서비스 계정 만들기 <span class="time">소요 20분</span></h3>
+        <p>시험지를 올리면 문항의 단원·유형·난이도를 AI가 분석합니다. mathdesk는 <strong>Anthropic의 Claude</strong>와 <strong>OpenAI의 GPT</strong> 중 어느 쪽이든 쓸 수 있게 만들어 두었습니다. 두 회사의 비슷한 급 모델은 요금이 거의 같아서, <strong>이전 전에 실제 시험지 한두 건으로 두 쪽을 비교해 보고 품질이 나은 쪽</strong>을 골라 알려 드리겠습니다. 이 요금은 핑수님 계정으로 결제됩니다.</p>
+        <ul class="check">
+          <li><input type="checkbox" id="c-ai-1"><label for="c-ai-1">제가 알려 드리는 쪽에 <strong>핑수님 명의</strong>로 가입합니다.
+            <span class="sub"><span>Claude를 쓰는 경우: Claude Console(platform.claude.com)</span><span>GPT를 쓰는 경우: OpenAI 플랫폼(platform.openai.com)</span></span></label></li>
+          <li><input type="checkbox" id="c-ai-2"><label for="c-ai-2">결제 수단을 등록합니다. 두 곳 모두 요금이 달러로 청구되므로 <strong>해외 결제가 되는 카드</strong>(Visa·Mastercard 등)가 필요합니다.</label></li>
+          <li><input type="checkbox" id="c-ai-3"><label for="c-ai-3">쓸 금액을 미리 충전해 두고, <strong>자동 충전</strong>을 켜 두시는 걸 권합니다. 잔액이 떨어지면 시험지 분석이 멈추기 때문입니다. 예상 사용액은 한 달 약 2.4만 ~ 8.5만 원이고(2장 참고), 한 단계 작은 모델로 충분하면 약 1만 ~ 3.4만 원으로 줄어듭니다.</label></li>
+          <li><input type="checkbox" id="c-ai-4"><label for="c-ai-4">생각보다 많이 나오지 않도록 <strong>월 사용 한도</strong>를 정해 두시면 안심입니다.</label></li>
+          <li><input type="checkbox" id="c-ai-5"><label for="c-ai-5">서버에 넣을 "API 키"는 이전 날 같이 발급하겠습니다.</label></li>
+        </ul>
+        <p class="muted">나중에 다른 쪽으로 바꾸고 싶으시면 서버 설정만 바꾸면 됩니다. 시험지 분석을 쓰지 않으실 거라면 이 단계는 건너뛰셔도 되고, 이 경우 시험지 분석 비용도 들지 않습니다.</p>
+      </div>
+
+      <div class="task optional">
+        <h3>⑥ 카카오 알림톡 <span class="tag">가능하면</span> <span class="time">1~2주</span></h3>
+        <p>알림톡은 문자보다 싸지만(한 달 약 10만 원 절약), <strong>카카오가 사업자등록증이 있는 곳에서만 보낼 수 있게</strong> 하고 있습니다. 핑수님께서 사업자등록증이 없으시면 두 가지 방법이 있습니다.</p>
+        <ol class="choice">
+          <li><strong>원장님께 부탁드리는 방법:</strong> 학원 사업자등록증 사본을 받아 핑수님이 <strong>학원 직원</strong>으로 신청합니다. 카카오 채널은 학원 이름으로 만들어집니다.</li>
+          <li><strong>핑수님 본인이 사업자등록을 하는 방법:</strong> 홈택스에서 무료로 등록할 수 있지만 세금 신고 의무가 생기니 신중히 판단해 주세요.</li>
+        </ol>
+        <p>어렵다면 <strong>문자만으로 시작해도 전혀 문제없습니다.</strong> 나중에 준비되면 알림톡을 추가할 수 있게 만들어 두었습니다. 진행하시게 되면 필요한 서류와 순서를 따로 안내해 드리겠습니다.</p>
+      </div>
+
+      <div class="task">
+        <h3>⑦ 승인 전 마지막 확인</h3>
+        <ul class="check">
+          <li><input type="checkbox" id="c-final-1"><label for="c-final-1">테스트 서버에서 실제 쓰시는 순서대로 한 번 해 봐 주세요.
+            <span class="sub"><span>학생 등록 → 반 배정 → 일일 수업 입력 → 문자 미리보기 → 시험지 등록 → OMR 채점</span></span></label></li>
+          <li><input type="checkbox" id="c-final-2"><label for="c-final-2">불편한 점이나 바꾸고 싶은 점을 모두 알려 주세요. 반영한 뒤 승인을 받겠습니다.</label></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="moving-day">
+    <h2><span class="n">4</span>이전하는 날 할 일</h2>
+    <div class="task">
+      <ul class="check">
+        <li><input type="checkbox" id="c-day-1"><label for="c-day-1">핑수님 휴대폰으로 <strong>시험 문자 1통</strong>을 받아 보시고 확인해 주세요.</label></li>
+        <li><input type="checkbox" id="c-day-2"><label for="c-day-2">정식 서버 원장 계정의 <strong>비밀번호를 핑수님이 직접</strong> 새로 정해 주세요.</label></li>
+        <li><input type="checkbox" id="c-day-3"><label for="c-day-3">학생·반·학부모 연락처를 입력하시기 시작하면 됩니다.</label></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="notes">
+    <h2><span class="n">5</span>정식 운영 전에 꼭 알아 두실 점</h2>
+    <ul class="facts">
+      <li><strong>학부모 동의:</strong> 학부모 연락처를 받고 문자를 보내려면 개인정보 수집·이용 동의를 받아 두셔야 합니다. 입학 서류에 동의란을 넣어 두시는 걸 권합니다.</li>
+      <li><strong>백업:</strong> 정식 서버는 매일 자동으로 백업합니다. 실수로 지운 자료는 백업 시점으로 되돌릴 수 있지만, 그 사이 입력한 내용은 다시 넣어야 합니다.</li>
+      <li><strong>삭제는 되돌릴 수 없습니다:</strong> 학생이나 반을 "삭제"하면 그 기록(출결·성적·문자 내역)까지 함께 지워집니다. 그만둔 학생은 보통 <strong>"퇴원"만</strong> 해 두시면 목록에서 빠지고 기록은 남습니다.</li>
+      <li><strong>비용 알림:</strong> 첫 달 실제 사용 금액(특히 시험지 분석)을 확인해서 다시 알려 드리겠습니다.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>궁금하신 점은 언제든 편하게 물어봐 주세요. 감사합니다.</p>
+    <p class="sign">용스 드림</p>
+  </footer>
+</div>
+
+<script>
+  // 체크 상태는 이 브라우저에만 저장된다(다른 사람·다른 기기와 공유되지 않음)
+  (function () {
+    var KEY = 'mathdesk-prepare-checks';
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('ul.check input[type="checkbox"]'));
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+    var progress = document.getElementById('progress');
+    var prepare = boxes.filter(function (b) { return b.closest('#prepare'); });
+    function render() {
+      var done = prepare.filter(function (b) { return b.checked; }).length;
+      progress.innerHTML = '준비 진행 <b>' + done + '</b> / ' + prepare.length;
+    }
+    boxes.forEach(function (box) {
+      box.checked = !!saved[box.id];
+      box.addEventListener('change', function () {
+        saved[box.id] = box.checked;
+        try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { /* 저장이 막혀도 화면은 동작한다 */ }
+        render();
+      });
+    });
+    render();
+  })();
+</script>
