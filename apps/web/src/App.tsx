@@ -74,7 +74,7 @@ export function App() {
           element={
             <>
               <StudentsPage />
-              <ClassesPage />
+              <ClassesPage isDirector={user.role === 'director'} />
             </>
           }
         />

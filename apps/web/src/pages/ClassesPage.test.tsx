@@ -310,3 +310,96 @@ describe('ClassesPage', () => {
     expect(patched[0]).toMatchObject({ teacher_id: 7, is_active: true, schedules: [{ weekday: 5, start_time: '10:00' }] })
   })
 })
+
+// FR-07 담당 강사 (TASK-65) — 원장만 고른다. 선택지는 같은 캠퍼스의 사용 중인 강사다
+describe('teacher assignment', () => {
+  const accounts = [
+    { id: 1, login_id: 'director', display_name: '원장', role: 'director', is_active: true },
+    { id: 7, login_id: 'kim', display_name: '김강사', role: 'teacher', is_active: true },
+    { id: 8, login_id: 'lee', display_name: '이강사', role: 'teacher', is_active: true },
+    { id: 9, login_id: 'park', display_name: '박강사', role: 'teacher', is_active: false },
+  ]
+
+  function stub(classes: unknown[]) {
+    const sent: { method: string; url: string; body: Record<string, unknown> }[] = []
+    const urls: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        urls.push(url)
+        if (init?.method && init.method !== 'GET') {
+          const body = JSON.parse(String(init.body))
+          sent.push({ method: init.method, url, body })
+          return Response.json({ ...active, ...body })
+        }
+        if (url === '/api/users') return Response.json(accounts)
+        return Response.json(classes)
+      }),
+    )
+    return { sent, urls }
+  }
+
+  function renderAsDirector() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return render(
+      <QueryClientProvider client={client}>
+        <ClassesPage isDirector />
+      </QueryClientProvider>,
+    )
+  }
+
+  it('offers only active teachers and sends the chosen one on create', async () => {
+    const { sent } = stub([])
+    renderAsDirector()
+
+    const select = await screen.findByLabelText('담당 강사')
+    await screen.findByRole('option', { name: '김강사' })
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      '지정 안 함',
+      '김강사',
+      '이강사',
+    ])
+
+    await userEvent.type(screen.getByLabelText('반 이름'), '고1 윤D')
+    await userEvent.selectOptions(select, '이강사')
+    await userEvent.click(screen.getByRole('button', { name: '반 등록' }))
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({ method: 'POST', url: '/api/classes', body: { teacher_id: 8 } })
+  })
+
+  it('shows the teacher name in the list and changes it in the edit dialog', async () => {
+    const { sent } = stub([active])
+    renderAsDirector()
+
+    expect(await screen.findByText('고2 윤B · 고2 · 김강사')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    expect(dialog.getByLabelText('담당 강사')).toHaveValue('7')
+    await userEvent.selectOptions(dialog.getByLabelText('담당 강사'), '지정 안 함')
+    await userEvent.click(dialog.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({ method: 'PATCH', body: { teacher_id: null } })
+  })
+
+  it('keeps a teacher who was later deactivated as the current choice', async () => {
+    stub([{ ...active, teacher_id: 9 }])
+    renderAsDirector()
+
+    await screen.findByText('고2 윤B · 고2 · 박강사')
+    await userEvent.click(screen.getByRole('button', { name: '수정' }))
+    const select = within(screen.getByRole('dialog')).getByLabelText('담당 강사')
+    expect(select).toHaveValue('9')
+    expect(within(select).getByRole('option', { name: '박강사 (사용 안 함)' })).toBeInTheDocument()
+  })
+
+  it('does not ask for accounts when a teacher is signed in', async () => {
+    const { urls } = stub([active])
+    renderPage()
+
+    await screen.findByText(/고2 윤B/)
+    expect(screen.queryByLabelText('담당 강사')).not.toBeInTheDocument()
+    expect(urls).not.toContain('/api/users')
+  })
+})

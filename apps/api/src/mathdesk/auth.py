@@ -176,7 +176,7 @@ async def change_password(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "현재 비밀번호가 올바르지 않습니다.")
     if payload.new_password == payload.current_password:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "새 비밀번호는 현재 비밀번호와 달라야 합니다."
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "새 비밀번호는 현재 비밀번호와 달라야 합니다."
         )
 
     user.password_hash = hash_password(payload.new_password)

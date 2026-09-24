@@ -7,7 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
-from .models import ClassSchedule, Enrollment, Guardian, Klass, Student
+from .models import AppUser, AppUserCampus, ClassSchedule, Enrollment, Guardian, Klass, Student
 from .scope import CurrentScope, Scope, ScopedRepository
 
 Db = Annotated[AsyncSession, Depends(get_session)]
@@ -249,9 +249,33 @@ async def list_classes(
     return [await _class_out(session, klass) for klass in classes]
 
 
+async def _check_teacher(
+    session: AsyncSession, scope: Scope, teacher_id: int | None, current: int | None = None
+) -> None:
+    """새로 지정하는 담당 강사는 같은 캠퍼스의 활성 강사여야 한다.
+    이미 지정된 강사는 나중에 비활성이 되어도 반을 고칠 때 그대로 둘 수 있다(PATCH가 전치환이다)."""
+    if teacher_id is None or teacher_id == current:
+        return
+    valid = await session.scalar(
+        select(AppUser.id)
+        .join(AppUserCampus, AppUserCampus.user_id == AppUser.id)
+        .where(
+            AppUser.id == teacher_id,
+            AppUserCampus.campus_id == scope.campus_id,
+            AppUser.role == "teacher",
+            AppUser.is_active,
+        )
+    )
+    if valid is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "담당 강사는 이 캠퍼스의 사용 중인 강사 계정이어야 합니다."
+        )
+
+
 @router.post("/classes", status_code=status.HTTP_201_CREATED)
 async def create_class(payload: ClassIn, scope: CurrentScope, session: Db) -> ClassOut:
     scope.require_director()
+    await _check_teacher(session, scope, payload.teacher_id)
     klass = Klass(
         campus_id=scope.campus_id,
         name=payload.name,
@@ -273,6 +297,7 @@ async def update_class(
 ) -> ClassOut:
     scope.require_director()
     klass = await _repo(session, scope).get(Klass, class_id)
+    await _check_teacher(session, scope, payload.teacher_id, current=klass.teacher_id)
     klass.name, klass.grade, klass.teacher_id = payload.name, payload.grade, payload.teacher_id
     klass.is_active = payload.is_active
     for existing in await session.scalars(

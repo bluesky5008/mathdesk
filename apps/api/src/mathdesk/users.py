@@ -132,7 +132,7 @@ async def reset_password(
     user = await _user_in_campus(session, scope.campus_id, user_id)
     if user.id == scope.user.id:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "본인 비밀번호는 비밀번호 변경에서 바꿉니다."
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "본인 비밀번호는 비밀번호 변경에서 바꿉니다."
         )
 
     user.password_hash = hash_password(payload.new_password)

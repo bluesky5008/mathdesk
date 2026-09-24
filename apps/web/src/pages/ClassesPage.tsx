@@ -18,7 +18,9 @@ import {
   fetchClasses,
   fetchEnrollments,
   fetchStudents,
+  fetchUsers,
   updateClass,
+  type AppUserAccount,
   type Klass,
   type Schedule,
 } from '../api'
@@ -219,18 +221,56 @@ const DELETE_LABELS = {
   exams_unlinked: '반 연결이 끊기는 시험',
 }
 
-export function ClassesPage() {
+// 담당 강사 선택지: 사용 중인 강사. 이미 지정된 강사가 나중에 사용 안 함이 되었으면 그 사람도 남겨
+// 반을 고칠 때 담당이 저절로 지워지지 않게 한다(서버도 기존 지정은 그대로 허용한다)
+function TeacherSelect({
+  id,
+  accounts,
+  value,
+  onChange,
+}: {
+  id: string
+  accounts: AppUserAccount[]
+  value: number | null
+  onChange: (teacherId: number | null) => void
+}) {
+  const options = accounts.filter(
+    (account) => account.role === 'teacher' && (account.is_active || account.id === value),
+  )
+  return (
+    <Select
+      id={id}
+      className="w-full"
+      value={value === null ? '' : String(value)}
+      onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}
+    >
+      <option value="">지정 안 함</option>
+      {options.map((account) => (
+        <option key={account.id} value={account.id}>
+          {account.is_active ? account.display_name : `${account.display_name} (사용 안 함)`}
+        </option>
+      ))}
+    </Select>
+  )
+}
+
+// 담당 강사 지정은 원장만 한다 — 계정 목록(`/users`)도 원장만 볼 수 있다(FR-02·FR-07)
+export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {}) {
   const queryClient = useQueryClient()
+  const accounts = useQuery({ queryKey: ['users'], queryFn: fetchUsers, enabled: isDirector })
+  const teacherName = (id: number | null) =>
+    accounts.data?.find((account) => account.id === id)?.display_name
   const [showInactive, setShowInactive] = useState(false)
   const classes = useQuery({
     queryKey: ['classes', showInactive],
     queryFn: () => fetchClasses(showInactive),
   })
-  const [form, setForm] = useState<{ name: string; grade: string; schedules: Schedule[] }>({
-    name: '',
-    grade: '',
-    schedules: [],
-  })
+  const [form, setForm] = useState<{
+    name: string
+    grade: string
+    teacher_id: number | null
+    schedules: Schedule[]
+  }>({ name: '', grade: '', teacher_id: null, schedules: [] })
   const [edit, setEdit] = useState<Klass | null>(null)
   const [deleting, setDeleting] = useState<Klass | null>(null)
   const [roster, setRoster] = useState<Klass | null>(null)
@@ -238,9 +278,15 @@ export function ClassesPage() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['classes'] })
 
   const create = useMutation({
-    mutationFn: () => createClass({ name: form.name, grade: form.grade || null, schedules: slots(form.schedules) }),
+    mutationFn: () =>
+      createClass({
+        name: form.name,
+        grade: form.grade || null,
+        teacher_id: form.teacher_id,
+        schedules: slots(form.schedules),
+      }),
     onSuccess: () => {
-      setForm({ name: '', grade: '', schedules: [] })
+      setForm({ name: '', grade: '', teacher_id: null, schedules: [] })
       void refresh()
     },
   })
@@ -314,6 +360,16 @@ export function ClassesPage() {
                 onChange={(event) => setForm({ ...form, grade: event.target.value })}
               />
             </Field>
+            {isDirector && (
+              <Field label="담당 강사" htmlFor="class-teacher" className="min-w-36 flex-1 xl:flex-none">
+                <TeacherSelect
+                  id="class-teacher"
+                  accounts={accounts.data ?? []}
+                  value={form.teacher_id}
+                  onChange={(teacher_id) => setForm({ ...form, teacher_id })}
+                />
+              </Field>
+            )}
             <div className="basis-full">
               <ScheduleEditor
                 idPrefix="class-schedule"
@@ -347,7 +403,7 @@ export function ClassesPage() {
                 {/* 첫 줄은 반, 둘째 줄은 시간표 — 시간표가 길어도 반 이름 줄이 흔들리지 않는다 */}
                 <span className="grid min-w-0 gap-0.5 text-sm">
                   <span>
-                    {[klass.name, klass.grade].filter(Boolean).join(' · ')}
+                    {[klass.name, klass.grade, teacherName(klass.teacher_id)].filter(Boolean).join(' · ')}
                     {!klass.is_active && <span className="ml-2 text-muted-fg">(비활성)</span>}
                   </span>
                   <span className="text-xs text-muted-fg tabular-nums">
@@ -432,6 +488,16 @@ export function ClassesPage() {
                   <option value="false">비활성</option>
                 </Select>
               </Field>
+              {isDirector && (
+                <Field label="담당 강사" htmlFor="edit-class-teacher">
+                  <TeacherSelect
+                    id="edit-class-teacher"
+                    accounts={accounts.data ?? []}
+                    value={edit.teacher_id}
+                    onChange={(teacher_id) => setEdit({ ...edit, teacher_id })}
+                  />
+                </Field>
+              )}
               <div className="col-span-2">
                 <ScheduleEditor
                   idPrefix="edit-class-schedule"
