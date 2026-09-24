@@ -96,6 +96,13 @@ CONSULTS = [{"id": i, "student_id": 1, "consulted_on": f"2026-09-{20 - i:02d}",
              "content": "모의고사 결과 상담. 수열 단원 오답이 많아 개념 복습 계획을 함께 세웠다.",
              "follow_up": "다음 주 오답 노트 확인" if i % 2 else None, "author": {"id": 1, "name": "원장"}}
             for i in range(1, 4)]
+ALIMTALK = {"fallback_to_sms": True,
+            "alimtalk": [{"code": "TPL_DAILY_01",
+                          "body": "#{학생명} 학생 #{수업일} 수업 안내\n출결: #{출결}\n오늘의 과제: #{과제}",
+                          "variables": {"학생명": "student_name", "수업일": "session_date",
+                                        "출결": "attendance", "과제": "homework"}}],
+            "fields": [{"key": "student_name", "label": "학생 이름"}, {"key": "session_date", "label": "수업일"},
+                       {"key": "attendance", "label": "출결"}, {"key": "homework", "label": "오늘의 과제"}]}
 LOGS = [{"id": i, "requested_at": "2026-09-23T18:30:00", "recipient_phone": "010-1234-5678",
          "channel": "sms", "status": "sent", "is_test": True} for i in range(1, 6)]
 BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3457F", "logo_data_url": None}
@@ -119,6 +126,7 @@ def body_for(path: str):
     if "/daily" in path: return DAILY
     if "/messages/preview" in path: return {"body": "김나윤학생 학습피드백\n\n■ 출결: 출석"}
     if "/messages/logs" in path: return LOGS
+    if "/messages/templates" in path: return ALIMTALK
     if "/settings/brand" in path: return BRAND
     return {}
 

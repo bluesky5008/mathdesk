@@ -18,6 +18,7 @@ import {
 import { today } from '../lib/date'
 import { cn } from '../lib/utils'
 import {
+  fetchAlimtalkSettings,
   fetchClasses,
   fetchDaily,
   fetchMessageLogs,
@@ -26,11 +27,15 @@ import {
   sendMessage,
 } from '../api'
 import { copyImage, copyText, downloadImage } from '../clipboard'
+import { AlimtalkTemplates } from './AlimtalkTemplates'
 
 const RECIPIENTS = [
   ['student', '학생'],
   ['guardian', '학부모'],
 ] as const
+
+const CHANNEL_LABEL: Record<string, string> = { sms: 'SMS', lms: 'LMS', mms: 'MMS', alimtalk: '알림톡' }
+const STATUS_LABEL: Record<string, string> = { sent: '접수', failed: '실패', fallback_sent: '대체 발송', queued: '대기' }
 
 const TABS = [
   ['text', '문자 보기'],
@@ -53,18 +58,22 @@ export function MessagesPage() {
   const activeStudentId = studentId ?? daily.data?.records[0]?.student_id ?? null
   const sessionId = daily.data?.session.id ?? null
 
+  const alimtalk = useQuery({ queryKey: ['alimtalk-templates'], queryFn: () => fetchAlimtalkSettings() })
+  const templates = alimtalk.data?.alimtalk ?? []
+  const [templateCode, setTemplateCode] = useState('')
+
+  // 알림톡을 고르면 템플릿에 값을 채운 문구를 미리 본다(실제로 나갈 문구)
   const preview = useQuery({
-    queryKey: ['preview', sessionId, activeStudentId],
-    queryFn: () => fetchMessagePreview(sessionId!, activeStudentId!),
+    queryKey: ['preview', sessionId, activeStudentId, templateCode],
+    queryFn: () => fetchMessagePreview(sessionId!, activeStudentId!, templateCode || undefined),
     enabled: sessionId !== null && activeStudentId !== null,
   })
   const logs = useQuery({ queryKey: ['message-logs'], queryFn: fetchMessageLogs })
 
   const [tab, setTab] = useState<'text' | 'report'>('text')
   const [recipients, setRecipients] = useState<string[]>([])
-
   const send = useMutation({
-    mutationFn: () => sendMessage(sessionId!, activeStudentId!, recipients),
+    mutationFn: () => sendMessage(sessionId!, activeStudentId!, recipients, templateCode || undefined),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['message-logs'] }),
   })
 
@@ -188,6 +197,23 @@ export function MessagesPage() {
               </span>
             </fieldset>
 
+            {templates.length > 0 && (
+              <Field label="발송 방식" htmlFor="message-method">
+                <Select
+                  id="message-method"
+                  value={templateCode}
+                  onChange={(event) => setTemplateCode(event.target.value)}
+                >
+                  <option value="">문자</option>
+                  {templates.map((template) => (
+                    <option key={template.code} value={template.code}>
+                      {`알림톡 · ${template.code}`}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
+
             <div className="flex flex-col gap-2 border-t pt-4">
               <Button
                 type="button"
@@ -219,7 +245,7 @@ export function MessagesPage() {
                 onClick={() => send.mutate()}
                 disabled={recipients.length === 0 || sessionId === null || send.isPending}
               >
-                문자 발송
+                {templateCode ? '알림톡 발송' : '문자 발송'}
               </Button>
             </div>
 
@@ -258,14 +284,16 @@ export function MessagesPage() {
                     {log.requested_at.slice(0, 16).replace('T', ' ')}
                   </TableCell>
                   <TableCell className="tabular-nums">{log.recipient_phone}</TableCell>
-                  <TableCell className="text-muted-fg">{log.channel}</TableCell>
-                  <TableCell>{log.is_test ? '테스트' : log.status}</TableCell>
+                  <TableCell className="text-muted-fg">{CHANNEL_LABEL[log.channel] ?? log.channel}</TableCell>
+                  <TableCell>{log.is_test ? '테스트' : (STATUS_LABEL[log.status] ?? log.status)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      <AlimtalkTemplates />
     </section>
   )
 }

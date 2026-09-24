@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, enum_column
@@ -25,6 +25,9 @@ class MessageTemplate(Base):
     kind: Mapped[str] = mapped_column(String(50))
     body: Mapped[str] = mapped_column(Text)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 알림톡(kind="alimtalk")만 쓴다: 카카오 승인 템플릿 코드와 `#{변수}` → 문구 필드 매핑(FR-37)
+    code: Mapped[str | None] = mapped_column(String(50))
+    variables: Mapped[dict | None] = mapped_column(JSON)
 
 
 class MessageLog(Base):

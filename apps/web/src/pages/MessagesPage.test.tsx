@@ -36,6 +36,11 @@ const daily = {
   summary: { enrolled: 1, attending: 1, test_average: null, test_count: 0 },
 }
 const preview = { body: '**김나윤학생 학습피드백**\n\n■ 출결: 출석' }
+const templates = {
+  fallback_to_sms: true,
+  alimtalk: [{ code: 'TPL_DAILY_01', body: '#{학생명} 학생 수업 안내', variables: { 학생명: 'student_name' } }],
+  fields: [{ key: 'student_name', label: '학생 이름' }],
+}
 
 let calls: { url: string; body?: unknown }[]
 
@@ -49,6 +54,7 @@ beforeEach(() => {
       if (url.includes('/messages/preview')) return Response.json(preview)
       if (url.includes('/messages/logs')) return Response.json([])
       if (url.includes('/messages/send')) return Response.json({ channel: 'lms', results: [] })
+      if (url.includes('/messages/templates')) return Response.json(templates)
       return Response.json(daily)
     }),
   )
@@ -116,4 +122,15 @@ it('copies the message text to the clipboard', async () => {
   await userEvent.click(screen.getByRole('button', { name: '문자 복사' }))
 
   expect(writeText).toHaveBeenCalledWith(preview.body)
+})
+
+it('sends through an approved alimtalk template when one is chosen', async () => {
+  renderPage()
+  await userEvent.selectOptions(await screen.findByLabelText('발송 방식'), '알림톡 · TPL_DAILY_01')
+  await userEvent.click(screen.getByLabelText('학부모'))
+
+  await userEvent.click(screen.getByRole('button', { name: '알림톡 발송' }))
+
+  const sent = calls.find((call) => call.url.includes('/messages/send'))
+  expect(sent?.body).toEqual({ session_id: 9, student_id: 3, recipients: ['guardian'], template_code: 'TPL_DAILY_01' })
 })

@@ -269,9 +269,14 @@ export type MessageLog = {
   error: string | null
 }
 
-export function fetchMessagePreview(sessionId: number, studentId: number): Promise<{ body: string }> {
+export function fetchMessagePreview(
+  sessionId: number,
+  studentId: number,
+  templateCode?: string,
+): Promise<{ body: string }> {
+  const template = templateCode ? `&template_code=${encodeURIComponent(templateCode)}` : ''
   return request<{ body: string }>(
-    `/messages/preview?session_id=${sessionId}&student_id=${studentId}`,
+    `/messages/preview?session_id=${sessionId}&student_id=${studentId}${template}`,
   )
 }
 
@@ -283,10 +288,13 @@ export function sendMessage(
   sessionId: number,
   studentId: number,
   recipients: string[],
+  templateCode?: string,
 ): Promise<{ channel: string; results: SendResult[] }> {
+  // 템플릿 코드가 있으면 알림톡, 없으면 문자다(키 자체를 보내지 않는다)
+  const body = { session_id: sessionId, student_id: studentId, recipients }
   return request<{ channel: string; results: SendResult[] }>('/messages/send', {
     method: 'POST',
-    body: JSON.stringify({ session_id: sessionId, student_id: studentId, recipients }),
+    body: JSON.stringify(templateCode ? { ...body, template_code: templateCode } : body),
   })
 }
 
@@ -600,4 +608,23 @@ export function updateConsult(studentId: number, consultId: number, input: Consu
     method: 'PATCH',
     body: JSON.stringify(input),
   })
+}
+
+export type AlimtalkTemplate = { code: string; body: string; variables: Record<string, string> }
+
+export type AlimtalkSettings = {
+  fallback_to_sms: boolean
+  alimtalk: AlimtalkTemplate[]
+  fields: { key: string; label: string }[]
+}
+
+export function fetchAlimtalkSettings(): Promise<AlimtalkSettings> {
+  return request<AlimtalkSettings>('/messages/templates')
+}
+
+export function saveAlimtalkSettings(settings: {
+  fallback_to_sms: boolean
+  alimtalk: AlimtalkTemplate[]
+}): Promise<AlimtalkSettings> {
+  return request<AlimtalkSettings>('/messages/templates', { method: 'PUT', body: JSON.stringify(settings) })
 }
