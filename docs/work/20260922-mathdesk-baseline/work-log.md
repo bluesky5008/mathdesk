@@ -1145,6 +1145,7 @@ AC-28~AC-35(기준선 v2~v6 추가분)는 각 작업에서 판정했다: AC-28·
 - 계정 관리는 학원 설정 화면 아래 카드(원장만). 1280·390px 스크린샷에서 390px의 역할·상태 글자가 한 자씩 줄바꿈되어 `whitespace-nowrap`을 줬다(표는 카드 안에서 가로 스크롤). `ops/verify/responsive.py` 응답 스텁에 계정 목록과 `must_change_password`를 추가했다.
 - 검증: API 218건 통과(1 skip, 기존. 마이그레이션 왕복 포함), 웹 90건, `npm run build`(tsc 포함), VER-35 통과.
 - 테스트 운영 영향: 기존 `director` 계정은 강제 대상이 아니다(칸 기본값 거짓). 이후 원장이 새로 만든 계정은 첫 로그인에서 비밀번호를 정해야 한다.
+- 배포: 백업 `~/mathdesk-backups/20260924-225811` 후 `compose.testops.yaml up -d --build`, 마이그레이션 `52183a89ef87 → b7e4c1d2a9f0` 적용. 공개 주소에서 `director` 로그인 → `/auth/me`의 `must_change_password: false`, `GET /users` 200, 틀린 현재 비밀번호 400 확인(실패 횟수는 재로그인으로 0 복귀). 테스트 운영에 계정을 새로 만들지는 않았다.
 
 ## 설계와 달라진 점
 
