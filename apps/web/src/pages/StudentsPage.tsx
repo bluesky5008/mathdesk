@@ -110,6 +110,19 @@ export function StudentsPage() {
     },
   })
 
+  // 목록에서 바로 퇴원시킨다. 지우지 않고 상태만 바꾸므로 과거 기록은 그대로다(FR-05)
+  const withdraw = useMutation({
+    mutationFn: (student: Student) => updateStudent(student.id, toPayload(toForm(student), 'withdrawn')),
+    onSuccess: () => void refresh(),
+  })
+
+  function confirmWithdraw(student: Student) {
+    const message =
+      `${student.name} 학생을 퇴원 처리할까요?\n` +
+      '기본 목록에서 빠지고 과거 기록은 남습니다. [수정]에서 다시 재원으로 바꿀 수 있습니다.'
+    if (window.confirm(message)) withdraw.mutate(student)
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault()
     create.mutate()
@@ -182,6 +195,19 @@ export function StudentsPage() {
                     >
                       상담
                     </Button>
+                    {student.status !== 'withdrawn' && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="mr-1"
+                        aria-label={`${student.name} 퇴원`}
+                        disabled={withdraw.isPending}
+                        onClick={() => confirmWithdraw(student)}
+                      >
+                        퇴원
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="outline"
@@ -197,6 +223,11 @@ export function StudentsPage() {
               ))}
             </TableBody>
           </Table>
+          {withdraw.isError && (
+            <p role="alert" className="px-5 py-3 text-sm text-danger">
+              {withdraw.error.message}
+            </p>
+          )}
         </CardContent>
       </Card>
 

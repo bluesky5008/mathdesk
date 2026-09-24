@@ -101,4 +101,57 @@ describe('StudentsPage', () => {
       status: 'withdrawn',
     })
   })
+
+  it('withdraws a student straight from the row after confirming', async () => {
+    const patched: { url: string; body: unknown }[] = []
+    stubFetch((url, init) => {
+      if (init?.method === 'PATCH') {
+        patched.push({ url, body: JSON.parse(String(init.body)) })
+        return Response.json({ ...student, status: 'withdrawn' })
+      }
+      return Response.json([patched.length ? { ...student, status: 'withdrawn' } : student])
+    })
+    const confirm = vi.fn(() => true)
+    vi.stubGlobal('confirm', confirm)
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '김나윤 퇴원' }))
+
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('과거 기록은 남습니다'))
+    await waitFor(() => expect(screen.queryByText('김나윤')).not.toBeInTheDocument())
+    expect(patched[0].body).toEqual({
+      name: '김나윤',
+      school: '한영고',
+      grade: '고2',
+      phone: '010-1111-2222',
+      omr_number: '90000001',
+      status: 'withdrawn',
+    })
+  })
+
+  it('keeps the student when the confirmation is cancelled', async () => {
+    const methods: string[] = []
+    stubFetch((_url, init) => {
+      methods.push(init?.method ?? 'GET')
+      return Response.json([student])
+    })
+    vi.stubGlobal('confirm', vi.fn(() => false))
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '김나윤 퇴원' }))
+
+    expect(methods).not.toContain('PATCH')
+    expect(screen.getByText('김나윤')).toBeInTheDocument()
+  })
+
+  it('offers no withdraw button for a student who already left', async () => {
+    stubFetch(() => Response.json([withdrawn]))
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '퇴원 포함' }))
+
+    expect(await screen.findByText('박서준')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '박서준 퇴원' })).not.toBeInTheDocument()
+  })
 })
+

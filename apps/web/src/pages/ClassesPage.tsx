@@ -169,6 +169,26 @@ export function ClassesPage() {
     },
   })
 
+  // 목록에서 바로 비활성으로 돌린다. 지우지 않으므로 이 반의 과거 기록은 그대로다(FR-07)
+  const deactivate = useMutation({
+    mutationFn: (klass: Klass) =>
+      updateClass(klass.id, {
+        name: klass.name,
+        grade: klass.grade,
+        teacher_id: klass.teacher_id,
+        is_active: false,
+        schedules: klass.schedules,
+      }),
+    onSuccess: () => void refresh(),
+  })
+
+  function confirmDeactivate(klass: Klass) {
+    const message =
+      `${klass.name} 반을 비활성으로 바꿀까요?\n` +
+      '기본 목록과 활성 반 수에서 빠지고 과거 기록은 남습니다. [수정]에서 다시 활성으로 바꿀 수 있습니다.'
+    if (window.confirm(message)) deactivate.mutate(klass)
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault()
     create.mutate()
@@ -239,6 +259,18 @@ export function ClassesPage() {
                   >
                     명단
                   </Button>
+                  {klass.is_active && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`${klass.name} 비활성`}
+                      disabled={deactivate.isPending}
+                      onClick={() => confirmDeactivate(klass)}
+                    >
+                      비활성
+                    </Button>
+                  )}
                   <Button type="button" variant="outline" size="sm" onClick={() => setEdit(klass)}>
                     수정
                   </Button>
@@ -246,6 +278,11 @@ export function ClassesPage() {
               </li>
             ))}
           </ul>
+          {deactivate.isError && (
+            <p role="alert" className="px-5 py-3 text-sm text-danger">
+              {deactivate.error.message}
+            </p>
+          )}
         </CardContent>
       </Card>
 

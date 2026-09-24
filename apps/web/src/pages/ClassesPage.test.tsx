@@ -169,4 +169,44 @@ describe('ClassesPage', () => {
     expect(posted[0].url).toBe('/api/classes/1/enrollments')
     expect(posted[0].body).toEqual({ student_id: 2, start_date: today() })
   })
+
+  it('deactivates a class straight from the row after confirming', async () => {
+    const patched: { url: string; body: Record<string, unknown> }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'PATCH') {
+          patched.push({ url, body: JSON.parse(String(init.body)) })
+          return Response.json({ ...active, is_active: false })
+        }
+        return Response.json(patched.length ? [] : [active])
+      }),
+    )
+    const confirm = vi.fn(() => true)
+    vi.stubGlobal('confirm', confirm)
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '고2 윤B 비활성' }))
+
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('과거 기록은 남습니다'))
+    await waitFor(() => expect(screen.queryByText(/고2 윤B/)).not.toBeInTheDocument())
+    expect(patched[0].body).toEqual({
+      name: '고2 윤B',
+      grade: '고2',
+      teacher_id: 7,
+      is_active: false,
+      schedules: active.schedules,
+    })
+  })
+
+  it('offers no deactivate button for a class that is already inactive', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json([active, inactive])))
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '비활성 포함' }))
+
+    expect(await screen.findByText(/고3 종강반/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '고3 종강반 비활성' })).not.toBeInTheDocument()
+  })
 })
+
