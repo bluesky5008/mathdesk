@@ -24,11 +24,12 @@ describe('describeSchedules', () => {
   })
 })
 
-function renderPage() {
+// 반 등록·비활성·삭제는 원장 화면에만 있다(DCR-011). 기존 테스트는 원장 화면을 전제로 한다
+function renderPage(isDirector = true) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <ClassesPage />
+      <ClassesPage isDirector={isDirector} />
     </QueryClientProvider>,
   )
 }
@@ -396,10 +397,68 @@ describe('teacher assignment', () => {
 
   it('does not ask for accounts when a teacher is signed in', async () => {
     const { urls } = stub([active])
-    renderPage()
+    renderPage(false)
 
     await screen.findByText(/고2 윤B/)
     expect(screen.queryByLabelText('담당 강사')).not.toBeInTheDocument()
     expect(urls).not.toContain('/api/users')
+  })
+})
+
+// AC-40 — 강사는 담당 반의 이름·학년·시간표만 고친다(DCR-011)
+describe('teacher view', () => {
+  function stubClasses(classes: unknown[]) {
+    const patched: Record<string, unknown>[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method === 'PATCH') {
+          patched.push(JSON.parse(String(init.body)))
+          return Response.json(active)
+        }
+        return Response.json(classes)
+      }),
+    )
+    return patched
+  }
+
+  it('hides what only a director can do', async () => {
+    stubClasses([active])
+    renderPage(false)
+
+    await screen.findByText(/고2 윤B/)
+    expect(screen.queryByRole('button', { name: '반 등록' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('반 이름')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '고2 윤B 비활성' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    expect(dialog.getByLabelText('반 이름')).toBeInTheDocument()
+    expect(dialog.getByLabelText('학년')).toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: '시간 추가' })).toBeInTheDocument()
+    expect(dialog.queryByLabelText('활성 여부')).not.toBeInTheDocument()
+    expect(dialog.queryByLabelText('담당 강사')).not.toBeInTheDocument()
+  })
+
+  it('offers no delete even for an inactive class', async () => {
+    stubClasses([inactive])
+    renderPage(false)
+
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
+  })
+
+  it('renames the class and keeps the assignment and active state', async () => {
+    const patched = stubClasses([active])
+    renderPage(false)
+
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    await userEvent.clear(dialog.getByLabelText('반 이름'))
+    await userEvent.type(dialog.getByLabelText('반 이름'), '인B')
+    await userEvent.click(dialog.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(patched).toHaveLength(1))
+    expect(patched[0]).toMatchObject({ name: '인B', teacher_id: 7, is_active: true })
   })
 })

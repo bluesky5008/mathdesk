@@ -7,7 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
-from .models import AppUser, AppUserCampus, ClassSchedule, Enrollment, Guardian, Klass, Student
+from .models import AppUser, AppUserCampus, AuditLog, ClassSchedule, Enrollment, Guardian, Klass, Student
 from .scope import CurrentScope, Scope, ScopedRepository
 
 Db = Annotated[AsyncSession, Depends(get_session)]
@@ -295,15 +295,41 @@ async def create_class(payload: ClassIn, scope: CurrentScope, session: Db) -> Cl
 async def update_class(
     class_id: int, payload: ClassIn, scope: CurrentScope, session: Db
 ) -> ClassOut:
-    scope.require_director()
-    klass = await _repo(session, scope).get(Klass, class_id)
+    # 강사는 담당 반의 반명·학년·시간표만 바꾼다. 담당 지정·활성 여부는 원장만(DCR-011)
+    klass = await _visible_class(session, scope, class_id)
+    existing = list(
+        await session.scalars(select(ClassSchedule).where(ClassSchedule.class_id == class_id))
+    )
+    if not scope.is_director:
+        if payload.teacher_id != klass.teacher_id or payload.is_active != klass.is_active:
+            raise _forbidden()
+        changed = [
+            field
+            for field, before, after in (
+                ("name", klass.name, payload.name),
+                ("grade", klass.grade, payload.grade),
+                (
+                    "schedules",
+                    {(s.weekday, s.start_time) for s in existing},
+                    {(s.weekday, s.start_time) for s in payload.schedules},
+                ),
+            )
+            if before != after
+        ]
+        session.add(
+            AuditLog(
+                campus_id=scope.campus_id,
+                actor_id=scope.user.id,
+                action="class.update",
+                target=f"class:{class_id}",
+                detail=", ".join(changed),
+            )
+        )
     await _check_teacher(session, scope, payload.teacher_id, current=klass.teacher_id)
     klass.name, klass.grade, klass.teacher_id = payload.name, payload.grade, payload.teacher_id
     klass.is_active = payload.is_active
-    for existing in await session.scalars(
-        select(ClassSchedule).where(ClassSchedule.class_id == class_id)
-    ):
-        await session.delete(existing)
+    for schedule in existing:
+        await session.delete(schedule)
     for schedule in payload.schedules:
         session.add(ClassSchedule(class_id=class_id, **schedule.model_dump()))
     await session.commit()

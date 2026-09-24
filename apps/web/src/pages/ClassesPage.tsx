@@ -341,26 +341,27 @@ export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {
     <section>
       <PageHeader title="반 관리" />
 
-      <Card className="mb-5">
-        <CardContent className="py-4">
-          <form className="flex flex-wrap items-end gap-3" onSubmit={submit}>
-            <Field label="반 이름" htmlFor="class-name" className="min-w-40 flex-1 xl:flex-none">
-              <Input
-                id="class-name"
-                className="w-full xl:w-48"
-                value={form.name}
-                onChange={(event) => setForm({ ...form, name: event.target.value })}
-              />
-            </Field>
-            <Field label="학년" htmlFor="class-grade" className="min-w-28 flex-1 xl:flex-none">
-              <Input
-                id="class-grade"
-                className="w-full xl:w-28"
-                value={form.grade}
-                onChange={(event) => setForm({ ...form, grade: event.target.value })}
-              />
-            </Field>
-            {isDirector && (
+      {/* 반 등록·담당 지정·활성 변경·삭제는 원장만. 강사는 담당 반의 이름·학년·시간표만 고친다(DCR-011) */}
+      {isDirector && (
+        <Card className="mb-5">
+          <CardContent className="py-4">
+            <form className="flex flex-wrap items-end gap-3" onSubmit={submit}>
+              <Field label="반 이름" htmlFor="class-name" className="min-w-40 flex-1 xl:flex-none">
+                <Input
+                  id="class-name"
+                  className="w-full xl:w-48"
+                  value={form.name}
+                  onChange={(event) => setForm({ ...form, name: event.target.value })}
+                />
+              </Field>
+              <Field label="학년" htmlFor="class-grade" className="min-w-28 flex-1 xl:flex-none">
+                <Input
+                  id="class-grade"
+                  className="w-full xl:w-28"
+                  value={form.grade}
+                  onChange={(event) => setForm({ ...form, grade: event.target.value })}
+                />
+              </Field>
               <Field label="담당 강사" htmlFor="class-teacher" className="min-w-36 flex-1 xl:flex-none">
                 <TeacherSelect
                   id="class-teacher"
@@ -369,23 +370,23 @@ export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {
                   onChange={(teacher_id) => setForm({ ...form, teacher_id })}
                 />
               </Field>
+              <div className="basis-full">
+                <ScheduleEditor
+                  idPrefix="class-schedule"
+                  schedules={form.schedules}
+                  onChange={(schedules) => setForm({ ...form, schedules })}
+                />
+              </div>
+              <Button type="submit">반 등록</Button>
+            </form>
+            {create.isError && (
+              <p role="alert" className="mt-3 text-sm text-danger">
+                {create.error.message}
+              </p>
             )}
-            <div className="basis-full">
-              <ScheduleEditor
-                idPrefix="class-schedule"
-                schedules={form.schedules}
-                onChange={(schedules) => setForm({ ...form, schedules })}
-              />
-            </div>
-            <Button type="submit">반 등록</Button>
-          </form>
-          {create.isError && (
-            <p role="alert" className="mt-3 text-sm text-danger">
-              {create.error.message}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -427,7 +428,7 @@ export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {
                   >
                     명단
                   </Button>
-                  {klass.is_active && (
+                  {isDirector && klass.is_active && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -477,17 +478,19 @@ export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {
                   onChange={(event) => setEdit({ ...edit, grade: event.target.value || null })}
                 />
               </Field>
-              <Field label="활성 여부" htmlFor="edit-class-active">
-                <Select
-                  id="edit-class-active"
-                  className="w-full"
-                  value={String(edit.is_active)}
-                  onChange={(event) => setEdit({ ...edit, is_active: event.target.value === 'true' })}
-                >
-                  <option value="true">활성</option>
-                  <option value="false">비활성</option>
-                </Select>
-              </Field>
+              {isDirector && (
+                <Field label="활성 여부" htmlFor="edit-class-active">
+                  <Select
+                    id="edit-class-active"
+                    className="w-full"
+                    value={String(edit.is_active)}
+                    onChange={(event) => setEdit({ ...edit, is_active: event.target.value === 'true' })}
+                  >
+                    <option value="true">활성</option>
+                    <option value="false">비활성</option>
+                  </Select>
+                </Field>
+              )}
               {isDirector && (
                 <Field label="담당 강사" htmlFor="edit-class-teacher">
                   <TeacherSelect
@@ -512,7 +515,7 @@ export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {
               )}
               <div className="col-span-2 mt-2 flex justify-between gap-2">
                 {/* 퇴원·비활성으로 저장된 대상만 삭제할 수 있다(DCR-006). 선행 조건은 서버도 다시 확인한다 */}
-                {classes.data?.find((c) => c.id === edit.id)?.is_active === false ? (
+                {isDirector && classes.data?.find((c) => c.id === edit.id)?.is_active === false ? (
                   <Button type="button" variant="ghost" className="text-danger" onClick={() => {
                       setDeleting(classes.data?.find((c) => c.id === edit.id) ?? null)
                       setEdit(null)
