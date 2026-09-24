@@ -208,5 +208,47 @@ describe('ClassesPage', () => {
     expect(await screen.findByText(/고3 종강반/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '고3 종강반 비활성' })).not.toBeInTheDocument()
   })
+
+  it('deletes an inactive class after the preview and name check', async () => {
+    const calls: { url: string; method: string; body: unknown }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const method = init?.method ?? 'GET'
+        calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : null })
+        if (url.endsWith('/deletion-preview')) {
+          return Response.json({
+            deletable: true,
+            reason: null,
+            counts: { schedules: 0, enrollments: 3, sessions: 12, daily_records: 150, exams_unlinked: 1 },
+          })
+        }
+        if (method === 'DELETE') return new Response(null, { status: 204 })
+        return Response.json(calls.some((c) => c.method === 'DELETE') ? [] : [inactive])
+      }),
+    )
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '비활성 포함' }))
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '삭제' }))
+
+    const dialog = await screen.findByRole('dialog', { name: '고3 종강반 반 삭제' })
+    expect(await within(dialog).findByText('학생 일일 기록 150건')).toBeInTheDocument()
+    expect(within(dialog).getByText('반 연결이 끊기는 시험 1건')).toBeInTheDocument()
+    await userEvent.type(within(dialog).getByLabelText('확인용 이름'), '고3 종강반')
+    await userEvent.click(within(dialog).getByRole('button', { name: '영구 삭제' }))
+
+    await waitFor(() => expect(calls.some((c) => c.method === 'DELETE' && c.url === '/api/classes/2')).toBe(true))
+  })
+
+  it('offers no delete button for an active class', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json([active])))
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+
+    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
+  })
 })
 

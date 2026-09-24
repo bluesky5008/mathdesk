@@ -153,5 +153,51 @@ describe('StudentsPage', () => {
     expect(await screen.findByText('박서준')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '박서준 퇴원' })).not.toBeInTheDocument()
   })
+
+  it('deletes a withdrawn student after showing what goes with them and checking the name', async () => {
+    const calls: { url: string; method: string; body: unknown }[] = []
+    stubFetch((url, init) => {
+      const method = init?.method ?? 'GET'
+      calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : null })
+      if (url.endsWith('/deletion-preview')) {
+        return Response.json({
+          deletable: true,
+          reason: null,
+          counts: { guardians: 1, enrollments: 1, daily_records: 24, exam_attempts: 2, omr_scans: 2, messages: 15, consults: 3 },
+        })
+      }
+      if (method === 'DELETE') return new Response(null, { status: 204 })
+      return Response.json(calls.some((c) => c.method === 'DELETE') ? [] : [withdrawn])
+    })
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '퇴원 포함' }))
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '삭제' }))
+
+    const dialog = await screen.findByRole('dialog', { name: '박서준 학생 삭제' })
+    expect(await within(dialog).findByText('출결·과제 기록 24건')).toBeInTheDocument()
+    expect(within(dialog).getByText(/되돌릴 수 없습니다/)).toBeInTheDocument()
+    const confirm = within(dialog).getByRole('button', { name: '영구 삭제' })
+    expect(confirm).toBeDisabled()
+    await userEvent.type(within(dialog).getByLabelText('확인용 이름'), '박서준')
+    await userEvent.click(confirm)
+
+    await waitFor(() => expect(screen.queryByText('박서준')).not.toBeInTheDocument())
+    expect(calls.find((c) => c.method === 'DELETE')).toEqual({
+      url: '/api/students/2',
+      method: 'DELETE',
+      body: { confirm_name: '박서준' },
+    })
+  })
+
+  it('offers no delete button while the student is still enrolled', async () => {
+    stubFetch(() => Response.json([student]))
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+
+    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
+  })
 })
 

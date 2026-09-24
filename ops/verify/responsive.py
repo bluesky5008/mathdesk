@@ -120,6 +120,7 @@ def body_for(path: str):
     if "/stats/students" in path: return HISTORY
     if "/stats/classes" in path: return CLASS_STATS
     if "/consults" in path: return CONSULTS
+    if "/deletion-preview" in path: return {"deletable": True, "reason": None, "counts": {"guardians": 1, "enrollments": 1, "daily_records": 24, "exam_attempts": 2, "omr_scans": 2, "messages": 15, "consults": 3}}
     if "/classes" in path: return CLASSES
     if "/students" in path: return STUDENTS
     if "/dashboard" in path: return DASHBOARD

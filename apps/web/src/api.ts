@@ -628,3 +628,21 @@ export function saveAlimtalkSettings(settings: {
 }): Promise<AlimtalkSettings> {
   return request<AlimtalkSettings>('/messages/templates', { method: 'PUT', body: JSON.stringify(settings) })
 }
+
+export type DeletionPreview = { deletable: boolean; reason: string | null; counts: Record<string, number> }
+
+export function fetchStudentDeletionPreview(id: number): Promise<DeletionPreview> {
+  return request<DeletionPreview>(`/students/${id}/deletion-preview`)
+}
+
+export function deleteStudent(id: number, confirmName: string): Promise<void> {
+  return request<void>(`/students/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm_name: confirmName }) })
+}
+
+export function fetchClassDeletionPreview(id: number): Promise<DeletionPreview> {
+  return request<DeletionPreview>(`/classes/${id}/deletion-preview`)
+}
+
+export function deleteClass(id: number, confirmName: string): Promise<void> {
+  return request<void>(`/classes/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm_name: confirmName }) })
+}

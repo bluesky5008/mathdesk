@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from .auth import ensure_initial_director, router as auth_router
 from .consult import router as consult_router
+from .deletion import router as deletion_router
 from .branding import router as branding_router
 from .daily import router as daily_router
 from .db import create_engine
@@ -82,6 +83,7 @@ def create_app(web_dist: Path | str | None = None) -> FastAPI:
     app.include_router(branding_router)
     app.include_router(masterdata_router)
     app.include_router(consult_router)
+    app.include_router(deletion_router)
     app.include_router(daily_router)
     app.include_router(stats_router)
     app.include_router(messaging_router)

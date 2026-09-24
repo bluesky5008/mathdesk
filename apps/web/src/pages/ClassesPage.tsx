@@ -11,6 +11,8 @@ import { Select } from '../components/ui/select'
 import { Toggle } from '../components/ui/toggle'
 import {
   createClass,
+  deleteClass,
+  fetchClassDeletionPreview,
   createEnrollment,
   endEnrollment,
   fetchClasses,
@@ -21,6 +23,7 @@ import {
   type Schedule,
 } from '../api'
 import { today } from '../lib/date'
+import { DeleteDialog } from './DeleteDialog'
 
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 
@@ -132,6 +135,14 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
   )
 }
 
+const DELETE_LABELS = {
+  schedules: '시간표',
+  enrollments: '반 배정',
+  sessions: '수업',
+  daily_records: '학생 일일 기록',
+  exams_unlinked: '반 연결이 끊기는 시험',
+}
+
 export function ClassesPage() {
   const queryClient = useQueryClient()
   const [showInactive, setShowInactive] = useState(false)
@@ -141,6 +152,7 @@ export function ClassesPage() {
   })
   const [form, setForm] = useState({ name: '', grade: '' })
   const [edit, setEdit] = useState<Klass | null>(null)
+  const [deleting, setDeleting] = useState<Klass | null>(null)
   const [roster, setRoster] = useState<Klass | null>(null)
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['classes'] })
@@ -328,18 +340,46 @@ export function ClassesPage() {
                   {save.error.message}
                 </p>
               )}
-              <div className="col-span-2 mt-2 flex justify-end gap-2">
-                <DialogClose asChild>
-                  <Button type="button" variant="outline">
-                    취소
+              <div className="col-span-2 mt-2 flex justify-between gap-2">
+                {/* 퇴원·비활성으로 저장된 대상만 삭제할 수 있다(DCR-006). 선행 조건은 서버도 다시 확인한다 */}
+                {classes.data?.find((c) => c.id === edit.id)?.is_active === false ? (
+                  <Button type="button" variant="ghost" className="text-danger" onClick={() => {
+                      setDeleting(classes.data?.find((c) => c.id === edit.id) ?? null)
+                      setEdit(null)
+                    }}>
+                    삭제
                   </Button>
-                </DialogClose>
-                <Button type="submit">저장</Button>
+                ) : (
+                  <span />
+                )}
+                <div className="flex gap-2">
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">
+                      취소
+                    </Button>
+                  </DialogClose>
+                  <Button type="submit">저장</Button>
+                </div>
               </div>
             </form>
           )}
         </DialogContent>
       </Dialog>
+
+      {deleting && (
+        <DeleteDialog
+          title={`${deleting.name} 반 삭제`}
+          name={deleting.name}
+          labels={DELETE_LABELS}
+          preview={() => fetchClassDeletionPreview(deleting.id)}
+          remove={(confirmName) => deleteClass(deleting.id, confirmName)}
+          onDone={() => {
+            setDeleting(null)
+            void refresh()
+          }}
+          onClose={() => setDeleting(null)}
+        />
+      )}
     </section>
   )
 }

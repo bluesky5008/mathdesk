@@ -18,7 +18,15 @@ import {
   TableRow,
 } from '../components/ui/table'
 import { Toggle } from '../components/ui/toggle'
-import { createStudent, fetchStudents, updateStudent, type Student } from '../api'
+import {
+  createStudent,
+  deleteStudent,
+  fetchStudentDeletionPreview,
+  fetchStudents,
+  updateStudent,
+  type Student,
+} from '../api'
+import { DeleteDialog } from './DeleteDialog'
 
 const FIELDS = [
   ['name', '이름'],
@@ -30,6 +38,16 @@ const FIELDS = [
 
 // 재원 상태는 FR-05가 정한 3종이다. 퇴원은 지우지 않고 상태로만 남겨 과거 기록을 보존한다.
 const STATUS = { enrolled: '재원', paused: '휴원', withdrawn: '퇴원' } as const
+
+const DELETE_LABELS = {
+  guardians: '보호자',
+  enrollments: '반 배정',
+  daily_records: '출결·과제 기록',
+  exam_attempts: '시험 응시',
+  omr_scans: '답안지',
+  messages: '발송 내역',
+  consults: '상담 기록',
+}
 
 const EMPTY = { name: '', school: '', grade: '', phone: '', omr_number: '' }
 
@@ -86,6 +104,7 @@ export function StudentsPage() {
   const [showWithdrawn, setShowWithdrawn] = useState(false)
   const [edit, setEdit] = useState<{ id: number; form: Form; status: string } | null>(null)
   const [consulting, setConsulting] = useState<{ id: number; name: string } | null>(null)
+  const [deleting, setDeleting] = useState<Student | null>(null)
 
   const visible = (students.data ?? []).filter(
     (student) => showWithdrawn || student.status !== 'withdrawn',
@@ -260,13 +279,26 @@ export function StudentsPage() {
                   {save.error.message}
                 </p>
               )}
-              <div className="col-span-2 mt-2 flex justify-end gap-2">
-                <DialogClose asChild>
-                  <Button type="button" variant="outline">
-                    취소
+              <div className="col-span-2 mt-2 flex justify-between gap-2">
+                {/* 퇴원·비활성으로 저장된 대상만 삭제할 수 있다(DCR-006). 선행 조건은 서버도 다시 확인한다 */}
+                {students.data?.find((s) => s.id === edit.id)?.status === 'withdrawn' ? (
+                  <Button type="button" variant="ghost" className="text-danger" onClick={() => {
+                      setDeleting(students.data?.find((s) => s.id === edit.id) ?? null)
+                      setEdit(null)
+                    }}>
+                    삭제
                   </Button>
-                </DialogClose>
-                <Button type="submit">저장</Button>
+                ) : (
+                  <span />
+                )}
+                <div className="flex gap-2">
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">
+                      취소
+                    </Button>
+                  </DialogClose>
+                  <Button type="submit">저장</Button>
+                </div>
               </div>
             </form>
           )}
@@ -274,6 +306,20 @@ export function StudentsPage() {
       </Dialog>
 
       {consulting && <ConsultDialog student={consulting} onClose={() => setConsulting(null)} />}
+      {deleting && (
+        <DeleteDialog
+          title={`${deleting.name} 학생 삭제`}
+          name={deleting.name}
+          labels={DELETE_LABELS}
+          preview={() => fetchStudentDeletionPreview(deleting.id)}
+          remove={(confirmName) => deleteStudent(deleting.id, confirmName)}
+          onDone={() => {
+            setDeleting(null)
+            void refresh()
+          }}
+          onClose={() => setDeleting(null)}
+        />
+      )}
     </section>
   )
 }
