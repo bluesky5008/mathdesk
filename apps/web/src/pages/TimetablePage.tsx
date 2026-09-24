@@ -8,7 +8,7 @@ import { Select } from '../components/ui/select'
 import { fetchTimetable, type TimetableClass, type TimetableSlot } from '../api'
 import { WEEKDAYS } from './ClassesPage'
 
-// 1분 = 1px. 한 시간 칸이 60px이라 120분 수업 블록이 두 칸을 채운다
+// 1분 = 1px. 한 시간 칸이 60px이라 240분 수업 블록이 네 칸을 채운다
 const PX_PER_MINUTE = 1
 
 const ALL = 'all'
@@ -68,7 +68,7 @@ export function TimetablePage({ isDirector = false }: { isDirector?: boolean } =
     ).values(),
   ].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
-  const classMinutes = data?.class_minutes ?? 120
+  const classMinutes = data?.class_minutes ?? 240
   const starts = slots.map((slot) => minutesOf(slot.start_time))
   const axisStart = Math.floor(Math.min(...starts) / 60) * 60
   // 자정을 넘기는 수업은 24시에서 자른다

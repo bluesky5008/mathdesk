@@ -46,6 +46,7 @@
 | DCR-007 | dcr | 시작 시각만 쓰는 반 시간표 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-007](./work/20260922-mathdesk-baseline/DCR-007-시작-시각만-쓰는-반-시간표.md) | — |
 | DCR-008 | dcr | 주간 시간표 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | DCR-007 관련 |
 | DCR-009 | dcr | 비밀번호 변경과 재설정 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | ADR-007 관련 |
+| DCR-010 | dcr | 수업 길이 기본값 4시간 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | DCR-008 기본값 대체 |
 
 ## 번호 발행 규칙
 

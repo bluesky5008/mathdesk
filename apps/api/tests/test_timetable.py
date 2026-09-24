@@ -27,7 +27,8 @@ def test_director_sees_every_active_class_with_teacher_names(api):
 
     body = api.get("/api/timetable").json()
 
-    assert body["class_minutes"] == 120
+    # 학원 수업은 한 번에 4시간이다(사용자 확인 2026-09-24)
+    assert body["class_minutes"] == 240
     # 요일 → 시작 시각 순
     assert _names(body["slots"]) == [
         ("고3 윤A", 1, "10:00:00"),
@@ -36,7 +37,7 @@ def test_director_sees_every_active_class_with_teacher_names(api):
     ]
     teacher_slot = body["slots"][1]
     assert teacher_slot["teacher"] == {"id": api.ids["teacher_a"], "name": "teacher_a"}
-    assert teacher_slot["end_time"] == "20:00:00"
+    assert teacher_slot["end_time"] == "22:00:00"
     assert body["slots"][0]["teacher"] is None
 
 
@@ -104,4 +105,4 @@ def test_class_length_is_per_campus(api):
     api.put("/api/settings/class-minutes", json={"class_minutes": 60})
 
     api.sign_in("director_a")
-    assert api.get("/api/timetable").json()["class_minutes"] == 120
+    assert api.get("/api/timetable").json()["class_minutes"] == 240

@@ -22,7 +22,7 @@ Db = Annotated[AsyncSession, Depends(get_session)]
 router = APIRouter(prefix="/api", tags=["timetable"])
 
 CLASS_MINUTES_KEY = "class_minutes"
-DEFAULT_CLASS_MINUTES = 120
+DEFAULT_CLASS_MINUTES = 240  # 수업 한 번 4시간(사용자 확인 2026-09-24)
 
 
 class Teacher(BaseModel):

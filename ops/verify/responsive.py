@@ -108,13 +108,13 @@ ALIMTALK = {"fallback_to_sms": True,
                        {"key": "attendance", "label": "출결"}, {"key": "homework", "label": "오늘의 과제"}]}
 LOGS = [{"id": i, "requested_at": "2026-09-23T18:30:00", "recipient_phone": "010-1234-5678",
          "channel": "sms", "status": "sent", "is_test": True} for i in range(1, 6)]
-TIMETABLE = {"class_minutes": 120,
+TIMETABLE = {"class_minutes": 240,
              "slots": [{"class_id": c, "class_name": n, "grade": "고2",
                         "teacher": {"id": 7 + c % 2, "name": f"강사{c % 2 + 1}"}, "weekday": w,
-                        "start_time": t, "end_time": f"{int(t[:2]) + 2:02d}:00:00"}
-                       for c, n, w, t in [(1, "고3 윤A", 0, "18:00:00"), (2, "고2 윤B", 0, "19:00:00"),
+                        "start_time": t, "end_time": f"{int(t[:2]) + 4:02d}:00:00"}
+                       for c, n, w, t in [(1, "고3 윤A", 0, "17:00:00"), (2, "고2 윤B", 0, "19:00:00"),
                                           (3, "고2 윤C", 2, "18:00:00"), (4, "고1 윤D", 4, "17:00:00"),
-                                          (1, "고3 윤A", 5, "10:00:00"), (2, "고2 윤B", 5, "13:00:00"),
+                                          (1, "고3 윤A", 5, "10:00:00"), (2, "고2 윤B", 5, "14:00:00"),
                                           (5, "중3 특강반 심화", 6, "14:00:00")]],
              "unscheduled": [{"class_id": 9, "class_name": "고3 파이널", "grade": "고3", "teacher": None}]}
 BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3457F", "logo_data_url": None}
