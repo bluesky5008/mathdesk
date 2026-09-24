@@ -21,7 +21,8 @@ PORT = 8799
 WIDTHS = [int(w) for w in os.environ.get("VER35_WIDTHS", "390,768,1280").split(",")]
 
 BROWSE = [("종합 대시보드", "/"), ("알림문자", "/messages"),
-          ("학생/반 관리", "/students"), ("성적 통계", "/stats"), ("학원 설정", "/settings")]
+          ("학생/반 관리", "/students"), ("성적 통계", "/stats"),
+          ("시험지 분석", "/exams"), ("학원 설정", "/settings")]
 DESKTOP_ONLY = [("일일 입력", "/daily")]
 
 USER = {"id": 1, "login_id": "director", "display_name": "원장", "role": "director"}
@@ -68,6 +69,14 @@ HISTORY = {"student": {"id": 1, "name": "학생01"}, "klass": {"id": 1, "name": 
                       "homework_grades": ["B"], "homework_completion": 100.0,
                       "class_homework_completion": 90.0, "attendance_rate": 100.0}
                      for i in range(8)]}
+EXAMS = [{"id": i, "name": f"강K {i}회 확통", "source_file_id": i, "class_id": None,
+          "exam_date": "2026-09-19", "question_count": 30, "status": "draft", "needs_review": 2}
+         for i in range(1, 6)]
+EXAM = {**EXAMS[0], "max_score": 100, "answer_key_odd": None, "answer_key_even": None,
+        "difficulty": {"low": 13, "mid": 9, "high": 6, "top": 2}}
+QUESTIONS = [{"no": n, "unit": "함수의 극한과 연속", "sub_type": f"공통 객관식 {n}번 — 사차함수의 음의 실근 개수",
+              "difficulty": "mid", "rationale": "극점에서의 함숫값을 구하고 부호 변화를 조사한다",
+              "points": 4, "confidence": 0.9, "needs_review": n % 7 == 0} for n in range(1, 31)]
 LOGS = [{"id": i, "requested_at": "2026-09-23T18:30:00", "recipient_phone": "010-1234-5678",
          "channel": "sms", "status": "sent", "is_test": True} for i in range(1, 6)]
 BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3457F", "logo_data_url": None}
@@ -75,6 +84,9 @@ BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3
 
 def body_for(path: str):
     if "/auth/me" in path: return USER
+    if "/questions" in path: return QUESTIONS
+    if "/api/exams/" in path: return EXAM
+    if path.endswith("/api/exams"): return EXAMS
     if "/stats/export" in path: return {}
     if "/stats/students" in path: return HISTORY
     if "/stats/classes" in path: return CLASS_STATS

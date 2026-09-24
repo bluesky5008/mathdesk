@@ -359,3 +359,110 @@ export function fetchStudentHistory(
 export function statsExportUrl(classId: number, start: string, end: string): string {
   return `/api/stats/export?class_id=${classId}&start=${start}&end=${end}`
 }
+
+export type ExamRow = {
+  id: number
+  name: string
+  source_file_id: number | null
+  class_id: number | null
+  exam_date: string | null
+  question_count: number | null
+  status: string
+  needs_review: number
+}
+
+export type Difficulty = 'low' | 'mid' | 'high' | 'top'
+
+export type ExamDetail = Omit<ExamRow, 'needs_review'> & {
+  max_score: number | null
+  answer_key_odd: (number | null)[] | null
+  answer_key_even: (number | null)[] | null
+  difficulty: Record<Difficulty, number>
+}
+
+export type ExamQuestion = {
+  no: number
+  unit: string | null
+  sub_type: string | null
+  difficulty: string | null
+  rationale: string | null
+  points: number | null
+  confidence: number | null
+  needs_review: boolean
+}
+
+export type ExamPatch = Partial<{
+  name: string
+  question_count: number
+  max_score: number
+  answer_key_odd: (number | null)[]
+  answer_key_even: (number | null)[]
+  status: 'draft' | 'confirmed'
+}>
+
+export type QuestionPatch = { no: number } & Partial<
+  Pick<ExamQuestion, 'unit' | 'sub_type' | 'difficulty' | 'rationale' | 'points'>
+>
+
+export type Task = {
+  id: number
+  kind: string
+  status: string
+  progress: number
+  result: Record<string, unknown> | null
+  error: string | null
+}
+
+export function fetchExams(): Promise<ExamRow[]> {
+  return request<ExamRow[]>('/exams')
+}
+
+export function fetchExam(id: number): Promise<ExamDetail> {
+  return request<ExamDetail>(`/exams/${id}`)
+}
+
+export function fetchQuestions(id: number): Promise<ExamQuestion[]> {
+  return request<ExamQuestion[]>(`/exams/${id}/questions`)
+}
+
+export function updateExam(id: number, payload: ExamPatch): Promise<ExamDetail> {
+  return request<ExamDetail>(`/exams/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
+export function updateQuestions(id: number, questions: QuestionPatch[]): Promise<ExamQuestion[]> {
+  return request<ExamQuestion[]>(`/exams/${id}/questions`, {
+    method: 'PATCH',
+    body: JSON.stringify({ questions }),
+  })
+}
+
+/** 파일 업로드 → 시험 등록 → 분석 시작. 분석은 배경 작업이라 task_id만 돌려준다. */
+export async function registerExam(name: string, file: File): Promise<{ examId: number; taskId: number }> {
+  const form = new FormData()
+  form.append('file', file)
+  // multipart 경계는 브라우저가 정한다. request()처럼 JSON Content-Type을 붙이면 안 된다
+  const uploaded = await fetch('/api/exams/uploads', {
+    method: 'POST',
+    credentials: 'same-origin',
+    body: form,
+  })
+  if (!uploaded.ok) {
+    const body = (await uploaded.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body.detail ?? '파일을 올리지 못했습니다.')
+  }
+  const stored = (await uploaded.json()) as { id: number }
+  const exam = await request<ExamRow>('/exams', {
+    method: 'POST',
+    body: JSON.stringify({ name, source_file_id: stored.id }),
+  })
+  const task = await request<{ task_id: number }>(`/exams/${exam.id}/analyze`, { method: 'POST' })
+  return { examId: exam.id, taskId: task.task_id }
+}
+
+export function fetchTask(id: number): Promise<Task> {
+  return request<Task>(`/tasks/${id}`)
+}
+
+export function difficultyCardUrl(examId: number): string {
+  return `/api/exams/${examId}/difficulty-card`
+}

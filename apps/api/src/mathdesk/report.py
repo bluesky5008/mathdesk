@@ -312,15 +312,81 @@ class ReportRenderer:
         brand_colour: str | None = None,
         logo_data_url: str | None = None,
     ) -> bytes:
+        return await self.render_html(render_report_html(context, brand_colour, logo_data_url))
+
+    async def render_html(self, html: str) -> bytes:
+        """이 저장소가 조립한 카드 HTML을 촬영한다. 외부 입력을 렌더하지 않는다(DES-08)."""
         if self._browser is None:
             raise RuntimeError("렌더러가 시작되지 않았다. lifespan에서 start()를 호출한다.")
         page = await self._browser.new_page(
             viewport={"width": CARD_WIDTH, "height": 600}, device_scale_factor=SCALE
         )
         try:
-            await page.set_content(render_report_html(context, brand_colour, logo_data_url))
+            await page.set_content(html)
             # full_page는 뷰포트 높이를 하한으로 잡아 짧은 카드 아래에 빈 배경이 붙는다.
             # body 요소만 촬영하면 이미지 높이가 내용 높이와 정확히 같아진다.
             return await page.locator("body").screenshot(type="png")
         finally:
             await page.close()
+
+
+DIFFICULTY_LABELS = (("low", "하"), ("mid", "중"), ("high", "상"), ("top", "최상"))
+
+DIFFICULTY_CSS = """
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: %(width)spx; padding: var(--md-space-5); background: var(--md-color-bg);
+       font-family: var(--md-font-sans); color: var(--md-color-fg);
+       line-height: var(--md-leading-normal); }
+.card { background: var(--md-color-surface); border-radius: var(--md-radius-lg);
+        box-shadow: var(--md-shadow-md); overflow: hidden;
+        border-top: 6px solid var(--md-color-brand); padding: var(--md-space-6); }
+.eyebrow { font-size: var(--md-text-xs); font-weight: 600; letter-spacing: 0.06em;
+           color: var(--md-color-brand); }
+h1 { font-size: var(--md-text-2xl); line-height: var(--md-leading-tight);
+     margin-top: var(--md-space-2); }
+.exam { font-size: var(--md-text-lg); font-weight: 600; margin-top: var(--md-space-1); }
+.meta { font-size: var(--md-text-sm); color: var(--md-color-muted-fg); margin-top: var(--md-space-1); }
+.levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--md-space-3);
+          margin-top: var(--md-space-5); }
+.level { border-radius: var(--md-radius-md); padding: var(--md-space-3) var(--md-space-4);
+         background: var(--md-color-accent); }
+.level .k { font-size: var(--md-text-sm); font-weight: 600; color: var(--md-color-muted-fg); }
+.level .v { font-size: var(--md-text-2xl); font-weight: 700; margin-top: var(--md-space-1);
+            font-variant-numeric: tabular-nums; }
+.note { font-size: var(--md-text-xs); color: var(--md-color-muted-fg); margin-top: var(--md-space-4); }
+"""
+
+
+def render_difficulty_html(
+    campus_name: str,
+    exam_name: str,
+    meta: str,
+    counts: dict[str, int],
+    brand_colour: str | None = None,
+) -> str:
+    """난이도 분석표 카드(FR-30). 리포트 카드와 같은 렌더러·토큰을 쓰고 템플릿만 다르다(DES-08)."""
+    if brand_colour and not HEX_COLOUR.match(brand_colour):
+        raise ValueError(f"브랜드 색은 #RGB 또는 #RRGGBB 형식이어야 한다: {brand_colour!r}")
+    brand = f"\n:root {{ --md-color-brand: {brand_colour}; }}" if brand_colour else ""
+    levels = "".join(
+        f'<div class="level"><div class="k">{label}</div>'
+        f'<div class="v">{counts.get(key, 0)}문항</div></div>'
+        for key, label in DIFFICULTY_LABELS
+    )
+    return f"""<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><style>
+{TOKENS_CSS}{brand}
+{DIFFICULTY_CSS % {"width": CARD_WIDTH}}
+</style></head>
+<body>
+  <div class="card">
+    <div class="eyebrow">{escape(campus_name)} · EXAM ANALYSIS</div>
+    <h1>문항별 난이도 분석표</h1>
+    <div class="exam">{escape(exam_name)}</div>
+    <div class="meta">{escape(meta)}</div>
+    <div class="levels">{levels}</div>
+    <div class="note">AI 추정 난이도 · 실제 정답률과 별개입니다</div>
+  </div>
+</body>
+</html>"""

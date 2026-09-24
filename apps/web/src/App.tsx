@@ -7,6 +7,7 @@ import { AppShell } from './components/AppShell'
 import { ClassesPage } from './pages/ClassesPage'
 import { DailyPage } from './pages/DailyPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { ExamsPage } from './pages/ExamsPage'
 import { MessagesPage } from './pages/MessagesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { StudentsPage } from './pages/StudentsPage'
@@ -50,6 +51,7 @@ export function App() {
             </Suspense>
           }
         />
+        <Route path="/exams" element={<ExamsPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route
