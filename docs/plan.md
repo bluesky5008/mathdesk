@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v11`
+> 기준선: `v12`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-09-24`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (6/13)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (6/14)
+   ├─ [▶] TASK-67 강사의 담당 반 수정 (DCR-011) ........ 기준선 v12
    ├─ [✓] TASK-64 계정 관리·비밀번호 (FR-02, DCR-009) .. 2026-09-24 22:57
    ├─ [✓] TASK-65 반 담당 강사 지정 (FR-07) ........... 2026-09-24 23:04
    ├─ [✓] TASK-66 주간 시간표 (DCR-008) ............... 2026-09-24 23:19
@@ -233,11 +234,12 @@ flowchart TD
     classDef gate fill:#ffcdd2,stroke:#c62828
 ```
 
-사이클 3 (노드 14)
+사이클 3 (노드 15)
 
 ```mermaid
 flowchart TD
     C3["사이클 3 — 운영 이관"]:::todo
+    C3 --> T67["TASK-67 강사의 담당 반 수정 (DCR-011)"]:::active
     C3 --> T64["TASK-64 계정 관리·비밀번호 (FR-02, DCR-009)"]:::done
     C3 --> T65["TASK-65 반 담당 강사 지정 (FR-07)"]:::done
     C3 --> T66["TASK-66 주간 시간표 (DCR-008)"]:::done
@@ -1033,6 +1035,18 @@ flowchart TD
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
 
+### TASK-67: 강사의 담당 반 수정 (DCR-011)
+
+- 상태: in-progress
+- 상위: 없음
+- 목표: 강사가 담당 반의 반명·학년·시간표를 수정한다. 담당 지정·활성 변경·등록·삭제는 원장만. 강사 화면에서 쓸 수 없는 반 등록 폼·[비활성]·담당·활성·삭제를 숨긴다.
+- 관련 요구사항과 설계: [FR-07·AC-40](./requirements.md#인수-조건), [권한 매트릭스](./design.md), [DCR-011](./work/20260922-mathdesk-baseline/DCR-011-강사의-담당-반-수정.md)
+- 변경 대상: `masterdata.update_class`, `apps/web/src/pages/ClassesPage.tsx`
+- 의존성: 없음
+- 위험: 전치환 `PATCH`에서 강사가 담당·활성을 바꾸는 우회 — 서버가 현재 값과 비교해 막는다
+- 검증 방법: 선행 테스트 — API(담당 반 수정 200·반영, 담당 아닌 반 403, 담당·활성 변경 403·무변경, 감사 로그), 웹(강사 화면 표시·수정 본문)
+- 완료 조건: AC-40 통과(VER-40), 테스트 운영 배포
+
 ### TASK-64: 강사 계정 관리 화면 (FR-02)
 
 - 상태: completed (2026-09-24 22:57)
@@ -1234,6 +1248,7 @@ flowchart TD
 | VER-35 | AC-35 | TASK-53 | 390px 뷰포트에서 조회·발송 화면 렌더 → 페이지 본문 가로 넘침 없음 확인 — **통과** (390·768·1280px, `ops/verify/responsive.py`) |
 | VER-34 | FR-05, FR-07, FR-08 | TASK-50, TASK-51, TASK-52 | 퇴원 학생이 기본 목록에서 빠지되 과거 기록 보존, 비활성 반이 활성 반 수에서 제외, 수강 해제 후에도 과거 수업일 소속 반 재현 |
 | VER-31 | AC-32, NFR-19 | TASK-45 | warm 상태에서 카드 30장 연속 생성 p95 측정 — **컨테이너 p95 86ms (기준 3000ms), 통과** |
+| VER-40 | AC-40 | TASK-67 | 강사 담당 반 수정·거부 규칙·감사 로그 API 테스트 + 강사 화면 표시·수정 본문 웹 테스트 |
 | VER-39 | AC-39 | TASK-64 | 본인 변경·재설정·변경 강제(서버 403)·세션 무효화·잠금 해제·감사 로그 API 테스트 + 강제 화면·변경·재설정 웹 테스트 — **통과** (`test_password.py` 12건, 웹 `PasswordChange.test.tsx` 5건·`AccountsSection.test.tsx` 6건) |
 | VER-38 | AC-38 | TASK-66 | 역할별 `GET /timetable`·종료 시각 계산·수업 길이 변경·미등록/비활성 처리 API 테스트 + 격자·강사별 보기·390px 목록 웹 테스트 — **통과** (`test_timetable.py` 7건, 웹 `TimetablePage.test.tsx` 7건·`ClassMinutesSetting.test.tsx` 1건, VER-35에 화면 추가) |
 | VER-37 | AC-37 | TASK-63 | 시간표 저장·조회(종료 시각 없음)·중복 거부 API 테스트 + 등록·수정 편집과 표시 웹 테스트 — **통과** (`test_class_schedule.py` 4건, 웹 2건) |
