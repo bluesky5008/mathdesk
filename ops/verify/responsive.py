@@ -21,7 +21,8 @@ PORT = 8799
 WIDTHS = [int(w) for w in os.environ.get("VER35_WIDTHS", "390,768,1280").split(",")]
 
 BROWSE = [("종합 대시보드", "/"), ("알림문자", "/messages"),
-          ("학생/반 관리", "/students"), ("주간 시간표", "/timetable"), ("성적 통계", "/stats"),
+          ("학생 관리", "/students"), ("반 관리", "/students/classes"),
+          ("주간 시간표", "/timetable"), ("성적 통계", "/stats"),
           ("시험지 분석", "/exams"), ("학원 설정", "/settings")]
 DESKTOP_ONLY = [("일일 입력", "/daily")]
 

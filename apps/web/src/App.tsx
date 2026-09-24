@@ -5,6 +5,7 @@ import { SESSION_EXPIRED_EVENT, fetchCurrentUser, logout, type CurrentUser } fro
 import { LoginForm } from './LoginForm'
 import { ForcedPasswordChange } from './PasswordChange'
 import { AppShell } from './components/AppShell'
+import { ManageTabs } from './components/ManageTabs'
 import { ClassesPage } from './pages/ClassesPage'
 import { DailyPage } from './pages/DailyPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -90,15 +91,10 @@ export function App() {
             />
           }
         />
-        <Route
-          path="/students"
-          element={
-            <>
-              <StudentsPage />
-              <ClassesPage isDirector={user.role === 'director'} />
-            </>
-          }
-        />
+        <Route path="/students" element={<ManageTabs />}>
+          <Route index element={<StudentsPage />} />
+          <Route path="classes" element={<ClassesPage isDirector={user.role === 'director'} />} />
+        </Route>
       </Routes>
     </AppShell>
   )

@@ -22,7 +22,7 @@ function unauthorized() {
   return Response.json({ detail: '인증이 필요합니다.' }, { status: 401 })
 }
 
-function mountApp(handler: (url: string, method: string) => Response) {
+function mountApp(handler: (url: string, method: string) => Response, path = '/') {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => handler(url, init?.method ?? 'GET')),
@@ -30,7 +30,7 @@ function mountApp(handler: (url: string, method: string) => Response) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <App />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -66,4 +66,39 @@ it('keeps the wrong-password message on the login screen', async () => {
 
   expect(await screen.findByRole('alert')).toHaveTextContent('자격 증명이 올바르지 않습니다')
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
+})
+
+// 2026-09-25 사용자 요청: 학생/반 관리를 [학생]·[반] 하위 탭으로 나누고 탭마다 주소를 둔다
+function signedIn(url: string) {
+  return url === '/api/auth/me' ? Response.json(DIRECTOR) : Response.json([])
+}
+
+it('shows only the student tab at /students with the top menu selected', async () => {
+  mountApp(signedIn, '/students')
+
+  expect(await screen.findByRole('heading', { name: '학생 관리' })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: '반 관리' })).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: '학생' })).toHaveAttribute('aria-current', 'page')
+  expect(screen.getByRole('link', { name: '학생/반 관리' })).toHaveAttribute('aria-current', 'page')
+})
+
+it('shows only the class tab at its own address with the top menu still selected', async () => {
+  mountApp(signedIn, '/students/classes')
+
+  expect(await screen.findByRole('heading', { name: '반 관리' })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: '학생 관리' })).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: '반' })).toHaveAttribute('aria-current', 'page')
+  expect(screen.getByRole('link', { name: '학생' })).not.toHaveAttribute('aria-current')
+  expect(screen.getByRole('link', { name: '학생/반 관리' })).toHaveAttribute('aria-current', 'page')
+})
+
+it('switches between the student and class tabs', async () => {
+  mountApp(signedIn, '/students')
+
+  await userEvent.click(await screen.findByRole('link', { name: '반' }))
+  expect(await screen.findByRole('heading', { name: '반 관리' })).toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('link', { name: '학생' }))
+  expect(await screen.findByRole('heading', { name: '학생 관리' })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: '반 관리' })).not.toBeInTheDocument()
 })

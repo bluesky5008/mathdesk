@@ -153,7 +153,7 @@ export function StudentsPage() {
   }
 
   return (
-    <section className="mb-8">
+    <section>
       <PageHeader title="학생 관리" />
 
       <Card className="mb-5">
