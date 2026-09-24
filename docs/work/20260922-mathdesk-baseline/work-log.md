@@ -11,8 +11,8 @@
 ## 요약
 
 - 목적: 기준선 `v1`의 구현 진행 상태, 결정, 검증 결과와 재개 지점을 기록한다.
-- 현재 결론 또는 상태: 사이클 1(MVP) 완료(사용자 승인). 사이클 2 진행 중 — 2026-09-24 세션에서 마스터 데이터 수정(TASK-49~52), M5 성적 통계(TASK-24~26), 공통 기반(TASK-28), M6 시험지 분석(TASK-29~32), M7 OMR 채점(TASK-33~36), M9 상담일지(TASK-27), M8 알림톡(TASK-37, 실발송 미검증)을 완료했다. 작업 53건 중 48건.
-- 다음 행동: [TASK-38 전체 통합·비기능 검증](../../plan.md#task-38-전체-통합비기능-검증). 상세는 [인계](#인계).
+- 현재 결론 또는 상태: 사이클 1(MVP) 완료(사용자 승인). 사이클 2 진행 중 — 2026-09-24 세션에서 마스터 데이터 수정(TASK-49~52), M5 성적 통계(TASK-24~26), 공통 기반(TASK-28), M6 시험지 분석(TASK-29~32), M7 OMR 채점(TASK-33~36), M9 상담일지(TASK-27), M8 알림톡(TASK-37, 실발송 미검증), 전체 통합 검증(TASK-38)을 완료했다. 작업 53건 중 49건.
+- 다음 행동: [TASK-43 Claude 실호출 검증](../../plan.md#task-43-claude-실호출-검증) — Anthropic API 키를 사용자에게 요청. 상세는 [인계](#인계).
 
 ## 문서 연결
 
@@ -31,8 +31,8 @@
 
 ## 현재 상태
 
-- 진행 중인 작업: 없음. M8 알림톡(TASK-37) 완료, 실발송 미검증
-- 마지막 완료 작업: [TASK-37 M8 카카오 알림톡](../../plan.md#task-37-m8-카카오-알림톡) (2026-09-24 12:39)
+- 진행 중인 작업: 없음. 전체 통합 검증(TASK-38) 완료
+- 마지막 완료 작업: [TASK-38 전체 통합·비기능 검증](../../plan.md#task-38-전체-통합비기능-검증) (2026-09-24 12:59)
 - 차단 요인: 없음. Anthropic API 키는 [TASK-43](../../plan.md#task-43-claude-실호출-검증)에서만 필요하며 그 앞 구현을 차단하지 않는다. 구 경로(`/api/messages/report.png`)의 Cloudflare 엣지 캐시 퍼지는 사용자가 보류했다(TTL 만료로 자연 해소)
 
 ## 계획 트리
@@ -923,6 +923,54 @@ flowchart TD
 - 주의: 알림톡은 **정보성만** 가능(원생 모집·이벤트·할인 문구가 섞이면 반려). 채널 친구가 아니어도 전화번호로 받는다. 학원 공지·성적 안내가 통과한다는 공식 사례는 확인 못 함(정보성 요건에는 맞는다).
 - **사업자등록 필수 여부(2026-09-24 추가 확인):** 사용자 확인으로 클라이언트는 원장이 아니며 사업자등록증이 없다. 카카오 공식 가이드(`kakaobusiness.gitbook.io/main/ad/infotalk`)는 알림톡 발송 조건으로 "비즈니스 채널로 전환"을 요구하고, 비즈니스 인증은 사업자등록증(또는 고유번호증)으로만 신청할 수 있다(`/channel/start` — 개인사업자 대표·법인 대표·직원·대행사 경로뿐). **사업자등록번호·고유번호가 없는 개인은 알림톡을 보낼 수 없다.** 가능한 길: 소속 학원의 사업자등록증으로 "직원" 신청(원장 협조 필요, 채널은 학원 명의), 클라이언트 본인의 사업자등록, 또는 알림톡을 쓰지 않고 문자만 사용. 문자(알리고)는 개인 회원으로 가입해 **본인 명의 휴대폰 번호를 본인인증만으로** 발신번호 등록할 수 있다(알리고 FAQ seq 101, 2022-10-26). 결정은 사용자 몫 — 코드는 알림톡이 없어도 문자로 그대로 동작한다.
 
+### 2026-09-24 — TASK-38 전체 통합·비기능 검증 완료
+
+- 사전 정리: 문자·알림톡 준비 문서 [`ops/messaging-setup.md`](../../../ops/messaging-setup.md)를 쓰면서 **테스트 운영 compose가 `MATHDESK_MESSAGING_MODE`·`ALIGO_*`를 앱 컨테이너에 넘기지 않아 실발송으로 바꿀 수 없던 것**을 발견해 고쳤다(빈 값이면 테스트 모드, 재기동 후 `test` 확인). 저장소의 `.env.example`은 `.gitignore`의 `.env.*`에 걸려 한 번도 커밋된 적이 없다 — 로컬 파일만 갱신했고 추적 여부는 손대지 않았다(README가 이 파일을 가리키므로 후속 판단 필요).
+- **NFR-11 백업(VER-24):** 단일 명령 [`ops/backup.sh`](../../../ops/backup.sh)(DB `pg_dump -Fc` + `files` 볼륨 tar + SHA256SUMS, 폴더 700)와 [`ops/restore.sh`](../../../ops/restore.sh)(체크섬 확인 → 앱 정지 → `pg_restore --clean --if-exists` → 볼륨 비우고 풀기 → 앱 기동, `RESTORE` 입력 확인)를 만들었다. 운영 중인 테스트 운영을 덮어쓰지 않으려고 **별도 compose 프로젝트 `mathdesk-restorecheck`에 복원**해 검증했다.
+  - DB: 테스트 운영 백업 → 복원 후 정확 행 수(학생 47·일일 기록 9·발송 로그 1·사용자 1), `alembic_version` `492d52940879`, 학생 이름·수험번호 md5 모두 일치.
+  - 파일: 테스트 운영에 업로드 파일이 없어(빈 볼륨) 복원 확인용 프로젝트에 200KB 무작위 파일을 넣고 백업 → 삭제 → 복원 → sha256 일치.
+  - 확인 후 `down -v`로 흔적을 지웠다.
+- **NFR 재측정:** `scripts/measure_perf.py`(반 10·학생 200·기록 10,400) — NFR-01 대시보드 p95 **17ms**(기준 1500), NFR-02 일괄 저장 p95 **11ms**(기준 500). `scripts/measure_omr.py` — NFR-03 30쪽 **2.0초**(기준 300초), 불일치 0. 모두 Apple M4 호스트.
+- **NFR-09(VER-23):** `test_migrations.py` 2건 통과(빈 DB `upgrade head` → `downgrade base` 왕복, 오늘 추가한 `492d52940879` 포함).
+- **NFR-07:** `test_scope.py::test_every_api_route_enforces_campus_scope`가 라우트를 순회하므로 오늘 추가한 OMR·채점·상담·템플릿 경로도 자동으로 포함되어 통과.
+- 전체: API 193건 통과(1 skip — 호스트 글꼴 차이로 시각 회귀를 컨테이너에서만 돌린다, 기존), 웹 68건·18파일, `npm run build`, VER-35(390·768·1280px) 통과.
+
+#### 인수 조건 전항 판정 (AC-01~AC-27)
+
+| AC | 근거 | 결과 |
+|---|---|---|
+| AC-01 로그인 | `test_auth.py::test_login_then_me_then_logout_blocks_protected_access` | 성공 |
+| AC-02 권한 격리 | `test_scope.py::test_teacher_cannot_manage_users`, `test_masterdata.py::test_teacher_cannot_read_a_class_they_do_not_teach`, `test_daily.py::test_teacher_cannot_touch_daily_records_of_another_class`, 라우트 순회 | 성공 |
+| AC-03 캠퍼스 격리 | `test_scope.py::test_campus_list_only_returns_accessible_campuses`, `::test_request_for_another_campus_is_forbidden` (+ 오늘 추가된 상담·OMR 타 캠퍼스 403 테스트) | 성공 |
+| AC-04 학생 등록 | `test_masterdata.py::test_omr_number_range_per_digit`, `::test_student_with_out_of_range_omr_number_is_rejected` | 성공 |
+| AC-05 마스터 데이터 시나리오 | 웹 `Roster.test.tsx`, 시드 e2e(학생 47·반 4) | 성공 — **브라우저 육안 확인 미수행** |
+| AC-06 출결 입력 | `test_attendance.py::test_attendance_toggles_back_to_unchecked`, `::test_confirmed_attendance_is_locked_until_unlocked` | 성공 |
+| AC-07 등원 집계 | `test_dashboard.py::test_attendance_shows_attending_over_enrolled` | 성공 |
+| AC-08 반 단위 기록 | `test_daily.py::test_saving_records_keeps_unsaved_notes_and_the_reverse` | 성공 |
+| AC-09 재검사 판정 | `test_attendance.py::test_recheck_target_comes_from_the_previous_session_grade` | 성공 |
+| AC-10 즉시 저장 | `test_attendance.py::test_recheck_result_is_saved_immediately` | 성공 |
+| AC-11 저장 단위 독립 | `test_daily.py::test_saving_records_keeps_unsaved_notes_and_the_reverse`, 웹 `DailyPage.test.tsx` | 성공 |
+| AC-12 테스트 평균 | `test_daily.py::test_class_test_average_is_computed_from_saved_scores` | 성공 |
+| AC-13 과제 완수율 | `test_dashboard.py::test_weekly_homework_rate_and_delta_against_last_week` | 성공 |
+| AC-14 메시지 병합 | `test_message_render.py` 7건 | 성공 |
+| AC-15 등급 문구 | `test_messages_api.py::test_editing_a_grade_comment_changes_the_preview` | 성공 |
+| AC-16 리포트 이미지 | `test_report_image.py`, `test_report_html.py` | 성공 |
+| AC-17 테스트 모드 발송 | `test_message_send.py::test_test_mode_sends_without_calling_the_provider` | 성공 — 알리고 실발송 미검증(Q-02) |
+| AC-18 발송 로그 | `test_message_send.py::test_send_writes_a_log_with_an_immutable_body_snapshot` | 성공 |
+| AC-19 학생 통계 | `test_statistics.py::test_student_history_gives_eight_weeks_with_the_class_average` | 성공 |
+| AC-20 내보내기 | `test_statistics.py::test_export_contains_the_same_rows_as_the_class_stats_screen` | 성공 |
+| AC-21 시험지 정규화 | `test_ingest.py`(PDF 텍스트·이미지 폴백, `.hwpx`, `.hwp` 보호 비트·비OLE 안내) | 성공 — `.hwp`·`.hwpx`는 **합성 픽스처만**(실파일 미확보) |
+| AC-22 문항 분석 초안 | `test_analysis.py::test_thirty_question_exam_produces_thirty_draft_questions`, 웹 `ExamsPage.test.tsx` | 성공 — 테스트 모드. 실제 분석 품질은 TASK-43 |
+| AC-23 LLM 공급자 교체 | `test_analysis.py::test_provider_is_chosen_by_configuration_not_code`, `::test_every_adapter_honours_the_same_contract` | 성공 — Anthropic 실호출은 TASK-43 |
+| AC-24 OMR 판독 정확도 | `test_omr.py::test_distorted_sheet_reads_every_field_and_flags_the_deliberate_errors` | 성공 — **합성 답안지만**(Q-08) |
+| AC-25 OMR 검수·반영 | `test_omr_scoring.py::test_scans_waiting_for_review_are_not_scored`, `::test_correcting_an_applied_scan_updates_score_and_question_rate`, `test_omr_review.py::test_correcting_every_flag_readies_the_scan_and_records_each_change`, `::test_uploaded_sheets_reach_scores_only_after_review` | 성공 |
+| AC-26 알림톡 폴백 | `test_alimtalk.py::test_failed_alimtalk_falls_back_to_sms_and_both_attempts_are_logged` | 성공 — 가짜 어댑터. 실발송 미검증(Q-03, 사업자등록 필요) |
+| AC-27 외부 전송 경계 | `test_message_send.py::test_message_path_never_calls_an_llm`, `test_omr.py::test_pdf_pages_are_read_into_scans_and_a_bad_page_does_not_stop_the_rest` | 성공 |
+
+AC-28~AC-35(기준선 v2~v6 추가분)는 각 작업에서 판정했다: AC-28·29(TASK-40~42), AC-30(VER-29), AC-31·34(VER-30·32), AC-32(VER-31), AC-33(VER-33), AC-35(VER-35 — 오늘 재확인).
+
+**실패한 인수 조건은 없다.** 미수행은 모두 외부 조건(실발송·실스캔·실파일·API 키·사람의 눈)에 묶여 있고 위 표와 [미완료 항목](#미완료-항목)에 적었다.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |
@@ -944,29 +992,30 @@ flowchart TD
 
 ## 미완료 항목
 
-- TASK-27·TASK-33~TASK-39·TASK-43(사이클 2)
-- 알리고 실발송 경로 미검증([Q-02](../../requirements.md#가정과-미해결-질문))
-- AC-05의 브라우저 육안 확인 미수행(자동화 제외 항목)
-- 구 경로 `/api/messages/report.png`의 Cloudflare 엣지 캐시 잔존 — 퍼지 또는 TTL 만료 대기
-- VER-01~VER-10·VER-25·VER-26·VER-27 통과
-- 실제 재부팅에서의 자동 기동은 미검증(사용자 재부팅 시 확인)
-- 테스트 운영 자격 증명이 `director`/`director` — 배포 이관 단계에서 교체하기로 합의된 의도된 상태
-- AC-05의 실제 브라우저 육안 확인은 미수행(자동화 제외 항목, 사용자 확인 필요)
-- VER-23(마이그레이션 왕복)은 TASK-03에서 1차 확보. 나머지 VER 항목은 미수행
-- 로그인 시도 제한 임계값·잠금 시간 미결정 (TASK-40)
-- 화면 ①~④의 시각 확인 — 대시보드는 2026-09-23 사용자 스크린샷으로 확인됨. 나머지는 미수행
-- 학생·반 관리 화면의 육안 확인 미수행 — 수정·명단 대화상자와 목록 토글은 vitest·빌드·반응형 측정만 거쳤다
-- 수강 해제의 종료일은 항상 오늘이다. 지난 날짜로 끊는 경로는 API(`PATCH`)에만 있고 화면에는 없다
-- 반 시간표 편집 UI 없음 — 등록은 빈 시간표로 만들고 수정 대화상자는 시간표를 읽기 전용으로 보여준다. 시간표는 시드로만 들어간다
-- lucide-react 미설치 — ADR-010 결정은 유효하나 아직 쓸 자리가 없다. Recharts는 TASK-26에서 설치했다
-- 통계 화면의 기간 비교(`compare`)는 API만 있고 화면에는 없다 — FR-25의 두 기간 비교는 API로 충족되나 UI는 후속 작업이다
-- [Q-02·Q-03·Q-08](../../requirements.md#가정과-미해결-질문) 미해소 — TASK-19·TASK-34·TASK-37의 실발송·실스캔 검증이 제한된다
-- OMR 판독은 합성 답안지로만 검증했다(Q-08). 임계값 보정은 실스캔 확보 후. 이미지 업로드의 해상도 상한 없음(압축 폭탄 미차단, 원장 전용)
-- **`.hwp`·`.hwpx` 실파일 미확보(2026-09-24 사용자 확인)** — 두 포맷의 정규화 경로는 합성 픽스처로만 검사했다. 실파일을 얻으면 [TASK-30](../../plan.md#task-30-documentingest-4포맷-정규화)의 검증을 다시 돌려야 한다
+TASK-38(2026-09-24)에서 전체를 다시 확인해 지난 항목을 걷어 냈다.
+
+- 작업: TASK-43(Claude 실호출, Anthropic API 키 필요), TASK-39(최종 사이클 완료 승인)
+- 외부 조건 때문에 미검증
+  - 문자 실발송(Q-02) — 준비 절차는 [`ops/messaging-setup.md`](../../../ops/messaging-setup.md). 클라이언트 본인 번호로 가능
+  - 알림톡 실발송(Q-03) — 클라이언트에게 사업자등록번호가 없어 현재 불가. 학원 직원 신청 또는 본인 사업자등록이 필요
+  - OMR 실스캔(Q-08) — 합성 답안지로만 검증, 임계값은 합성 기준값
+  - `.hwp`·`.hwpx` 실파일 — 합성 픽스처로만 검증
+  - Claude 문항 분석 품질·비용 실측 — TASK-43
+- 사람의 확인 필요: AC-05 브라우저 육안 확인, 화면 ②~④·학생/반 관리의 육안 확인(대시보드는 2026-09-23 확인), 실제 재부팅 시 자동 기동
+- 의도된 임시 상태: 테스트 운영 자격 증명 `director`/`director`(실제 데이터 전에 교체), 구 경로 `/api/messages/report.png` Cloudflare 엣지 캐시(TTL 만료로 해소)
+- 기능 공백(요구사항 충족 범위 밖의 후속 후보)
+  - 수강 해제 종료일은 화면에서 항상 오늘(과거 날짜는 API만)
+  - 반 시간표 편집 UI 없음(시드로만)
+  - 통계 기간 비교(`compare`)는 API만
+  - 알림톡 전달 단계 대체 발송은 알리고 내역에만 남는다
+  - 390px 학생 표의 학교명 글자 단위 줄바꿈
+  - 이미지 OMR 업로드의 해상도 상한 없음(원장 전용·20MB)
+  - 시행일 없는 시험의 재원 수는 서버 UTC 날짜 기준
+- 저장소 정리: `.env.example`이 `.gitignore`(`.env.*`)에 걸려 추적되지 않는다
 
 ## 재개 지점
 
-- 다음 작업: [TASK-38 전체 통합·비기능 검증](../../plan.md#task-38-전체-통합비기능-검증)
+- 다음 작업: [TASK-43 Claude 실호출 검증](../../plan.md#task-43-claude-실호출-검증) → [TASK-39 최종 사이클 완료 승인](../../plan.md#task-39--최종-사이클-완료-승인)
 - 사용자가 지정한 순서(2026-09-24): 모바일(완료) → 마스터 데이터 수정(완료) → 사이클 2 재개
 - 먼저 확인할 사항: [계획 트리](../../plan.md#계획-트리)의 현재 상태, `git status`가 깨끗한지, `docker compose ps`로 개발 스택 기동 여부
 - 필요한 문서: [TASK-33~37 정의](../../plan.md#task-33-m7-omr-채점), [FR-33 상세](../../requirements.md#fr-33-상세), [ADR-006](./ADR-006-OMR-양식-고정과-템플릿-판독.md), [NFR-04 상세](../../requirements.md#nfr-04-상세)(OMR은 로컬 전용), [OMR 프로토타입](../../../prototype/omr/)
@@ -1000,11 +1049,11 @@ flowchart TD
 - 다음 단계 또는 워크플로우: wf-implement 구현 — 사이클 2 계속
 - 시작 조건: 충족됨 — 기준선 `v6` 승인(2026-09-23), M6 시험지 분석(TASK-29~32)·TASK-34 완료, `git status` 깨끗
 - 입력 문서와 기준선: [PLAN-mathdesk](../../plan.md), [REQ-mathdesk](../../requirements.md) `v6`, [DESIGN-mathdesk](../../design.md) `v6`, [결정 등록부](../../decisions.md)(ADR-001~012, DCR-001~005 모두 `approved`)
-- 완료된 항목: 기준선 v1~v6 승인, ADR-001~012, DCR-001~005, 사이클 1 전체(TASK-01~TASK-22), TASK-23, TASK-40~TASK-42, 시각 설계 TASK-44~TASK-48, 모바일 TASK-53, 마스터 데이터 수정 TASK-49~TASK-52, M5 통계 TASK-24~TASK-26, 공통 기반 TASK-28, M6 시험지 분석 TASK-29~TASK-32, M7 OMR 채점 TASK-33~TASK-36, M9 상담일지 TASK-27, M8 알림톡 TASK-37 — 작업 53건 중 48건
-- 미완료 항목: TASK-38, TASK-39, TASK-43
+- 완료된 항목: 기준선 v1~v6 승인, ADR-001~012, DCR-001~005, 사이클 1 전체(TASK-01~TASK-22), TASK-23, TASK-40~TASK-42, 시각 설계 TASK-44~TASK-48, 모바일 TASK-53, 마스터 데이터 수정 TASK-49~TASK-52, M5 통계 TASK-24~TASK-26, 공통 기반 TASK-28, M6 시험지 분석 TASK-29~TASK-32, M7 OMR 채점 TASK-33~TASK-36, M9 상담일지 TASK-27, M8 알림톡 TASK-37, 통합 검증 TASK-38 — 작업 53건 중 49건
+- 미완료 항목: TASK-43, TASK-39
 - 사용자 결정(2026-09-24): 거절 폴백 유지, 정합 실패 페이지 표현 유지, OMR 합성 검증 유지(Q-08). 요구사항 미해결 질문(Q-02·Q-03·Q-07)은 **추후 재질문** — 적절한 시점(예: TASK-37 착수 시 Q-03)에 다시 묻는다. Q-04는 확인됨: 수험번호는 클라이언트가 부여·관리하므로 TASK-35는 번호가 있는 것으로 보고 매칭한다(없으면 `unmatched` → 수동 지정). Q-01은 추정안 유지
 - 테스트 운영: **작업이 끝날 때마다 바로 배포한다**(사용자 지시 2026-09-24). TASK-37까지 배포됨
 - 차단 요인: 없음. 다만 M7(OMR)은 실제 학생 마킹 스캔본이 없어([Q-08](../../requirements.md#가정과-미해결-질문)) **합성 답안지로 AC-24만 검증 가능**하고 임계값은 합성 기준값을 쓴다([RISK-01](../../requirements.md#위험))
-- 다음 행동: **[TASK-38 전체 통합·비기능 검증](../../plan.md#task-38-전체-통합비기능-검증).** 계획의 TASK-38 정의와 [검증 전략](../../design.md#검증-전략)·VER 목록에서 아직 "미수행"인 항목부터 모은다(NFR 측정·권한 누락 탐지·백업 단일 명령 등). 그다음 TASK-43(Claude 실호출, API 키 필요 — 사용자에게 요청), TASK-39 최종 승인. 알림톡 실발송은 사용자가 카카오 채널·템플릿 승인·`ALIGO_SENDER_KEY`를 준비하면 검증한다(준비 사항은 [TASK-37 기록](#알림톡-준비-사항-2026-09-24-조사))
+- 다음 행동: **[TASK-43 Claude 실호출 검증](../../plan.md#task-43-claude-실호출-검증).** 사용자에게 Anthropic API 키(와 예산 상한 확인)를 요청한다. 키는 `.env`(`ANTHROPIC_API_KEY` 등, `llm.py`·ADR-009 참조)로만 받고 커밋하지 않는다. 실제 30문항 시험지로 분석해 품질·토큰·비용을 기록한다. 서버 측 거절 폴백(`fallbacks`)은 사용자 결정으로 유지. 그다음 [TASK-39 최종 사이클 완료 승인](../../plan.md#task-39--최종-사이클-완료-승인)에서 AC 판정표([TASK-38 기록](#2026-09-24--task-38-전체-통합비기능-검증-완료))와 미완료 항목을 사용자에게 보여 승인받는다
 - 재개 프롬프트: 작업 20260922-mathdesk-baseline 재개 — docs/work/20260922-mathdesk-baseline/work-log.md의 인계 절을 읽고 "다음 행동"부터 진행하라.
 - 커밋 리듬: TASK 하나가 끝날 때마다 커밋하고 **push까지 함께** 수행한다(사용자 지시 2026-09-22, 별도 지시 전까지 유효).

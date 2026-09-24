@@ -67,6 +67,18 @@ launchctl list | grep mathdesk
 
 `restart: unless-stopped`만으로는 부족하다. 이 환경에서 Docker Desktop을 재시작하면 정책이 있어도 컨테이너가 복구되지 않는 것을 실측했다. 로그는 `~/Library/Logs/mathdesk/testops.log`.
 
+## 백업·복원 (NFR-11)
+
+```bash
+ops/backup.sh                     # ~/mathdesk-backups/<시각>/{db.dump, files.tar.gz, SHA256SUMS}
+ops/restore.sh <백업 폴더>          # 테스트 운영을 백업 시점으로 덮어쓴다(RESTORE 입력 확인)
+```
+
+- 백업은 DB 전체(`pg_dump -Fc`)와 업로드 파일(`files` 볼륨)을 한 번에 뜬다. 폴더 권한은 본인 전용(700)이다. 실제 학생 정보가 들어가면 백업도 개인정보다.
+- 복원은 앱을 멈추고 DB를 `pg_restore --clean`으로, 업로드 파일을 볼륨 비우고 풀어 되살린 뒤 앱을 올린다. 체크섬이 맞지 않으면 시작하지 않는다.
+- 다른 프로젝트로 복원해 확인하려면 `PROJECT=mathdesk-restorecheck YES=1 SKIP_APP=1 ops/restore.sh <폴더>` 후 `docker compose -p mathdesk-restorecheck -f compose.testops.yaml down -v`.
+- 자동 주기 백업은 두지 않았다. 필요하면 launchd에 `ops/backup.sh`를 건다.
+
 ## 문자·알림톡 실발송
 
 준비 서류와 절차, 서버 설정은 [messaging-setup.md](messaging-setup.md)에 있다. 기본은 테스트 모드다.
