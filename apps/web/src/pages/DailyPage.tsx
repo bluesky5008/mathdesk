@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 
-import { AttendanceCell } from '../components/AttendanceButtons'
+import { AttendanceCell, AttendanceLockBanner } from '../components/AttendanceButtons'
 import { PageHeader } from '../components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
@@ -123,6 +123,7 @@ export function DailyPage() {
   }
 
   const locked = Boolean(session?.attendance_confirmed_at)
+  const [nudge, setNudge] = useState(0)
 
   return (
     <section>
@@ -161,6 +162,18 @@ export function DailyPage() {
         </div>
       )}
 
+      {session?.attendance_confirmed_at && (
+        <AttendanceLockBanner
+          sessionDate={session.session_date}
+          confirmedAt={session.attendance_confirmed_at}
+          nudge={nudge}
+          unlocking={confirmation.isPending}
+          onUnlock={() => confirmation.mutate(false)}
+        >
+          과제·테스트는 그대로 입력할 수 있습니다.
+        </AttendanceLockBanner>
+      )}
+
       <Card className="mb-5">
         <CardContent className="p-0">
           <KeyboardGrid>
@@ -168,7 +181,7 @@ export function DailyPage() {
               <TableHead>
                 <TableRow>
                   <TableHeaderCell className="w-28">학생</TableHeaderCell>
-                  <TableHeaderCell>출결 상태</TableHeaderCell>
+                  <TableHeaderCell>{locked ? '출결 상태 🔒' : '출결 상태'}</TableHeaderCell>
                   <TableHeaderCell>이전 과제 재검사</TableHeaderCell>
                   <TableHeaderCell>과제피드백</TableHeaderCell>
                   <TableHeaderCell className="w-24">테스트</TableHeaderCell>
@@ -183,7 +196,8 @@ export function DailyPage() {
                         name={record.name}
                         status={String(valueOf(record, 'attendance_status'))}
                         reason={String(valueOf(record, 'attendance_reason') ?? '')}
-                        disabled={locked}
+                        locked={locked}
+                        onLocked={() => setNudge((n) => n + 1)}
                         onStatusChange={(next) =>
                           patch(record.student_id, { attendance_status: next })
                         }
@@ -278,9 +292,9 @@ export function DailyPage() {
           type="button"
           variant="outline"
           onClick={() => confirmation.mutate(!locked)}
-          disabled={!session}
+          disabled={!session || confirmation.isPending}
         >
-          {locked ? '편집' : '확인'}
+          {locked ? '확정 해제' : '출결 확정'}
         </Button>
         <span className="text-xs text-muted-fg">
           위아래 방향키와 Enter로 같은 열의 다음 학생으로 이동합니다.

@@ -95,19 +95,21 @@ it('shows the previous session progress and homework', async () => {
   expect(screen.getByText('기출 풀어오기')).toBeInTheDocument()
 })
 
-it('confirms attendance and locks the buttons until edit is pressed', async () => {
+it('confirms attendance and locks the buttons until unlocked', async () => {
   renderPage()
   const row = within(await screen.findByRole('row', { name: /김나윤/ }))
-  expect(row.getByRole('button', { name: '출석' })).toBeEnabled()
-
-  await userEvent.click(screen.getByRole('button', { name: '확인' }))
-  expect(calls).toContain('POST /api/daily/9/attendance/confirm')
+  expect(row.getByRole('button', { name: '출석' })).not.toHaveAttribute('aria-disabled')
 
   daily.session.attendance_confirmed_at = '2026-09-20T10:00:00+00:00'
-  await userEvent.click(screen.getByRole('button', { name: '확인' }))
+  await userEvent.click(screen.getByRole('button', { name: '출결 확정' }))
+  expect(calls).toContain('POST /api/daily/9/attendance/confirm')
 
-  const locked = within(await screen.findByRole('row', { name: /김나윤/ }))
-  expect(locked.getByRole('button', { name: '출석' })).toBeDisabled()
-  await userEvent.click(screen.getByRole('button', { name: '편집' }))
+  expect(await screen.findByText(/출결이 확정되어 잠겨 있습니다/)).toBeInTheDocument()
+  const locked = within(screen.getByRole('row', { name: /김나윤/ }))
+  expect(locked.getByRole('button', { name: '출석' })).toHaveAttribute('aria-disabled', 'true')
+  await userEvent.click(locked.getByRole('button', { name: '출석' }))
+  expect(locked.getByText('확정됨 · [확정 해제] 후 수정')).toBeInTheDocument()
+
+  await userEvent.click(screen.getAllByRole('button', { name: '확정 해제' })[0])
   expect(calls).toContain('POST /api/daily/9/attendance/unlock')
 })

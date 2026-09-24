@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
-import { AttendanceCell } from '../components/AttendanceButtons'
+import { AttendanceCell, AttendanceLockBanner } from '../components/AttendanceButtons'
 import { PageHeader } from '../components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
@@ -44,6 +44,7 @@ export function DashboardPage() {
   })
   const session = daily.data?.session
   const locked = Boolean(session?.attendance_confirmed_at)
+  const [nudge, setNudge] = useState(0)
 
   const [drafts, setDrafts] = useState<Record<number, RecordPatch>>({})
 
@@ -141,10 +142,21 @@ export function DashboardPage() {
           <CardHeader>
             <CardTitle>반별 출결 체크</CardTitle>
             <CardDescription>
-              선택한 출결을 다시 누르면 해제됩니다. 마지막에 확인을 눌러 출결을 확정해 주세요.
+              선택한 출결을 다시 누르면 해제됩니다. 마지막에 [출결 확정]을 눌러 주세요.
             </CardDescription>
           </CardHeader>
           <CardContent className="px-0 pt-4 pb-0">
+            {session?.attendance_confirmed_at && (
+              <div className="px-5">
+                <AttendanceLockBanner
+                  sessionDate={session.session_date}
+                  confirmedAt={session.attendance_confirmed_at}
+                  nudge={nudge}
+                  unlocking={confirmation.isPending}
+                  onUnlock={() => confirmation.mutate(false)}
+                />
+              </div>
+            )}
             <KeyboardGrid>
               <Table>
                 <TableBody>
@@ -162,7 +174,8 @@ export function DashboardPage() {
                             reason={String(
                               draft?.attendance_reason ?? record.attendance_reason ?? '',
                             )}
-                            disabled={locked}
+                            locked={locked}
+                            onLocked={() => setNudge((n) => n + 1)}
                             onStatusChange={(next) =>
                               patch(record.student_id, { attendance_status: next })
                             }
@@ -189,9 +202,9 @@ export function DashboardPage() {
                 type="button"
                 variant="outline"
                 onClick={() => confirmation.mutate(!locked)}
-                disabled={!session}
+                disabled={!session || confirmation.isPending}
               >
-                {locked ? '편집' : '확인'}
+                {locked ? '확정 해제' : '출결 확정'}
               </Button>
             </div>
           </CardContent>

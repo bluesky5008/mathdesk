@@ -105,6 +105,42 @@ it('shows no assignment notice when students are enrolled', async () => {
   expect(screen.queryByText(/배정된 학생이 없습니다/)).not.toBeInTheDocument()
 })
 
+// 2026-09-25 테스트 운영: 확정된 출결이 흐린 버튼과 표 아래 [편집]으로만 표시되어 잠긴 줄 몰랐다
+it('marks confirmed attendance as locked with a banner and an unlock button', async () => {
+  daily.session.attendance_confirmed_at = '2026-09-18T15:08:00+00:00'
+
+  renderPage()
+
+  expect(await screen.findByText(/9\/18 출결이 확정되어 잠겨 있습니다/)).toHaveTextContent(
+    /\(\d+\/\d+ \d{2}:\d{2} 확정\)\. 과제·테스트는 그대로 입력할 수 있습니다/,
+  )
+  expect(screen.getByRole('columnheader', { name: '출결 상태 🔒' })).toBeInTheDocument()
+
+  await userEvent.click(screen.getAllByRole('button', { name: '확정 해제' })[0])
+  expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/daily/9/attendance/unlock', expect.anything())
+})
+
+it('keeps a locked attendance cell unchanged and says why when clicked', async () => {
+  daily.session.attendance_confirmed_at = '2026-09-18T15:08:00+00:00'
+
+  renderPage()
+  const row = within(await screen.findByRole('row', { name: /학생1\b/ }))
+  await userEvent.click(row.getByRole('button', { name: '출석' }))
+  await userEvent.type(row.getByLabelText('학생1 사유'), '병원')
+
+  expect(row.getByRole('button', { name: '출석' })).toHaveAttribute('aria-pressed', 'false')
+  expect(row.getByLabelText('학생1 사유')).toHaveValue('')
+  expect(row.getByText('확정됨 · [확정 해제] 후 수정')).toBeInTheDocument()
+})
+
+it('names the confirm button and leaves the header plain while unlocked', async () => {
+  renderPage()
+
+  expect(await screen.findByRole('button', { name: '출결 확정' })).toBeInTheDocument()
+  expect(screen.getByRole('columnheader', { name: '출결 상태' })).toBeInTheDocument()
+  expect(screen.queryByText(/잠겨 있습니다/)).not.toBeInTheDocument()
+})
+
 it('toggles an attendance button back to unchecked', async () => {
   renderPage()
   const row = within(await screen.findByRole('row', { name: /학생1\b/ }))

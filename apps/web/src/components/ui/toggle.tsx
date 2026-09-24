@@ -3,12 +3,13 @@ import { cn } from '../../lib/utils'
 
 // 눌림 상태를 색으로 구분한다. 일일 입력 화면은 표를 눈으로 훑는 일이 많아
 // 출결·등급을 글자 대신 색으로 먼저 읽을 수 있어야 한다.
+// hover 색도 같게 둔다. outline의 hover:bg-accent가 남으면 눌린 버튼이 흰 글자만 남아 사라져 보인다
 const TONE = {
-  brand: 'bg-brand text-brand-fg',
-  success: 'bg-success text-brand-fg',
-  warning: 'bg-warning text-warning-fg',
-  danger: 'bg-danger text-brand-fg',
-  neutral: 'bg-muted-fg text-brand-fg',
+  brand: 'bg-brand hover:bg-brand text-brand-fg',
+  success: 'bg-success hover:bg-success text-brand-fg',
+  warning: 'bg-warning hover:bg-warning text-warning-fg',
+  danger: 'bg-danger hover:bg-danger text-brand-fg',
+  neutral: 'bg-muted-fg hover:bg-muted-fg text-brand-fg',
 } as const
 
 export type Tone = keyof typeof TONE
