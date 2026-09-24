@@ -66,7 +66,18 @@ def _unauthorized() -> HTTPException:
     return HTTPException(status.HTTP_401_UNAUTHORIZED, "인증이 필요합니다.")
 
 
-async def current_user(session: Db, token: SessionToken = None) -> AppUser:
+def _set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        httponly=True,
+        secure=_cookie_secure(),
+        samesite="lax",
+        max_age=int(IDLE_TIMEOUT.total_seconds()),
+    )
+
+
+async def current_user(session: Db, response: Response, token: SessionToken = None) -> AppUser:
     if not token:
         raise _unauthorized()
 
@@ -88,6 +99,9 @@ async def current_user(session: Db, token: SessionToken = None) -> AppUser:
 
     stored.last_seen_at = now
     await session.commit()
+    # 유휴 만료(12시간)에 맞춰 브라우저 쿠키 수명도 요청마다 다시 늘린다.
+    # 로그인 때만 주면 계속 써도 로그인 12시간 뒤에 쿠키가 사라진다.
+    _set_session_cookie(response, token)
     return user
 
 
@@ -124,14 +138,7 @@ async def login(payload: LoginRequest, response: Response, session: Db) -> Curre
     session.add(UserSession(token_hash=_token_hash(token), user_id=user.id))
     await session.commit()
 
-    response.set_cookie(
-        SESSION_COOKIE,
-        token,
-        httponly=True,
-        secure=_cookie_secure(),
-        samesite="lax",
-        max_age=int(IDLE_TIMEOUT.total_seconds()),
-    )
+    _set_session_cookie(response, token)
     return _current_user_out(user)
 
 

@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { Route, Routes } from 'react-router'
 
-import { fetchCurrentUser, logout, type CurrentUser } from './api'
+import { SESSION_EXPIRED_EVENT, fetchCurrentUser, logout, type CurrentUser } from './api'
 import { LoginForm } from './LoginForm'
 import { ForcedPasswordChange } from './PasswordChange'
 import { AppShell } from './components/AppShell'
@@ -20,6 +20,7 @@ const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default:
 export function App() {
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [checked, setChecked] = useState(false)
+  const [expired, setExpired] = useState(false)
 
   useEffect(() => {
     fetchCurrentUser()
@@ -27,11 +28,29 @@ export function App() {
       .finally(() => setChecked(true))
   }, [])
 
+  // 사용 중 로그인이 끊기면(유휴 12시간 등) 화면을 남겨 두지 않고 로그인 화면으로 돌아간다
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null)
+      setExpired(true)
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
+  }, [])
+
   if (!checked) {
     return <p className="p-6 text-sm text-muted-fg">확인 중</p>
   }
   if (!user) {
-    return <LoginForm onLoggedIn={setUser} />
+    return (
+      <LoginForm
+        notice={expired ? '로그인이 만료되었습니다. 다시 로그인해 주세요.' : undefined}
+        onLoggedIn={(signedIn) => {
+          setExpired(false)
+          setUser(signedIn)
+        }}
+      />
+    )
   }
 
   const signOut = () => {

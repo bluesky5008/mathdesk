@@ -73,3 +73,25 @@ def test_session_cookie_is_http_only(client):
     cookie = login.headers["set-cookie"].lower()
     assert "httponly" in cookie
     assert "samesite=lax" in cookie
+
+
+def test_every_signed_in_request_extends_the_cookie_lifetime(api):
+    """유휴 만료 12시간(설계): 쓰는 동안에는 브라우저 쿠키도 12시간 뒤로 다시 늘어나야 한다.
+    로그인 때만 Max-Age를 주면 계속 써도 로그인 12시간 뒤에 쿠키가 사라진다(2026-09-24 테스트 운영 재현)."""
+    api.sign_in("director_a")
+    token = api.cookies["mathdesk_session"]
+
+    for path in ("/api/auth/me", "/api/students"):
+        response = api.get(path)
+        assert response.status_code == 200, path
+        cookie = response.headers.get("set-cookie", "").lower()
+        assert f"mathdesk_session={token.lower()}" in cookie, path
+        assert "max-age=43200" in cookie, path
+        assert "httponly" in cookie and "samesite=lax" in cookie, path
+
+
+def test_a_rejected_request_does_not_set_a_cookie(client):
+    response = client.get("/api/auth/me")
+
+    assert response.status_code == 401
+    assert "set-cookie" not in response.headers

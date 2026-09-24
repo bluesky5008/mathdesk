@@ -43,12 +43,23 @@ export type Klass = {
   schedules: Schedule[]
 }
 
+// 사용 중 로그인이 끊기면(401) 앱이 로그인 화면으로 돌아가도록 알린다.
+// 로그인 시도 실패와 첫 로그인 확인(/auth/me)은 "끊김"이 아니므로 제외한다
+export const SESSION_EXPIRED_EVENT = 'mathdesk:session-expired'
+
+function announceExpiry(response: Response, path: string) {
+  if (response.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     credentials: 'same-origin',
     headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
     ...init,
   })
+  announceExpiry(response, path)
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { detail?: string }
     throw new Error(body.detail ?? '요청을 처리하지 못했습니다.')
@@ -533,6 +544,7 @@ export async function registerExam(name: string, file: File): Promise<{ examId: 
     credentials: 'same-origin',
     body: form,
   })
+  announceExpiry(uploaded, '/exams/uploads')
   if (!uploaded.ok) {
     const body = (await uploaded.json().catch(() => ({}))) as { detail?: string }
     throw new Error(body.detail ?? '파일을 올리지 못했습니다.')
@@ -601,6 +613,7 @@ export async function uploadOmr(examId: number, file: File): Promise<{ file_id: 
     credentials: 'same-origin',
     body: form,
   })
+  announceExpiry(response, `/exams/${examId}/omr/uploads`)
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { detail?: string }
     throw new Error(body.detail ?? '파일을 올리지 못했습니다.')
