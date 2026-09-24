@@ -575,3 +575,29 @@ export function fetchExamResults(examId: number): Promise<ExamResults> {
 export function fetchQuestionStats(examId: number): Promise<QuestionStats> {
   return request<QuestionStats>(`/exams/${examId}/question-stats`)
 }
+
+export type Consult = {
+  id: number
+  student_id: number
+  consulted_on: string
+  content: string
+  follow_up: string | null
+  author: { id: number; name: string } | null
+}
+
+export type ConsultInput = { consulted_on: string; content: string; follow_up: string | null }
+
+export function fetchConsults(studentId: number): Promise<Consult[]> {
+  return request<Consult[]>(`/students/${studentId}/consults`)
+}
+
+export function createConsult(studentId: number, input: ConsultInput): Promise<Consult> {
+  return request<Consult>(`/students/${studentId}/consults`, { method: 'POST', body: JSON.stringify(input) })
+}
+
+export function updateConsult(studentId: number, consultId: number, input: ConsultInput): Promise<Consult> {
+  return request<Consult>(`/students/${studentId}/consults/${consultId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}

@@ -92,6 +92,10 @@ QSTATS = {"questions": [{"no": n, "answer": n % 5 + 1, "answer_even": (n + 2) % 
                          "unit": "함수의 극한과 연속", "sub_type": None, "difficulty": "mid"} for n in range(1, 31)],
           "units": [{"unit": "함수의 극한과 연속", "questions": 12, "wrong_rate": 38.5},
                     {"unit": "수열", "questions": 10, "wrong_rate": 25.0}]}
+CONSULTS = [{"id": i, "student_id": 1, "consulted_on": f"2026-09-{20 - i:02d}",
+             "content": "모의고사 결과 상담. 수열 단원 오답이 많아 개념 복습 계획을 함께 세웠다.",
+             "follow_up": "다음 주 오답 노트 확인" if i % 2 else None, "author": {"id": 1, "name": "원장"}}
+            for i in range(1, 4)]
 LOGS = [{"id": i, "requested_at": "2026-09-23T18:30:00", "recipient_phone": "010-1234-5678",
          "channel": "sms", "status": "sent", "is_test": True} for i in range(1, 6)]
 BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3457F", "logo_data_url": None}
@@ -108,6 +112,7 @@ def body_for(path: str):
     if "/stats/export" in path: return {}
     if "/stats/students" in path: return HISTORY
     if "/stats/classes" in path: return CLASS_STATS
+    if "/consults" in path: return CONSULTS
     if "/classes" in path: return CLASSES
     if "/students" in path: return STUDENTS
     if "/dashboard" in path: return DASHBOARD

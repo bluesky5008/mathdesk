@@ -111,6 +111,20 @@ def _visible_classes(scope: Scope):
     return statement.order_by(Klass.id)
 
 
+def visible_students(session: AsyncSession, scope: Scope):
+    """캠퍼스의 학생. 강사는 담당 반에 배정된 적이 있는 학생만 본다(권한 매트릭스)."""
+    statement = _repo(session, scope).select(Student)
+    if not scope.is_director:
+        statement = statement.where(
+            Student.id.in_(
+                select(Enrollment.student_id).where(
+                    Enrollment.class_id.in_(select(Klass.id).where(Klass.teacher_id == scope.user.id))
+                )
+            )
+        )
+    return statement
+
+
 async def _visible_class(session: AsyncSession, scope: Scope, class_id: int) -> Klass:
     klass = await session.scalar(_visible_classes(scope).where(Klass.id == class_id))
     if klass is None:
@@ -142,19 +156,11 @@ async def list_students(
     q: str | None = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> list[StudentOut]:
-    statement = _repo(session, scope).select(Student).order_by(Student.id)
+    statement = visible_students(session, scope).order_by(Student.id)
     if q:
         statement = statement.where(Student.name.ilike(f"%{q}%"))
     if status_filter:
         statement = statement.where(Student.status == status_filter)
-    if not scope.is_director:
-        statement = statement.where(
-            Student.id.in_(
-                select(Enrollment.student_id).where(
-                    Enrollment.class_id.in_(select(Klass.id).where(Klass.teacher_id == scope.user.id))
-                )
-            )
-        )
     students = await session.scalars(statement)
     return [StudentOut.model_validate(student, from_attributes=True) for student in students]
 

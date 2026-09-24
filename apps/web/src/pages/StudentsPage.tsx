@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 
 import { PageHeader } from '../components/PageHeader'
+import { ConsultDialog } from './ConsultDialog'
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '../components/ui/dialog'
@@ -84,6 +85,7 @@ export function StudentsPage() {
   const [form, setForm] = useState(EMPTY)
   const [showWithdrawn, setShowWithdrawn] = useState(false)
   const [edit, setEdit] = useState<{ id: number; form: Form; status: string } | null>(null)
+  const [consulting, setConsulting] = useState<{ id: number; name: string } | null>(null)
 
   const visible = (students.data ?? []).filter(
     (student) => showWithdrawn || student.status !== 'withdrawn',
@@ -170,7 +172,16 @@ export function StudentsPage() {
                   <TableCell className="text-muted-fg">
                     {STATUS[student.status as keyof typeof STATUS] ?? student.status}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mr-1"
+                      onClick={() => setConsulting({ id: student.id, name: student.name })}
+                    >
+                      상담
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -230,6 +241,8 @@ export function StudentsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {consulting && <ConsultDialog student={consulting} onClose={() => setConsulting(null)} />}
     </section>
   )
 }
