@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import type { Daily } from '../api'
@@ -58,7 +59,9 @@ function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <DailyPage />
+      <MemoryRouter>
+        <DailyPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -79,6 +82,27 @@ it('shows the attendance count as attending over enrolled', async () => {
   renderPage()
 
   expect(await screen.findByText('4 / 13명')).toBeInTheDocument()
+})
+
+// 2026-09-25 테스트 운영: 새 반에 배정이 없어 "0 / 0명"만 보이고 이유를 알 수 없었다
+it('explains how to assign students when nobody is enrolled on that date', async () => {
+  daily.records = []
+  daily.summary = { enrolled: 0, attending: 0, test_average: null, test_count: 0 }
+
+  renderPage()
+
+  expect(await screen.findByText(/이 날짜에 이 반에 배정된 학생이 없습니다/)).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: '학생/반 관리 → 반' })).toHaveAttribute(
+    'href',
+    '/students/classes',
+  )
+})
+
+it('shows no assignment notice when students are enrolled', async () => {
+  renderPage()
+
+  await screen.findByRole('row', { name: /학생1\b/ })
+  expect(screen.queryByText(/배정된 학생이 없습니다/)).not.toBeInTheDocument()
 })
 
 it('toggles an attendance button back to unchecked', async () => {

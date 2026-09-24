@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 
 import { AttendanceCell } from '../components/AttendanceButtons'
 import { PageHeader } from '../components/PageHeader'
@@ -257,6 +258,15 @@ export function DailyPage() {
               </TableBody>
             </Table>
           </KeyboardGrid>
+          {daily.data?.records.length === 0 && (
+            <p className="px-5 py-6 text-sm text-muted-fg">
+              이 날짜에 이 반에 배정된 학생이 없습니다.{' '}
+              <Link to="/students/classes" className="font-medium text-brand underline">
+                학생/반 관리 → 반
+              </Link>{' '}
+              탭의 [명단]에서 배정하세요.
+            </p>
+          )}
         </CardContent>
       </Card>
 
