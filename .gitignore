@@ -8,6 +8,8 @@ dist/
 # env / secrets
 .env
 .env.*
+# 설정 예시는 비밀값 없이 빈 칸만 둔다. README가 이 파일을 가리킨다
+!.env.example
 # os / editor
 .DS_Store
 Thumbs.db
