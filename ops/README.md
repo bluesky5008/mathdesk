@@ -67,6 +67,10 @@ launchctl list | grep mathdesk
 
 `restart: unless-stopped`만으로는 부족하다. 이 환경에서 Docker Desktop을 재시작하면 정책이 있어도 컨테이너가 복구되지 않는 것을 실측했다. 로그는 `~/Library/Logs/mathdesk/testops.log`.
 
+## 문자·알림톡 실발송
+
+준비 서류와 절차, 서버 설정은 [messaging-setup.md](messaging-setup.md)에 있다. 기본은 테스트 모드다.
+
 ## 알려진 제약
 
 - 접근 통제는 앱 로그인뿐이고, 현재 자격 증명은 `director`/`director`다. **가안 단계의 의도된 선택이며 실제 데이터를 넣기 전에 반드시 교체한다.** 더 강한 통제가 필요하면 터널 앞단에 Cloudflare Access를 둔다.

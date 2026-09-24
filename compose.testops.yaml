@@ -30,6 +30,12 @@ services:
       MATHDESK_INITIAL_ADMIN_PASSWORD: ${MATHDESK_INITIAL_ADMIN_PASSWORD:?초기 원장 비밀번호를 .env에 설정하세요}
       # 업로드 파일은 DB가 아니라 파일시스템에 있다(DES-10). 볼륨이 없으면 재배포 때 사라진다.
       MATHDESK_STORAGE_ROOT: /var/lib/mathdesk/files
+      # 문자·알림톡(ops/messaging-setup.md). 비워 두면 테스트 모드로 외부 발송이 없다
+      MATHDESK_MESSAGING_MODE: ${MATHDESK_MESSAGING_MODE:-test}
+      ALIGO_API_KEY: ${ALIGO_API_KEY:-}
+      ALIGO_USER_ID: ${ALIGO_USER_ID:-}
+      ALIGO_SENDER: ${ALIGO_SENDER:-}
+      ALIGO_SENDER_KEY: ${ALIGO_SENDER_KEY:-}
     volumes:
       - files:/var/lib/mathdesk/files
     depends_on:
