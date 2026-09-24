@@ -16,12 +16,14 @@ import {
   TableRow,
 } from '../components/ui/table'
 import {
+  applyOmr,
   fetchOmrScans,
   fetchStudents,
   fetchTask,
   omrImageUrl,
   updateOmrScan,
   uploadOmr,
+  type OmrApplyResult,
   type OmrFlag,
   type OmrScan,
   type OmrScanPatch,
@@ -266,6 +268,17 @@ export function OmrSection({ examId }: { examId: number }) {
   const scans = useQuery({ queryKey: ['omr-scans', examId], queryFn: () => fetchOmrScans(examId) })
   const [reviewing, setReviewing] = useState<OmrScan | null>(null)
   const waiting = scans.data?.filter((scan) => scan.status === 'needs_review').length ?? 0
+  const queryClient = useQueryClient()
+  const [applied, setApplied] = useState<OmrApplyResult | null>(null)
+  const apply = useMutation({
+    mutationFn: () => applyOmr(examId),
+    onSuccess: (result) => {
+      setApplied(result)
+      for (const key of ['omr-scans', 'exam-results', 'question-stats']) {
+        void queryClient.invalidateQueries({ queryKey: [key, examId] })
+      }
+    },
+  })
 
   return (
     <Card className="mt-5">
@@ -278,9 +291,34 @@ export function OmrSection({ examId }: { examId: number }) {
       <Upload examId={examId} />
       {scans.data && scans.data.length > 0 && (
         <CardContent className="p-0">
-          <p className="px-5 pb-2 text-sm font-medium">
-            검수 대기 {waiting} / 전체 {scans.data.length}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-5 pb-2">
+            <p className="text-sm font-medium">
+              검수 대기 {waiting} / 전체 {scans.data.length}
+            </p>
+            {/* 검수를 마친 답안지만 반영한다. 다시 누르면 현재 상태로 다시 계산한다 */}
+            <Button type="button" size="sm" disabled={apply.isPending} onClick={() => apply.mutate()}>
+              채점 반영
+            </Button>
+          </div>
+          {applied && (
+            <p role="status" className="px-5 pb-2 text-sm text-muted-fg">
+              {applied.applied}명을 반영했습니다.
+              {applied.waiting > 0 && ` 검수 대기 ${applied.waiting}장은 제외했습니다.`}
+            </p>
+          )}
+          {(applied?.conflicts.length ?? 0) > 0 && (
+            <p role="alert" className="px-5 pb-2 text-sm text-danger">
+              {applied!.conflicts
+                .map((c) => `${c.student.name}: ${c.pages.join('·')}쪽이 같은 학생으로 매칭되어 보류했습니다`)
+                .join(' / ')}
+              . 검수에서 학생을 바로잡은 뒤 다시 반영해 주세요.
+            </p>
+          )}
+          {apply.isError && (
+            <p role="alert" className="px-5 pb-2 text-sm text-danger">
+              {apply.error.message}
+            </p>
+          )}
           <Table aria-label="OMR 스캔">
             <TableHead>
               <TableRow>
@@ -299,7 +337,7 @@ export function OmrSection({ examId }: { examId: number }) {
                   <TableCell className="tabular-nums">{scan.page_no}</TableCell>
                   <TableCell className="tabular-nums">{scan.exam_number ?? '—'}</TableCell>
                   <TableCell className="whitespace-nowrap">{scan.student?.name ?? '—'}</TableCell>
-                  <TableCell>{scan.form ? FORM_LABEL[scan.form] : '—'}</TableCell>
+                  <TableCell className="whitespace-nowrap">{scan.form ? FORM_LABEL[scan.form] : '—'}</TableCell>
                   <TableCell className="whitespace-nowrap">
                     {scan.status === 'needs_review' ? (
                       <span className="rounded bg-warning px-1.5 py-0.5 text-xs font-medium text-warning-fg">

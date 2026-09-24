@@ -63,6 +63,12 @@ function stub(calls: Call[]) {
       if (url.endsWith('/omr/scans')) {
         return Response.json([reviewed ? { ...flagged, status: 'read', flags: [] } : flagged, clean, stranger])
       }
+      if (url.endsWith('/omr/apply')) {
+        return Response.json({
+          applied: 2, replaced: 0, removed: 0, waiting: 1,
+          conflicts: [{ student: { id: 3, name: '김하나' }, pages: [1, 4] }],
+        })
+      }
       if (url.endsWith('/omr/uploads')) return Response.json({ file_id: 9, task_id: 77 }, { status: 202 })
       if (url.endsWith('/tasks/77')) {
         return Response.json({ id: 77, kind: 'omr_read', status: 'done', progress: 100, result: { pages: 3, failed: 0 }, error: null })
@@ -148,5 +154,18 @@ describe('OmrSection', () => {
     const upload = calls.find((c) => c.method === 'POST')!
     expect(upload.url).toBe('/api/exams/5/omr/uploads')
     expect(upload.body).toBeInstanceOf(FormData)
+  })
+
+  it('applies reviewed sheets to scores and reports what was held back', async () => {
+    const calls: Call[] = []
+    stub(calls)
+    const user = userEvent.setup()
+    renderSection()
+
+    await user.click(await screen.findByRole('button', { name: '채점 반영' }))
+
+    expect(await screen.findByText('2명을 반영했습니다. 검수 대기 1장은 제외했습니다.')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('김하나: 1·4쪽이 같은 학생으로 매칭되어 보류했습니다')
+    expect(calls.some((c) => c.method === 'POST' && c.url === '/api/exams/5/omr/apply')).toBe(true)
   })
 })

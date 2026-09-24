@@ -520,3 +520,58 @@ export async function uploadOmr(examId: number, file: File): Promise<{ file_id: 
   }
   return (await response.json()) as { file_id: number; task_id: number }
 }
+
+export type OmrApplyResult = {
+  applied: number
+  replaced: number
+  removed: number
+  waiting: number
+  conflicts: { student: { id: number; name: string }; pages: number[] }[]
+}
+
+export function applyOmr(examId: number): Promise<OmrApplyResult> {
+  return request<OmrApplyResult>(`/exams/${examId}/omr/apply`, { method: 'POST' })
+}
+
+export type ExamResults = {
+  score_basis: 'points' | 'ratio'
+  summary: {
+    attempts: number
+    enrolled: number | null
+    average: number | null
+    highest: number | null
+    lowest: number | null
+    average_correct_rate: number | null
+    focus_questions: number[]
+  }
+  students: {
+    student: { id: number; name: string }
+    form: 'odd' | 'even' | null
+    source: 'omr' | 'manual'
+    score: number | null
+    correct: number
+    answers: { no: number; value: string | null; correct: boolean | null }[]
+  }[]
+}
+
+export type QuestionStats = {
+  questions: {
+    no: number
+    answer: number | null
+    answer_even: number | null
+    correct_rate: number | null
+    choices: Record<string, number>
+    unit: string | null
+    sub_type: string | null
+    difficulty: Difficulty | null
+  }[]
+  units: { unit: string; questions: number; wrong_rate: number | null }[]
+}
+
+export function fetchExamResults(examId: number): Promise<ExamResults> {
+  return request<ExamResults>(`/exams/${examId}/results`)
+}
+
+export function fetchQuestionStats(examId: number): Promise<QuestionStats> {
+  return request<QuestionStats>(`/exams/${examId}/question-stats`)
+}

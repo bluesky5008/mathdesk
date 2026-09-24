@@ -212,3 +212,25 @@ def test_review_images_are_crops_of_the_aligned_page(api, read):
     assert 0 < len(crop.content) < len(page.content)
     assert raw.status_code == 200  # 정합하지 못한 쪽은 원본 전체를 준다
     assert api.get(f"{base}/{flagged['id']}/image", params={"field": "../x"}).status_code == 422
+
+
+# ── 판독 → 검수 → 반영 한 흐름(TASK-36 연결) ────────────────────────────
+
+
+def test_uploaded_sheets_reach_scores_only_after_review(api, read):
+    """실제 판독 결과(`read_payload`)가 채점 엔진에 그대로 들어가는지 본다."""
+    key = [CLEAN["answers"][q] for q in range(1, 31)]
+    api.patch(f"/api/exams/{read['exam_id']}", json={"question_count": 30, "answer_key_odd": key})
+    base = f"/api/exams/{read['exam_id']}"
+
+    first = api.post(f"{base}/omr/apply").json()
+    assert (first["applied"], first["waiting"]) == (1, 3)
+    scores = {row["student"]["name"]: row["score"] for row in api.get(f"{base}/results").json()["students"]}
+    assert scores == {"이두리": 100}
+
+    _patch(api, read, 1, {"answers": {"3": key[2], "22": key[21]}})
+    second = api.post(f"{base}/omr/apply").json()
+
+    assert (second["applied"], second["waiting"]) == (2, 2)
+    names = {row["student"]["name"] for row in api.get(f"{base}/results").json()["students"]}
+    assert names == {"이두리", "김하나"}

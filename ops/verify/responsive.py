@@ -82,6 +82,16 @@ OMR_SCANS = [{"id": i, "file_id": 1, "page_no": i, "status": "needs_review" if i
               "answers": {str(q): 1 for q in range(1, 31)},
               "flags": [{"field": "3", "code": "multi"}, {"field": "22", "code": "blank"}] if i % 4 == 0 else [],
               "error": None} for i in range(1, 13)]
+RESULTS = {"score_basis": "points",
+           "summary": {"attempts": 8, "enrolled": 8, "average": 63.6, "highest": 80, "lowest": 52,
+                       "average_correct_rate": 68.3, "focus_questions": [9, 14, 15, 21, 22, 28, 29, 30, 13]},
+           "students": [{"student": {"id": i, "name": f"학생{i:02d}"}, "form": "odd", "source": "omr",
+                         "score": 50 + i * 3, "correct": 15 + i, "answers": []} for i in range(1, 9)]}
+QSTATS = {"questions": [{"no": n, "answer": n % 5 + 1, "answer_even": (n + 2) % 5 + 1,
+                         "correct_rate": 30.0 + n * 2, "choices": {"1": 2, "2": 1, "3": 3, "4": 1, "5": 1},
+                         "unit": "함수의 극한과 연속", "sub_type": None, "difficulty": "mid"} for n in range(1, 31)],
+          "units": [{"unit": "함수의 극한과 연속", "questions": 12, "wrong_rate": 38.5},
+                    {"unit": "수열", "questions": 10, "wrong_rate": 25.0}]}
 LOGS = [{"id": i, "requested_at": "2026-09-23T18:30:00", "recipient_phone": "010-1234-5678",
          "channel": "sms", "status": "sent", "is_test": True} for i in range(1, 6)]
 BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3457F", "logo_data_url": None}
@@ -90,6 +100,8 @@ BRAND = {"campus_name": "전병훈 수학학원 고등관", "brand_colour": "#C3
 def body_for(path: str):
     if "/auth/me" in path: return USER
     if "/omr/scans" in path: return OMR_SCANS
+    if path.endswith("/results"): return RESULTS
+    if "/question-stats" in path: return QSTATS
     if "/questions" in path: return QUESTIONS
     if "/api/exams/" in path: return EXAM
     if path.endswith("/api/exams"): return EXAMS

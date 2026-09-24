@@ -18,6 +18,7 @@ from .masterdata import router as masterdata_router
 from .messaging import router as messaging_router
 from .omr import router as omr_router
 from .omr_review import router as omr_review_router
+from .omr_scoring import router as omr_scoring_router
 from .stats import router as stats_router
 from .tasks import TaskRunner, router as tasks_router
 from .users import router as users_router
@@ -86,6 +87,7 @@ def create_app(web_dist: Path | str | None = None) -> FastAPI:
     app.include_router(exams_router)
     app.include_router(omr_router)
     app.include_router(omr_review_router)
+    app.include_router(omr_scoring_router)
     app.include_router(tasks_router)
 
     @app.get("/api/health")
