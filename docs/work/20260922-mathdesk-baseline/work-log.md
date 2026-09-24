@@ -854,7 +854,7 @@ flowchart TD
 - **Q-01(성적 통계 추정 설계)은 추정안 그대로 간다**(사용자 지시). 기준선의 FR-24~FR-26과 TASK-24~26 구현이 이미 추정안이므로 변경 없음.
 - **Q-04(수험번호 부여) 문의에 답했다:** 수험번호가 없으면 매칭이 실패해 `unmatched` 플래그 → 검수 화면에서 수동 지정(FR-34)으로 처리된다. 권장은 학원이 학생마다 8자리 번호를 한 번 부여해 학생 정보에 저장하는 것(FR-05, 자리별 범위 검증 있음). 자동 부여·손글씨 성명 판독·업로드 순서 매칭은 새 요구라 DCR 대상이다. → **사용자 결정(같은 날): 수험번호는 클라이언트가 부여·관리한다. 학생마다 번호가 있는 것으로 보고 진행한다**(Q-04 가정 확인, 기준선 의미 변화 없음 — 요구사항 문서의 Q-04 표기는 다음 기준선 갱신 때 정리). 자동 부여 기능은 만들지 않는다.
 - **테스트 운영 재배포(사용자 지시):** `eb335e1`. 사전 DB 덤프를 세션 임시 폴더에 받았다(합성 데이터 10KB). `docker compose -f compose.testops.yaml build app`(오류 없음) → `up -d`. 기동 로그에서 마이그레이션 `6f28fe0c3cac -> 980c6aafb97c` 적용 확인.
-  - 공개 도메인: `/` 200, `/api/health` ok, 로그인 200, `/api/students`·`/api/exams` 200, `/api/stats/classes/1?start…&end…` 200, `/exams`·`/statistics` SPA 200.
+  - 공개 도메인: `/` 200, `/api/health` ok, 로그인 200, `/api/students`·`/api/exams` 200, `/api/stats/classes/1?start…&end…` 200, `/exams` SPA 200 (`/statistics`도 200이었으나 SPA 폴백일 뿐이고 통계 화면 경로는 `/stats`다).
   - 컨테이너: `cv2 5.0.0`, OMR 템플릿 로드, `MATHDESK_STORAGE_ROOT=/var/lib/mathdesk/files` 쓰기 가능(`files` 볼륨).
   - OMR 업로드를 실서버에서 끝까지 돌려 보지는 않았다(테스트 운영 DB에 데이터를 남기지 않으려고). 같은 경로는 로컬 통합 테스트로 확인했다.
 
