@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 
 import { PageHeader } from '../components/PageHeader'
+import { describeClasses, useCurrentClasses } from '../lib/currentClasses'
 import { ConsultDialog } from './ConsultDialog'
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
@@ -100,6 +101,7 @@ function StudentFields({
 export function StudentsPage() {
   const queryClient = useQueryClient()
   const students = useQuery({ queryKey: ['students'], queryFn: fetchStudents })
+  const currentClasses = useCurrentClasses()
   const [form, setForm] = useState(EMPTY)
   const [showWithdrawn, setShowWithdrawn] = useState(false)
   const [edit, setEdit] = useState<{ id: number; form: Form; status: string } | null>(null)
@@ -189,6 +191,7 @@ export function StudentsPage() {
                 <TableHeaderCell>이름</TableHeaderCell>
                 <TableHeaderCell>학교</TableHeaderCell>
                 <TableHeaderCell>학년</TableHeaderCell>
+                <TableHeaderCell>반</TableHeaderCell>
                 <TableHeaderCell>수험번호</TableHeaderCell>
                 <TableHeaderCell>상태</TableHeaderCell>
                 <TableHeaderCell />
@@ -198,8 +201,9 @@ export function StudentsPage() {
               {visible.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell className="font-medium whitespace-nowrap">{student.name}</TableCell>
-                  <TableCell className="text-muted-fg">{student.school}</TableCell>
+                  <TableCell className="break-keep text-muted-fg">{student.school}</TableCell>
                   <TableCell className="text-muted-fg">{student.grade}</TableCell>
+                  <TableCell className="break-keep">{describeClasses(currentClasses.get(student.id))}</TableCell>
                   <TableCell className="tabular-nums">{student.omr_number}</TableCell>
                   <TableCell className="text-muted-fg">
                     {STATUS[student.status as keyof typeof STATUS] ?? student.status}

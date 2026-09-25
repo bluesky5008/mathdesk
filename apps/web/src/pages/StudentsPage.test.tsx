@@ -35,6 +35,36 @@ const student = {
 const withdrawn = { ...student, id: 2, name: '박서준', status: 'withdrawn', omr_number: '90000002' }
 
 describe('StudentsPage', () => {
+  // TASK-72: 탭 분리 뒤 학생 소속을 목록에서 바로 본다(사용자 결정 2026-09-25)
+  it('shows the classes each student is assigned to today', async () => {
+    const third = { ...student, id: 3, name: '이하준', omr_number: '90000003' }
+    const classes = [
+      { id: 5, name: '고1 인A', grade: '1', teacher_id: 1, is_active: true, schedules: [] },
+      { id: 6, name: '고1 인B', grade: '1', teacher_id: 1, is_active: true, schedules: [] },
+      { id: 2, name: '고2 윤B', grade: '고2', teacher_id: 1, is_active: false, schedules: [] },
+    ]
+    const members: Record<string, number[]> = { '5': [1], '6': [1], '2': [2] }
+    stubFetch((url) => {
+      const roster = url.match(/\/classes\/(\d+)\/enrollments\?on=/)
+      if (roster) {
+        return Response.json(
+          members[roster[1]].map((id) => ({ id, student_id: id, start_date: '2026-03-02', end_date: null })),
+        )
+      }
+      if (url.includes('/classes?include_inactive=true')) return Response.json(classes)
+      return Response.json([student, { ...withdrawn, status: 'enrolled' }, third])
+    })
+
+    renderPage()
+
+    expect(screen.getByRole('columnheader', { name: '반' })).toBeInTheDocument()
+    const first = within(await screen.findByRole('row', { name: /김나윤/ }))
+    expect(await first.findByText('고1 인A, 고1 인B')).toBeInTheDocument()
+    const second = within(screen.getByRole('row', { name: /박서준/ }))
+    expect(second.getByText('고2 윤B (비활성)')).toBeInTheDocument()
+    expect(within(screen.getByRole('row', { name: /이하준/ })).getByText('—')).toBeInTheDocument()
+  })
+
   it('lists students from the API', async () => {
     stubFetch(() => Response.json([student]))
 
