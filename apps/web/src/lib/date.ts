@@ -15,3 +15,12 @@ export function dayBefore(date: string): string {
   day.setDate(day.getDate() - 1)
   return isoDate(day)
 }
+
+/** `YYYY-MM-DD`가 속한 주의 월요일과 일요일(서버 대시보드의 주 경계와 같다). */
+export function weekOf(date: string): [string, string] {
+  const monday = new Date(`${date}T00:00:00`)
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  return [isoDate(monday), isoDate(sunday)]
+}

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import type { Daily, Dashboard } from '../api'
@@ -67,14 +68,65 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals())
 
-function renderPage() {
+function renderPage(path = '/') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <DashboardPage />
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="*" element={<p>이동한 화면</p>} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
+
+// TASK-74: 항목을 누르면 그 수치의 화면으로, 보던 반·날짜 그대로 간다(사용자 결정 2026-09-25)
+it('links each item to the screen behind it with the same class and date', async () => {
+  renderPage('/?class=1&date=2026-09-20')
+
+  expect(await screen.findByRole('link', { name: '47명' })).toHaveAttribute('href', '/students')
+  expect(screen.getByLabelText('날짜')).toHaveValue('2026-09-20')
+  expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/dashboard?class_id=1&date=2026-09-20', expect.anything())
+  const daily = '/daily?class=1&date=2026-09-20'
+  const week = '/stats?class=1&start=2026-09-14&end=2026-09-20'
+  expect(screen.getByRole('link', { name: '활성 4개 반' })).toHaveAttribute('href', '/students/classes')
+  expect(screen.getByRole('link', { name: /선택한 반 등원 현황/ })).toHaveAttribute('href', daily)
+  expect(screen.getByRole('link', { name: /금주 과제 완수율/ })).toHaveAttribute('href', week)
+  expect(screen.getByRole('link', { name: /주간테스트 종합 평균/ })).toHaveAttribute('href', week)
+  expect(screen.getByRole('link', { name: '일일 입력에서 열기' })).toHaveAttribute('href', daily)
+  expect(await screen.findByRole('link', { name: '2026-09-18 수업 열기' })).toHaveAttribute(
+    'href',
+    '/daily?class=1&date=2026-09-18',
+  )
+})
+
+it('asks before leaving with unsaved attendance', async () => {
+  const confirm = vi.fn(() => false)
+  vi.stubGlobal('confirm', confirm)
+  renderPage('/?class=1&date=2026-09-20')
+  const row = within(await screen.findByRole('row', { name: /김나윤/ }))
+  await userEvent.click(row.getByRole('button', { name: '출석' }))
+
+  await userEvent.click(screen.getByRole('link', { name: /선택한 반 등원 현황/ }))
+  expect(confirm).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('heading', { name: '종합 대시보드' })).toBeInTheDocument()
+
+  confirm.mockReturnValue(true)
+  await userEvent.click(screen.getByRole('link', { name: /선택한 반 등원 현황/ }))
+  expect(await screen.findByText('이동한 화면')).toBeInTheDocument()
+})
+
+it('leaves without asking when nothing is unsaved', async () => {
+  const confirm = vi.fn(() => false)
+  vi.stubGlobal('confirm', confirm)
+  renderPage()
+
+  await userEvent.click(await screen.findByRole('link', { name: /주간테스트 종합 평균/ }))
+  expect(await screen.findByText('이동한 화면')).toBeInTheDocument()
+  expect(confirm).not.toHaveBeenCalled()
+})
 
 it('renders the four KPI cards', async () => {
   renderPage()

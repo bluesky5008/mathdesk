@@ -1,15 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { PeriodStats, StudentHistory } from '../api'
 import { StatsPage } from './StatsPage'
 
-function renderPage() {
+function renderPage(path = '/stats') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <StatsPage />
+      <MemoryRouter initialEntries={[path]}>
+        <StatsPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -67,6 +70,22 @@ function stub(period: PeriodStats = filledPeriod) {
 }
 
 describe('StatsPage', () => {
+  // TASK-74: 대시보드의 과제·테스트 KPI가 그 주 범위로 연다
+  it('opens the class and period given in the address', async () => {
+    stub()
+
+    renderPage('/stats?class=1&start=2026-09-14&end=2026-09-20')
+
+    await waitFor(() =>
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+        '/api/stats/classes/1?start=2026-09-14&end=2026-09-20',
+        expect.anything(),
+      ),
+    )
+    expect(screen.getByLabelText('시작')).toHaveValue('2026-09-14')
+    expect(screen.getByLabelText('종료')).toHaveValue('2026-09-20')
+  })
+
   it('shows an empty state when the period has no samples', async () => {
     stub(emptyPeriod)
 

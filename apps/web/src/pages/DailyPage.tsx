@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 
 import { AttendanceCell, AttendanceLockBanner } from '../components/AttendanceButtons'
 import { PageHeader } from '../components/PageHeader'
@@ -53,8 +53,10 @@ function describeRecheck(record: DailyRecord): string {
 export function DailyPage() {
   const queryClient = useQueryClient()
   const classes = useQuery({ queryKey: ['classes'], queryFn: () => fetchClasses() })
-  const [classId, setClassId] = useState<number | null>(null)
-  const [date, setDate] = useState(today())
+  // 대시보드 링크는 반·날짜를 주소로 넘긴다
+  const [params] = useSearchParams()
+  const [classId, setClassId] = useState<number | null>(Number(params.get('class')) || null)
+  const [date, setDate] = useState(params.get('date') || today())
   const activeClassId = classId ?? classes.data?.[0]?.id ?? null
 
   const daily = useQuery({

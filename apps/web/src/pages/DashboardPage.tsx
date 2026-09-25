@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
+import { Link, useSearchParams } from 'react-router'
 
 import { AttendanceCell, AttendanceLockBanner } from '../components/AttendanceButtons'
 import { PageHeader } from '../components/PageHeader'
@@ -10,7 +11,7 @@ import { Input } from '../components/ui/input'
 import { KeyboardGrid } from '../components/ui/keyboard-grid'
 import { Select } from '../components/ui/select'
 import { Stat } from '../components/ui/stat'
-import { today } from '../lib/date'
+import { today, weekOf } from '../lib/date'
 import { Table, TableBody, TableCell, TableRow } from '../components/ui/table'
 import {
   fetchClasses,
@@ -28,9 +29,20 @@ function signed(value: number): string {
 export function DashboardPage() {
   const queryClient = useQueryClient()
   const classes = useQuery({ queryKey: ['classes'], queryFn: () => fetchClasses() })
-  const [classId, setClassId] = useState<number | null>(null)
-  const [date, setDate] = useState(today())
+  // 반·날짜는 주소에 둔다. 항목 링크로 갔다가 뒤로 오면 보던 반·날짜가 그대로다
+  const [params, setParams] = useSearchParams()
+  const classId = Number(params.get('class')) || null
+  const date = params.get('date') || today()
   const activeClassId = classId ?? classes.data?.[0]?.id ?? null
+  const select = (key: 'class' | 'date', value: string) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.set(key, value)
+        return next
+      },
+      { replace: true },
+    )
 
   const dashboard = useQuery({
     queryKey: ['dashboard', activeClassId, date],
@@ -72,6 +84,16 @@ export function DashboardPage() {
   }
 
   const kpi = dashboard.data
+  const dailyLink = (on: string) => `/daily?class=${activeClassId}&date=${on}`
+  const [weekStart, weekEnd] = weekOf(date)
+  const weekLink = `/stats?class=${activeClassId}&start=${weekStart}&end=${weekEnd}`
+  // 출결 체크의 미저장 입력은 이동하면 사라진다
+  const leave = (event: MouseEvent) => {
+    if (Object.keys(drafts).length > 0 && !window.confirm('저장하지 않은 출결 입력이 있습니다. 이동할까요?')) {
+      event.preventDefault()
+    }
+  }
+  const textLink = 'text-brand hover:underline'
 
   return (
     <section>
@@ -80,7 +102,7 @@ export function DashboardPage() {
           <Select
             id="dashboard-class"
             value={activeClassId ?? ''}
-            onChange={(event) => setClassId(Number(event.target.value))}
+            onChange={(event) => select('class', event.target.value)}
           >
             {classes.data?.map((klass) => (
               <option key={klass.id} value={klass.id}>
@@ -95,17 +117,28 @@ export function DashboardPage() {
             type="date"
             className="w-40"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            onChange={(event) => select('date', event.target.value)}
           />
         </Field>
       </PageHeader>
 
       {kpi && (
         <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Stat title="총 재원생 & 반 현황" value={`${kpi.campus.enrolled_students}명`}>
-            <span>{`활성 ${kpi.campus.active_classes}개 반`}</span>
+          <Stat
+            title="총 재원생 & 반 현황"
+            value={
+              <Link to="/students" onClick={leave} className="hover:text-brand hover:underline">
+                {`${kpi.campus.enrolled_students}명`}
+              </Link>
+            }
+          >
+            <Link to="/students/classes" onClick={leave} className={textLink}>
+              {`활성 ${kpi.campus.active_classes}개 반`}
+            </Link>
           </Stat>
           <Stat
+            to={dailyLink(date)}
+            onClick={leave}
             title="선택한 반 등원 현황"
             value={
               kpi.attendance ? `${kpi.attendance.attending} / ${kpi.attendance.enrolled}명` : '—'
@@ -114,6 +147,8 @@ export function DashboardPage() {
             <span>출석 + 지각 + 조퇴 · 출결 체크에 따라 반영</span>
           </Stat>
           <Stat
+            to={weekLink}
+            onClick={leave}
             title="금주 과제 완수율"
             value={
               kpi.homework.completion_rate === null ? '—' : `${kpi.homework.completion_rate}%`
@@ -125,6 +160,8 @@ export function DashboardPage() {
             <span>{`미제출 ${kpi.homework.missing}건 · 재검사 대상 ${kpi.homework.recheck_targets}명`}</span>
           </Stat>
           <Stat
+            to={weekLink}
+            onClick={leave}
             title="주간테스트 종합 평균"
             value={kpi.test.average === null ? '—' : `${kpi.test.average}점`}
           >
@@ -139,11 +176,16 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card>
-          <CardHeader>
-            <CardTitle>반별 출결 체크</CardTitle>
-            <CardDescription>
-              선택한 출결을 다시 누르면 해제됩니다. 마지막에 [출결 확정]을 눌러 주세요.
-            </CardDescription>
+          <CardHeader className="flex-row items-start justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <CardTitle>반별 출결 체크</CardTitle>
+              <CardDescription className="break-keep">
+                선택한 출결을 다시 누르면 해제됩니다. 마지막에 [출결 확정]을 눌러 주세요.
+              </CardDescription>
+            </div>
+            <Link to={dailyLink(date)} onClick={leave} className={`shrink-0 text-sm ${textLink}`}>
+              일일 입력에서 열기
+            </Link>
           </CardHeader>
           <CardContent className="px-0 pt-4 pb-0">
             {session?.attendance_confirmed_at && (
@@ -217,7 +259,13 @@ export function DashboardPage() {
           <CardContent className="pt-4">
             {kpi?.last_session ? (
               <div className="flex flex-col gap-3">
-                <p className="text-xs text-muted-fg">{kpi.last_session.session_date}</p>
+                <Link
+                  to={dailyLink(kpi.last_session.session_date)}
+                  onClick={leave}
+                  className={`text-xs ${textLink}`}
+                >
+                  {`${kpi.last_session.session_date} 수업 열기`}
+                </Link>
                 <ul className="flex flex-col gap-1.5 text-sm">
                   {kpi.last_session.progress.map((item) => (
                     <li key={item.period}>{`[${item.period}교시] ${item.content ?? ''}`}</li>

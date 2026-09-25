@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import {
   Bar,
   BarChart,
@@ -117,9 +118,11 @@ function DistributionChart({ data }: { data: { bucket: string; count: number }[]
 
 export function StatsPage() {
   const classes = useQuery({ queryKey: ['classes'], queryFn: () => fetchClasses() })
-  const [classId, setClassId] = useState<number | null>(null)
-  const [start, setStart] = useState(weeksAgo(8))
-  const [end, setEnd] = useState(today())
+  // 대시보드의 과제·테스트 KPI 링크는 반과 그 주 범위를 주소로 넘긴다
+  const [params] = useSearchParams()
+  const [classId, setClassId] = useState<number | null>(Number(params.get('class')) || null)
+  const [start, setStart] = useState(params.get('start') || weeksAgo(8))
+  const [end, setEnd] = useState(params.get('end') || today())
   const [studentId, setStudentId] = useState<number | null>(null)
 
   const activeClassId = classId ?? classes.data?.[0]?.id ?? null

@@ -55,16 +55,25 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals())
 
-function renderPage() {
+function renderPage(path = '/daily') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <DailyPage />
       </MemoryRouter>
     </QueryClientProvider>,
   )
 }
+
+// TASK-74: 대시보드 링크가 준 반·날짜로 연다
+it('opens the class and date given in the address', async () => {
+  renderPage('/daily?class=1&date=2026-09-18')
+
+  await screen.findByRole('row', { name: /학생1\b/ })
+  expect(screen.getByLabelText('날짜')).toHaveValue('2026-09-18')
+  expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/daily?class_id=1&date=2026-09-18', expect.anything())
+})
 
 it('keeps unsaved notes when the record table is saved', async () => {
   renderPage()
