@@ -25,7 +25,8 @@ import {
   type Klass,
   type Schedule,
 } from '../api'
-import { today } from '../lib/date'
+import { dayBefore, today } from '../lib/date'
+import { describeClasses, useCurrentClasses } from '../lib/currentClasses'
 import { DeleteDialog } from './DeleteDialog'
 
 export const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
@@ -128,14 +129,38 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
     select: (rows) => rows.filter((row) => !row.end_date || row.end_date >= on),
   })
   const students = useQuery({ queryKey: ['students'], queryFn: fetchStudents })
-  const [picked, setPicked] = useState('')
+  const allClasses = useQuery({ queryKey: ['classes', true], queryFn: () => fetchClasses(true) })
+  const currentClasses = useCurrentClasses()
   const [startDate, setStartDate] = useState(on)
+  const [sourceId, setSourceId] = useState('')
+  const [picked, setPicked] = useState<Set<number>>(new Set())
+  const [move, setMove] = useState(false)
+  const source = allClasses.data?.find((other) => String(other.id) === sourceId)
+  const sourceRows = useQuery({
+    queryKey: ['enrollments', source?.id, on],
+    queryFn: () => fetchEnrollments(source!.id, on),
+    enabled: source !== undefined,
+  })
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['enrollments', klass.id] })
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['enrollments'] })
+  // 학생마다 새 배정을 먼저 만들고 성공하면 이전 반을 끝낸다. 중간에 실패해도 학생이 어느 반에서도 빠지지 않는다
   const assign = useMutation({
-    mutationFn: (studentId: number) => createEnrollment(klass.id, studentId, startDate),
+    mutationFn: async (studentIds: number[]) => {
+      const moving = move && source !== undefined
+      const failures: string[] = []
+      for (const studentId of studentIds) {
+        try {
+          await createEnrollment(klass.id, studentId, startDate)
+          const previous = sourceRows.data?.find((row) => row.student_id === studentId)
+          if (moving && previous) await endEnrollment(source.id, previous.id, dayBefore(startDate))
+        } catch (error) {
+          failures.push(`${byId.get(studentId)?.name ?? `학생 ${studentId}`}: ${(error as Error).message}`)
+        }
+      }
+      return { done: studentIds.length - failures.length, failures, moving }
+    },
     onSuccess: () => {
-      setPicked('')
+      setPicked(new Set())
       void refresh()
     },
   })
@@ -150,47 +175,124 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
 
   const byId = new Map((students.data ?? []).map((student) => [student.id, student]))
   const enrolled = new Set((enrollments.data ?? []).map((row) => row.student_id))
-  const error = assign.error ?? release.error ?? cancel.error
+  const candidates = (students.data ?? []).filter(
+    (student) =>
+      !enrolled.has(student.id) &&
+      student.status !== 'withdrawn' &&
+      (!source || currentClasses.get(student.id)?.some((other) => other.id === source.id)),
+  )
+  const chosen = candidates.filter((student) => picked.has(student.id)).map((student) => student.id)
+  const allPicked = candidates.length > 0 && chosen.length === candidates.length
+  const error = release.error ?? cancel.error
+
+  function toggle(studentId: number) {
+    const next = new Set(picked)
+    if (next.has(studentId)) next.delete(studentId)
+    else next.add(studentId)
+    setPicked(next)
+  }
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogTitle className="mb-4 text-base font-semibold">반 명단 — {klass.name}</DialogTitle>
 
-        <div className="mb-4 flex items-end gap-2">
-          <Field label="학생" htmlFor="roster-student" className="flex-1">
-            <Select
-              id="roster-student"
-              className="w-full"
-              value={picked}
-              onChange={(event) => setPicked(event.target.value)}
+        <div className="mb-4 flex flex-col gap-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <Field label="시작일" htmlFor="roster-start">
+              <Input
+                id="roster-start"
+                type="date"
+                className="w-40"
+                value={startDate}
+                onChange={(event) => setStartDate(event.target.value)}
+              />
+            </Field>
+            <Field label="가져올 반" htmlFor="roster-source" className="flex-1">
+              <Select
+                id="roster-source"
+                className="w-full"
+                value={sourceId}
+                onChange={(event) => {
+                  setSourceId(event.target.value)
+                  setPicked(new Set())
+                  setMove(false)
+                }}
+              >
+                <option value="">전체 학생</option>
+                {(allClasses.data ?? [])
+                  .filter((other) => other.id !== klass.id)
+                  .map((other) => (
+                    <option key={other.id} value={other.id}>
+                      {other.is_active ? other.name : `${other.name} (비활성)`}
+                    </option>
+                  ))}
+              </Select>
+            </Field>
+          </div>
+
+          <div className="max-h-56 overflow-y-auto rounded-md border">
+            <label className="flex items-center gap-2 border-b px-3 py-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={allPicked}
+                disabled={candidates.length === 0}
+                onChange={() =>
+                  setPicked(allPicked ? new Set() : new Set(candidates.map((student) => student.id)))
+                }
+              />
+              전체 선택
+            </label>
+            {candidates.map((student) => (
+              <label key={student.id} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={picked.has(student.id)}
+                  onChange={() => toggle(student.id)}
+                />
+                {student.name}{' '}
+                <span className="text-xs text-muted-fg">
+                  {describeClasses(currentClasses.get(student.id))}
+                </span>
+              </label>
+            ))}
+            {candidates.length === 0 && (
+              <p className="px-3 py-2 text-sm text-muted-fg">배정할 학생이 없습니다.</p>
+            )}
+          </div>
+
+          {source && startDate && (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={move} onChange={(event) => setMove(event.target.checked)} />
+              {`${source.name} 배정은 ${dayBefore(startDate)}까지로 끝냅니다(반 옮기기)`}
+            </label>
+          )}
+
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              disabled={chosen.length === 0 || !startDate || assign.isPending}
+              onClick={() => assign.mutate(chosen)}
             >
-              <option value="">학생 선택</option>
-              {(students.data ?? [])
-                .filter((student) => !enrolled.has(student.id) && student.status !== 'withdrawn')
-                .map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name}
-                  </option>
+              {assign.isPending ? '처리 중…' : `${chosen.length}명 ${move && source ? '옮기기' : '배정'}`}
+            </Button>
+          </div>
+
+          {assign.data && (
+            <p role="status" className="text-sm text-success">
+              {`${assign.data.done}명 ${assign.data.moving ? '옮겼습니다' : '배정했습니다'}`}
+            </p>
+          )}
+          {assign.data && assign.data.failures.length > 0 && (
+            <div role="alert" className="text-sm text-danger">
+              <p>실패한 학생</p>
+              <ul className="list-disc pl-5">
+                {assign.data.failures.map((failure) => (
+                  <li key={failure}>{failure}</li>
                 ))}
-            </Select>
-          </Field>
-          <Field label="시작일" htmlFor="roster-start">
-            <Input
-              id="roster-start"
-              type="date"
-              className="w-40"
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-            />
-          </Field>
-          <Button
-            type="button"
-            disabled={!picked || !startDate}
-            onClick={() => assign.mutate(Number(picked))}
-          >
-            배정
-          </Button>
+              </ul>
+            </div>
+          )}
         </div>
 
         <ul className="divide-y border-t">

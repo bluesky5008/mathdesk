@@ -165,8 +165,8 @@ describe('ClassesPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: '명단' }))
 
     const dialog = within(await screen.findByRole('dialog'))
-    await userEvent.selectOptions(await dialog.findByLabelText('학생'), '2')
-    await userEvent.click(dialog.getByRole('button', { name: '배정' }))
+    await userEvent.click(await dialog.findByRole('checkbox', { name: /^김정현/ }))
+    await userEvent.click(dialog.getByRole('button', { name: '1명 배정' }))
 
     await waitFor(() => expect(posted).toHaveLength(1))
     expect(posted[0].url).toBe('/api/classes/1/enrollments')
@@ -183,10 +183,10 @@ describe('ClassesPage', () => {
 
     const dialog = within(await screen.findByRole('dialog'))
     expect(dialog.getByLabelText('시작일')).toHaveValue(today())
-    await userEvent.selectOptions(await dialog.findByLabelText('학생'), '2')
+    await userEvent.click(await dialog.findByRole('checkbox', { name: /^김정현/ }))
     await userEvent.clear(dialog.getByLabelText('시작일'))
     await userEvent.type(dialog.getByLabelText('시작일'), '2026-09-01')
-    await userEvent.click(dialog.getByRole('button', { name: '배정' }))
+    await userEvent.click(dialog.getByRole('button', { name: '1명 배정' }))
 
     await waitFor(() => expect(posted).toHaveLength(1))
     expect(posted[0].body).toEqual({ student_id: 2, start_date: '2026-09-01' })
@@ -215,11 +215,11 @@ describe('ClassesPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: '명단' }))
 
     const dialog = within(await screen.findByRole('dialog'))
-    expect(await dialog.findByText('김정현')).toBeInTheDocument()
-    expect(dialog.getByText('2099-03-02 배정')).toBeInTheDocument()
-    expect(dialog.queryByRole('option', { name: '김정현' })).not.toBeInTheDocument()
+    expect(await dialog.findByText('2099-03-02 배정')).toBeInTheDocument()
+    expect(dialog.getByText('김정현')).toBeInTheDocument()
+    expect(dialog.queryByRole('checkbox', { name: /^김정현/ })).not.toBeInTheDocument()
     expect(dialog.queryByText('2020-12-31 종료')).not.toBeInTheDocument()
-    expect(dialog.getByRole('option', { name: '김나윤' })).toBeInTheDocument()
+    expect(await dialog.findByRole('checkbox', { name: /^김나윤/ })).toBeInTheDocument()
   })
 
   // 시작 전인 배정은 종료일(오늘)이 시작일보다 앞서 해제할 수 없다. 이력이 없으니 취소(삭제)한다
@@ -249,6 +249,97 @@ describe('ClassesPage', () => {
 
     await waitFor(() => expect(calls).toContain('DELETE /api/classes/1/enrollments/22'))
     expect(await dialog.findByText('배정된 학생이 없습니다.')).toBeInTheDocument()
+  })
+
+  // TASK-73: 여러 명 배정과 반 옮기기(사용자 결정 2026-09-25, 제안 ②)
+  describe('bulk assignment', () => {
+    const old = { ...active, id: 9, name: '고2 윤C', is_active: false, schedules: [] }
+    const third = { ...roster[0], id: 3, name: '이하준' }
+
+    /** 대상 반 1은 비어 있고, 비활성 반 9에 김나윤(배정 31)·김정현(32)이 오늘 배정되어 있다. */
+    function stubMove(calls: { method: string; url: string; body: unknown }[], reject: number[] = []) {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string, init?: RequestInit) => {
+          const body = init?.body ? JSON.parse(String(init.body)) : undefined
+          if (init?.method) {
+            calls.push({ method: init.method, url, body })
+            if (init.method === 'POST' && reject.includes(body.student_id)) {
+              return Response.json({ detail: '이 반에 기간이 겹치는 배정이 이미 있습니다.' }, { status: 422 })
+            }
+            return Response.json({ id: 99, student_id: 0, start_date: '2026-09-01', end_date: null })
+          }
+          if (url.includes('/classes/9/enrollments')) {
+            return Response.json([
+              { id: 31, student_id: 1, start_date: '2026-03-02', end_date: null },
+              { id: 32, student_id: 2, start_date: '2026-03-02', end_date: null },
+            ])
+          }
+          if (url.includes('/enrollments')) return Response.json([])
+          if (url.includes('include_inactive=true')) return Response.json([active, old])
+          return Response.json(url.includes('/students') ? [...roster, third] : [active])
+        }),
+      )
+    }
+
+    async function openRoster() {
+      renderPage()
+      await userEvent.click(await screen.findByRole('button', { name: '명단' }))
+      return within(await screen.findByRole('dialog'))
+    }
+
+    it('assigns every listed student at once with select all', async () => {
+      const calls: { method: string; url: string; body: unknown }[] = []
+      stubMove(calls)
+
+      const dialog = await openRoster()
+      expect(await dialog.findByRole('checkbox', { name: /^김나윤 고2 윤C \(비활성\)/ })).toBeInTheDocument()
+      await userEvent.click(dialog.getByRole('checkbox', { name: '전체 선택' }))
+      await userEvent.click(dialog.getByRole('button', { name: '3명 배정' }))
+
+      await waitFor(() => expect(calls).toHaveLength(3))
+      expect(calls.map((call) => call.body)).toEqual([1, 2, 3].map((id) => ({ student_id: id, start_date: today() })))
+      expect(await dialog.findByRole('status')).toHaveTextContent('3명 배정했습니다')
+    })
+
+    it('moves students from another class by ending that assignment the day before', async () => {
+      const calls: { method: string; url: string; body: unknown }[] = []
+      stubMove(calls)
+
+      const dialog = await openRoster()
+      await userEvent.selectOptions(await dialog.findByLabelText('가져올 반'), '9')
+      expect(dialog.queryByRole('checkbox', { name: /^이하준/ })).not.toBeInTheDocument()
+      await userEvent.clear(dialog.getByLabelText('시작일'))
+      await userEvent.type(dialog.getByLabelText('시작일'), '2026-09-01')
+      await userEvent.click(dialog.getByRole('checkbox', { name: '전체 선택' }))
+      await userEvent.click(dialog.getByRole('checkbox', { name: /고2 윤C 배정은 2026-08-31까지로 끝냅니다/ }))
+      await userEvent.click(dialog.getByRole('button', { name: '2명 옮기기' }))
+
+      await waitFor(() => expect(calls).toHaveLength(4))
+      expect(calls).toEqual([
+        { method: 'POST', url: '/api/classes/1/enrollments', body: { student_id: 1, start_date: '2026-09-01' } },
+        { method: 'PATCH', url: '/api/classes/9/enrollments/31', body: { end_date: '2026-08-31' } },
+        { method: 'POST', url: '/api/classes/1/enrollments', body: { student_id: 2, start_date: '2026-09-01' } },
+        { method: 'PATCH', url: '/api/classes/9/enrollments/32', body: { end_date: '2026-08-31' } },
+      ])
+    })
+
+    it('keeps the previous class when the new assignment fails and names the student', async () => {
+      const calls: { method: string; url: string; body: unknown }[] = []
+      stubMove(calls, [2])
+
+      const dialog = await openRoster()
+      await userEvent.selectOptions(await dialog.findByLabelText('가져올 반'), '9')
+      await userEvent.click(await dialog.findByRole('checkbox', { name: '전체 선택' }))
+      await userEvent.click(dialog.getByRole('checkbox', { name: /반 옮기기|끝냅니다/ }))
+      await userEvent.click(dialog.getByRole('button', { name: '2명 옮기기' }))
+
+      expect(await dialog.findByRole('alert')).toHaveTextContent(
+        '김정현: 이 반에 기간이 겹치는 배정이 이미 있습니다.',
+      )
+      expect(dialog.getByRole('status')).toHaveTextContent('1명 옮겼습니다')
+      expect(calls.filter((call) => call.url.endsWith('/32'))).toEqual([])
+    })
   })
 
   it('deactivates a class straight from the row after confirming', async () => {
