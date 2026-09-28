@@ -124,9 +124,27 @@ def _register(img: np.ndarray, tpl: dict) -> np.ndarray:
     corners = tpl["timing_marks"]["corners"]
     target = np.float32([
         [corners[k]["x"] * CANVAS_W, corners[k]["y"] * CANVAS_H]
-        for k in ("top_left", "top_right", "bottom_left", "bottom_right")
+        for k in ("top_left", "top_right", "bottom_right", "bottom_left")
     ])
-    matrix = cv2.getPerspectiveTransform(_corner_marks(img), target)
+    # 답안지가 90°·180°·270° 돌아가 있을 수 있다(휴대폰 세로 촬영, 거꾸로 넣은 스캔).
+    # 모서리 마크를 시계 방향으로 한 칸씩 돌려 맞춰 보고, 윗변 타이밍 마크 40개가
+    # 가장 진하게 겹치는 방향을 고른다. 윗변에만 타이밍 마크 줄이 있어 방향이 하나로 정해진다
+    tl, tr, bl, br = _corner_marks(img)
+    clockwise = [tl, tr, br, bl]
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    marks = np.float32([[[m["x"] * CANVAS_W, m["y"] * CANVAS_H]] for m in tpl["timing_marks"]["top"]])
+
+    def darkness(matrix: np.ndarray) -> float:
+        points = cv2.perspectiveTransform(marks, np.linalg.inv(matrix)).reshape(-1, 2).round().astype(int)
+        inside = (points[:, 0] >= 0) & (points[:, 0] < gray.shape[1]) & (points[:, 1] >= 0) & (points[:, 1] < gray.shape[0])
+        values = np.full(len(points), 255.0)
+        values[inside] = gray[points[inside, 1], points[inside, 0]]
+        return float(255 - values.mean())
+
+    candidates = [
+        cv2.getPerspectiveTransform(np.float32(clockwise[turn:] + clockwise[:turn]), target) for turn in range(4)
+    ]
+    matrix = max(candidates, key=darkness)
     return cv2.warpPerspective(img, matrix, (CANVAS_W, CANVAS_H), borderValue=(255, 255, 255))
 
 

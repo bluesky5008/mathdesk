@@ -5,6 +5,7 @@
 import asyncio
 import time
 
+import cv2
 import numpy as np
 import pytest
 from sqlalchemy import select, update
@@ -47,6 +48,17 @@ def test_distorted_sheet_reads_every_field_and_flags_the_deliberate_errors(truth
         if q == 3:
             continue
         assert result.answers[q] == truth["answers"][q], q
+    assert _flags(result) == {"3": "multi", "22": "blank"}
+
+
+@pytest.mark.parametrize("turn", [cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_180, cv2.ROTATE_90_COUNTERCLOCKWISE])
+def test_sideways_or_upside_down_sheet_reads_the_same(truth, photo, turn):
+    """TASK-75: 휴대폰 세로 촬영·거꾸로 넣은 스캔처럼 돌아간 답안지도 정방향으로 읽는다."""
+    result = TemplateOmrReader().read(png(cv2.rotate(photo, turn)), TEMPLATE_ID)
+
+    assert result.exam_number == truth["exam_number"]
+    assert result.form == "odd"
+    assert all(result.answers[q] == truth["answers"][q] for q in range(1, 31) if q != 3)
     assert _flags(result) == {"3": "multi", "22": "blank"}
 
 
