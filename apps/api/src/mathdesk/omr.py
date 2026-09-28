@@ -33,6 +33,7 @@ TEMPLATE_ID = "ksat-2027-math"
 CANVAS_W, CANVAS_H = 3508, 2480  # 기준 캔버스(A4 가로 300dpi)
 RENDER_SCALE = 300 / 72  # PDF 1pt = 1/72in → 300dpi
 MAX_RENDER_SIDE = 5000  # px. A4 300dpi의 긴 변(3508)에 여유를 둔 값
+PAPER_WINDOW = 61  # px(기준 캔버스). 버블(약 25×38)·가로로 붙은 마킹 여러 칸보다 커야 종이 밝기만 남는다
 
 MAX_OMR_BYTES = 20 * 1024 * 1024  # FR-32
 MAX_OMR_PAGES = 30
@@ -48,16 +49,20 @@ class OmrRegistrationError(Exception):
 
 @dataclass(frozen=True)
 class OmrThresholds:
-    """판정 임계값. 실스캔 보정 전까지 합성 기준값이다(RISK-01, Q-08)."""
+    """판정 임계값(RISK-01, Q-08). 농도는 종이 밝기로 나눈 값이다(`_darkness`).
 
-    abs_th: float = 70.0  # 이 농도 이상이어야 마킹으로 본다(0=흰색, 255=검정)
+    `abs_th`는 2026-09-28 실사진(흑백 인쇄·휴대폰 촬영)의 빈 칸 최대 98과 칠한 칸 최소 147
+    사이에서 정했다. 합성 스캔본은 빈 칸 34 이하, 칠한 칸 202 이상이다. 사진이 더 모이면 다시 본다.
+    """
+
+    abs_th: float = 120.0  # 이 농도 이상이어야 마킹으로 본다(0=종이, 255=검정)
     rel: float = 0.5  # 같은 행 최댓값 대비 이 비율 이상이어야 마킹으로 본다
     margin: float = 25.0  # 1·2위 농도 차가 이보다 작으면 저신뢰
 
     @classmethod
     def from_env(cls) -> "OmrThresholds":
         return cls(
-            abs_th=float(os.environ.get("MATHDESK_OMR_ABS_TH", 70.0)),
+            abs_th=float(os.environ.get("MATHDESK_OMR_ABS_TH", 120.0)),
             rel=float(os.environ.get("MATHDESK_OMR_REL", 0.5)),
             margin=float(os.environ.get("MATHDESK_OMR_MARGIN", 25.0)),
         )
@@ -148,6 +153,17 @@ def _register(img: np.ndarray, tpl: dict) -> np.ndarray:
     return cv2.warpPerspective(img, matrix, (CANVAS_W, CANVAS_H), borderValue=(255, 255, 255))
 
 
+def _darkness(red: np.ndarray) -> np.ndarray:
+    """R 채널을 종이 밝기로 나눠 농도(0=종이, 255=검정)로 바꾼다.
+
+    분홍 인쇄는 R 채널에서 사라지지만 흑백 프린터 출력은 회색으로 남고, 휴대폰 사진은
+    종이 자체가 어둡고 조명이 고르지 않다. 버블보다 큰 창으로 닫힘 연산을 해 종이 밝기를
+    추정하고 그 비율로 나누면 조명 차이가 사라진다(2026-09-28 실사진, TASK-76).
+    """
+    paper = cv2.morphologyEx(red, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (PAPER_WINDOW,) * 2))
+    return 255 - np.clip(red / np.maximum(paper, 1.0) * 255, 0, 255)
+
+
 class TemplateOmrReader:
     """템플릿 좌표 판독기(ADR-006). 학습 모델 판독기로 바꿔 끼울 수 있게 `OmrReader` 뒤에 둔다."""
 
@@ -159,8 +175,7 @@ class TemplateOmrReader:
         img = cv2.imdecode(np.frombuffer(page_image, np.uint8), cv2.IMREAD_COLOR)
         if img is None:
             raise OmrRegistrationError("이미지를 읽을 수 없습니다.")
-        # 분홍 인쇄는 R 채널에서 사라지고 검정 펜 마킹만 남는다
-        dark = 255 - _register(img, tpl)[:, :, 2]
+        dark = _darkness(_register(img, tpl)[:, :, 2])
         rx = tpl["bubble_radius"]["rx"] * CANVAS_W
         ry = tpl["bubble_radius"]["ry"] * CANVAS_H
 

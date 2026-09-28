@@ -65,6 +65,21 @@ def paint(truth: dict, seed: int = 7) -> np.ndarray:
     return img
 
 
+def monochrome(img: np.ndarray) -> np.ndarray:
+    """흑백 프린터 출력. 분홍 인쇄가 회색으로 남아 R 채널에서 사라지지 않는다."""
+    return cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
+
+
+def dim(img: np.ndarray) -> np.ndarray:
+    """실내 휴대폰 촬영. 누런 종이가 어둡게 찍히고 왼쪽 위에서 오른쪽 아래로 더 어두워진다.
+    실사진(2026-09-28)에서 빈 여백의 R 채널이 약 155였고 오른쪽 아래가 더 어두웠다."""
+    h, w = img.shape[:2]
+    y, x = np.mgrid[0:h, 0:w].astype(np.float32)
+    light = 0.75 - 0.25 * (x / w + y / h) / 2  # 0.75 → 0.5
+    tint = np.float32([0.8, 0.95, 1.0])  # B·G·R: 누런 종이
+    return np.clip(img * light[..., None] * tint, 0, 255).astype(np.uint8)
+
+
 def photograph(img: np.ndarray) -> np.ndarray:
     """회전 3°·축소 0.6·원근 왜곡, 회색 배경(AC-24)."""
     h, w = img.shape[:2]

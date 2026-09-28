@@ -15,7 +15,7 @@ from mathdesk.models import BackgroundTask, OmrScan
 from mathdesk.omr import OmrRegistrationError, OmrThresholds, TemplateOmrReader
 from mathdesk.tasks import TaskRunner
 
-from omr_synthetic import make_truth, paint, pdf, photograph, png
+from omr_synthetic import dim, make_truth, monochrome, paint, pdf, photograph, png
 
 TEMPLATE_ID = "ksat-2027-math"
 
@@ -58,6 +58,20 @@ def test_sideways_or_upside_down_sheet_reads_the_same(truth, photo, turn):
 
     assert result.exam_number == truth["exam_number"]
     assert result.form == "odd"
+    assert all(result.answers[q] == truth["answers"][q] for q in range(1, 31) if q != 3)
+    assert _flags(result) == {"3": "multi", "22": "blank"}
+
+
+def test_black_and_white_print_photographed_under_uneven_light(truth):
+    """TASK-76: 흑백 인쇄(인쇄가 R 채널에 남음)를 어둡고 고르지 않은 조명에서 찍어도
+    칠하지 않은 칸을 마킹으로 보지 않는다."""
+    shot = photograph(dim(monochrome(paint(truth))))
+
+    result = TemplateOmrReader().read(png(shot), TEMPLATE_ID)
+
+    assert result.exam_number == truth["exam_number"]
+    assert result.form == "odd"
+    assert result.absent is False
     assert all(result.answers[q] == truth["answers"][q] for q in range(1, 31) if q != 3)
     assert _flags(result) == {"3": "multi", "22": "blank"}
 
