@@ -28,6 +28,6 @@ export function useCurrentClasses(): Map<number, Klass[]> {
 }
 
 export function describeClasses(classes: Klass[] | undefined): string {
-  if (!classes?.length) return '—'
+  if (!classes?.length) return '미배정'
   return classes.map((klass) => (klass.is_active ? klass.name : `${klass.name} (비활성)`)).join(', ')
 }

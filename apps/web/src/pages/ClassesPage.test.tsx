@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { today } from '../lib/date'
+import { dayBefore, today } from '../lib/date'
 import { ClassesPage, describeSchedules } from './ClassesPage'
 
 describe('describeSchedules', () => {
@@ -65,20 +65,20 @@ function stubRoster(
       const body = init?.body ? JSON.parse(String(init.body)) : {}
       if (init?.method === 'PATCH') {
         patched.push({ url, body })
-        return Response.json({ id: 11, student_id: 1, start_date: '2026-03-02', end_date: today() })
+        return Response.json({ id: 11, student_id: 1, start_date: '2026-03-02', ...body })
       }
       if (init?.method === 'POST') {
         posted.push({ url, body })
         return Response.json({ id: 12, ...body, end_date: null })
       }
       if (url.includes('/enrollments')) {
-        // 서버는 `end_date >= on`으로 거른다. 오늘 종료한 배정은 오늘 명단에 종료일을 달고 남는다.
+        // 목록은 기간 전체를 돌려주고 화면이 오늘 이후로 거른다. 해제한 배정은 PATCH의 종료일을 단다
         return Response.json([
           {
             id: 11,
             student_id: 1,
             start_date: '2026-03-02',
-            end_date: patched.length ? today() : null,
+            end_date: patched.at(-1)?.body.end_date ?? null,
           },
         ])
       }
@@ -139,22 +139,73 @@ describe('ClassesPage', () => {
     })
   })
 
-  it('releases a member by ending the enrollment period', async () => {
+  // TASK-77: 해제는 "오늘 수업부터 이 반이 아님"이다. 명단에서 바로 빠지고 배정 후보로 돌아온다
+  it('releases a member from today on, after confirming', async () => {
     const patched: { url: string; body: Record<string, unknown> }[] = []
     stubRoster(patched)
+    const confirm = vi.fn(() => true)
+    vi.stubGlobal('confirm', confirm)
 
     renderPage()
     await userEvent.click(await screen.findByRole('button', { name: '명단' }))
 
     const dialog = within(await screen.findByRole('dialog'))
     expect(await dialog.findByText('김나윤')).toBeInTheDocument()
+    expect(dialog.queryByRole('checkbox', { name: /^김나윤/ })).not.toBeInTheDocument()
     await userEvent.click(dialog.getByRole('button', { name: '해제' }))
 
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('오늘 수업부터'))
     await waitFor(() => expect(patched).toHaveLength(1))
     expect(patched[0].url).toBe('/api/classes/1/enrollments/11')
-    expect(patched[0].body).toEqual({ end_date: today() })
-    expect(await dialog.findByText(`${today()} 종료`)).toBeInTheDocument()
+    expect(patched[0].body).toEqual({ end_date: dayBefore(today()) })
+    expect(await dialog.findByRole('checkbox', { name: /^김나윤/ })).toBeInTheDocument()
     expect(dialog.queryByRole('button', { name: '해제' })).not.toBeInTheDocument()
+    expect(dialog.queryByText(/종료$/)).not.toBeInTheDocument()
+  })
+
+  it('keeps the member when the release is not confirmed', async () => {
+    const patched: { url: string; body: Record<string, unknown> }[] = []
+    stubRoster(patched)
+    vi.stubGlobal('confirm', vi.fn(() => false))
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '명단' }))
+
+    const dialog = within(await screen.findByRole('dialog'))
+    await dialog.findByText('김나윤')
+    await userEvent.click(dialog.getByRole('button', { name: '해제' }))
+
+    expect(patched).toHaveLength(0)
+    expect(dialog.getByRole('button', { name: '해제' })).toBeInTheDocument()
+  })
+
+  // 오늘 시작한 배정은 어제까지로 끝낼 기간이 없다. 이력이 없으니 배정을 지운다
+  it('removes an assignment that starts today when it is released', async () => {
+    const calls: string[] = []
+    let rows = [{ id: 23, student_id: 1, start_date: today(), end_date: null as string | null }]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method) calls.push(`${init.method} ${url}`)
+        if (init?.method === 'DELETE') {
+          rows = []
+          return new Response(null, { status: 204 })
+        }
+        if (url.includes('/enrollments')) return Response.json(rows)
+        return Response.json(url.includes('/students') ? roster : [active])
+      }),
+    )
+    vi.stubGlobal('confirm', vi.fn(() => true))
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '명단' }))
+
+    const dialog = within(await screen.findByRole('dialog'))
+    await dialog.findByText(`${today()} 배정`)
+    await userEvent.click(dialog.getByRole('button', { name: '해제' }))
+
+    await waitFor(() => expect(calls).toEqual(['DELETE /api/classes/1/enrollments/23']))
+    expect(await dialog.findByText('배정된 학생이 없습니다.')).toBeInTheDocument()
   })
 
   it('assigns a student who is not in the class', async () => {

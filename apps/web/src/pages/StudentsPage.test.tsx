@@ -62,7 +62,7 @@ describe('StudentsPage', () => {
     expect(await first.findByText('고1 인A, 고1 인B')).toBeInTheDocument()
     const second = within(screen.getByRole('row', { name: /박서준/ }))
     expect(second.getByText('고2 윤B (비활성)')).toBeInTheDocument()
-    expect(within(screen.getByRole('row', { name: /이하준/ })).getByText('—')).toBeInTheDocument()
+    expect(within(screen.getByRole('row', { name: /이하준/ })).getByText('미배정')).toBeInTheDocument()
   })
 
   it('lists students from the API', async () => {

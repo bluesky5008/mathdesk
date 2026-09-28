@@ -22,6 +22,7 @@ import {
   fetchUsers,
   updateClass,
   type AppUserAccount,
+  type Enrollment,
   type Klass,
   type Schedule,
 } from '../api'
@@ -118,7 +119,8 @@ function ScheduleEditor({
 
 /**
  * 오늘 이후에도 이어지는 배정(시작 전인 배정 포함)을 보여 준다. 배정은 고른 날짜부터(기본 오늘, FR-08),
- * 해제는 오늘까지로 기간을 끊는다. 시작 전인 배정은 끊을 기간이 없어 취소(삭제)한다.
+ * 해제는 "오늘 수업부터 이 반이 아님"이라 어제까지로 기간을 끊는다(TASK-77). 해제한 학생은 명단에서
+ * 바로 빠져 배정 후보로 돌아온다. 오늘 이후 시작하는 배정은 끊을 기간이 없어 지운다.
  */
 function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void }) {
   const queryClient = useQueryClient()
@@ -165,7 +167,10 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
     },
   })
   const release = useMutation({
-    mutationFn: (enrollmentId: number) => endEnrollment(klass.id, enrollmentId, on),
+    mutationFn: async (row: Enrollment) => {
+      if (row.start_date >= on) await cancelEnrollment(klass.id, row.id)
+      else await endEnrollment(klass.id, row.id, dayBefore(on))
+    },
     onSuccess: () => void refresh(),
   })
   const cancel = useMutation({
@@ -319,7 +324,14 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => release.mutate(row.id)}
+                    onClick={() => {
+                      const name = byId.get(row.student_id)?.name ?? `학생 ${row.student_id}`
+                      const ok = window.confirm(
+                        `${name} 학생을 ${klass.name}에서 해제합니다. 오늘 수업부터 명단에서 빠집니다.\n` +
+                          '오늘 이미 입력한 출결·과제는 일일 입력 화면에 보이지 않게 됩니다(기록은 남습니다).',
+                      )
+                      if (ok) release.mutate(row)
+                    }}
                   >
                     해제
                   </Button>
