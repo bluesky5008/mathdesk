@@ -750,17 +750,12 @@ export function saveAlimtalkSettings(settings: {
   return request<AlimtalkSettings>('/messages/templates', { method: 'PUT', body: JSON.stringify(settings) })
 }
 
-export type DeletionPreview = { deletable: boolean; reason: string | null; counts: Record<string, number> }
-
 /** 학생은 확인 없이 바로 하드 삭제한다(DCR-013). */
 export function deleteStudent(id: number): Promise<void> {
   return request<void>(`/students/${id}`, { method: 'DELETE' })
 }
 
-export function fetchClassDeletionPreview(id: number): Promise<DeletionPreview> {
-  return request<DeletionPreview>(`/classes/${id}/deletion-preview`)
-}
-
-export function deleteClass(id: number, confirmName: string): Promise<void> {
-  return request<void>(`/classes/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm_name: confirmName }) })
+/** 반도 확인 없이 바로 하드 삭제한다(DCR-016). */
+export function deleteClass(id: number): Promise<void> {
+  return request<void>(`/classes/${id}`, { method: 'DELETE' })
 }

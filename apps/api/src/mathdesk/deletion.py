@@ -11,7 +11,7 @@
 """
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,10 +51,6 @@ CLASS_CASCADE = {
 }
 # 반을 지울 때 남기고 반 연결만 끊는 테이블 — 시험 결과는 학생들의 성적이다
 CLASS_UNLINK = {"exam"}
-
-
-class DeleteIn(BaseModel):
-    confirm_name: str
 
 
 class PreviewOut(BaseModel):
@@ -160,28 +156,19 @@ async def _class_counts(session: AsyncSession, class_id: int) -> dict[str, int]:
     }
 
 
-def _class_blocker(klass: Klass) -> str | None:
-    if klass.is_active:
-        return "활성 반은 삭제할 수 없습니다. 먼저 비활성으로 바꿔 주세요."
-    return None
-
-
 @router.get("/classes/{class_id}/deletion-preview")
 async def preview_class_deletion(class_id: int, scope: CurrentScope, session: Db) -> PreviewOut:
+    # 반은 활성 여부와 관계없이 지울 수 있다. 화면은 반 삭제에 미리보기를 쓰지 않는다(DCR-016)
     klass = await _class(session, scope, class_id)
-    reason = _class_blocker(klass)
-    return PreviewOut(deletable=reason is None, reason=reason, counts=await _class_counts(session, klass.id))
+    return PreviewOut(deletable=True, reason=None, counts=await _class_counts(session, klass.id))
 
 
 @router.delete("/classes/{class_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_class(class_id: int, payload: DeleteIn, scope: CurrentScope, session: Db) -> Response:
+async def delete_class(class_id: int, scope: CurrentScope, session: Db) -> Response:
+    # 반도 확인 없이 바로 지운다(DCR-016). 본문이 와도 읽지 않는다
     klass = await _class(session, scope, class_id, lock=True)
-    if reason := _class_blocker(klass):
-        raise HTTPException(status.HTTP_409_CONFLICT, reason)
-    if payload.confirm_name.strip() != klass.name:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "확인용 이름이 반 이름과 다릅니다.")
 
-    counts = await _class_counts(session, klass.id)
+    counts = {"is_active": str(klass.is_active).lower(), **await _class_counts(session, klass.id)}
     sessions = _sessions(klass.id)
     await session.execute(delete(StudentDailyRecord).where(StudentDailyRecord.session_id.in_(sessions)))
     await session.execute(delete(ClassSessionProgress).where(ClassSessionProgress.session_id.in_(sessions)))

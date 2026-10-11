@@ -1,4 +1,4 @@
-"""TASK-62·80 — 학생·비활성 반의 삭제(FR-05 상세·FR-07, AC-36, DES-04 상세, DCR-006·DCR-012)."""
+"""TASK-62·80·84 — 학생·반의 삭제(FR-05 상세·FR-07, AC-36, DES-04 상세, DCR-006·DCR-012·DCR-016)."""
 import asyncio
 
 import pytest
@@ -151,13 +151,12 @@ def test_a_student_is_deleted_without_a_confirmation_name(api, history, migrated
     assert _student_rows(migrated_database, history["other"]) == other_before
 
 
-def test_a_wrong_class_name_changes_nothing(api, history, migrated_database):
-    _deactivate(api, history["class_id"])
-
+# DCR-016: 반도 확인 이름 없이 바로 지운다. 본문이 와도 읽지 않는다(기준선 v17)
+def test_a_class_is_deleted_whatever_name_the_body_carries(api, history, migrated_database):
     response = _delete(api, f"/api/classes/{history['class_id']}", "고2 윤C")
 
-    assert response.status_code == 422
-    assert any(c["id"] == history["class_id"] for c in api.get("/api/classes", params={"include_inactive": "true"}).json())
+    assert response.status_code == 204, response.text
+    assert all(c["id"] != history["class_id"] for c in api.get("/api/classes", params={"include_inactive": "true"}).json())
 
 
 def test_deleting_a_withdrawn_student_removes_all_their_records_and_only_theirs(
@@ -201,11 +200,21 @@ def _deactivate(api, class_id):
     assert api.patch(f"/api/classes/{class_id}", json=body).status_code == 200
 
 
-def test_an_active_class_cannot_be_deleted(api, history, migrated_database):
-    response = _delete(api, f"/api/classes/{history['class_id']}", "고2 윤B")
+# DCR-016: 활성 반도 비활성으로 바꾸지 않고 같은 범위로 지운다(기준선 v17)
+def test_an_active_class_is_deleted_right_away_and_other_classes_stay(api, history, migrated_database):
+    other = api.post("/api/classes", json={"name": "고3 윤A", "grade": "고3"}).json()["id"]
+    api.post(f"/api/classes/{other}/enrollments", json={"student_id": history["other"], "start_date": "2026-03-02"})
+    assert api.get(f"/api/classes/{history['class_id']}/deletion-preview").json()["deletable"] is True
 
-    assert response.status_code == 409
-    assert _count(migrated_database, ClassSession, ClassSession.class_id == history["class_id"]) == 1
+    response = api.delete(f"/api/classes/{history['class_id']}")
+
+    assert response.status_code == 204, response.text
+    assert _count(migrated_database, ClassSession, ClassSession.class_id == history["class_id"]) == 0
+    assert _count(migrated_database, StudentDailyRecord) == 0
+    assert _count(migrated_database, Enrollment, Enrollment.class_id == other) == 1
+    assert _db(migrated_database, lambda s: s.get(Exam, history["exam_id"])).class_id is None
+    [log] = list(_db(migrated_database, lambda s: s.scalars(select(AuditLog).where(AuditLog.action == "class.delete"))))
+    assert "is_active=true" in log.detail and "daily_records=2" in log.detail
 
 
 def test_deleting_an_inactive_class_removes_its_lessons_but_keeps_its_exams(api, history, migrated_database):
@@ -216,12 +225,14 @@ def test_deleting_an_inactive_class_removes_its_lessons_but_keeps_its_exams(api,
         "schedules": 0, "enrollments": 3, "sessions": 1, "daily_records": 2, "exams_unlinked": 1,
     }
 
-    response = _delete(api, f"/api/classes/{history['class_id']}", "고2 윤B")
+    response = api.delete(f"/api/classes/{history['class_id']}")
 
     assert response.status_code == 204, response.text
     assert _count(migrated_database, ClassSession, ClassSession.class_id == history["class_id"]) == 0
     assert _count(migrated_database, StudentDailyRecord) == 0
     assert _count(migrated_database, Enrollment) == 0
+    [log] = list(_db(migrated_database, lambda s: s.scalars(select(AuditLog).where(AuditLog.action == "class.delete"))))
+    assert "is_active=false" in log.detail
     exam = _db(migrated_database, lambda s: s.get(Exam, history["exam_id"]))
     assert exam.class_id is None
     assert _count(migrated_database, ExamAttempt) == 2  # 학생 성적은 남는다
@@ -237,9 +248,11 @@ def test_only_directors_of_the_campus_can_delete(api, history):
     api.sign_in("teacher_a")
     assert _delete(api, f"/api/students/{history['target']}", "김나윤").status_code == 403
     assert api.get(f"/api/students/{history['target']}/deletion-preview").status_code == 403
+    assert api.delete(f"/api/classes/{history['class_id']}").status_code == 403
 
     api.sign_in("director_b")
     assert _delete(api, f"/api/students/{history['target']}", "김나윤").status_code == 403
+    assert api.delete(f"/api/classes/{history['class_id']}").status_code == 403
 
 
 # ── 삭제 규칙의 누락 방지(DES-04 상세) ─────────────────────────────

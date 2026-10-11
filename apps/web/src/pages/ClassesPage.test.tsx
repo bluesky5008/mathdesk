@@ -432,46 +432,61 @@ describe('ClassesPage', () => {
     expect(screen.queryByRole('button', { name: '고3 종강반 비활성' })).not.toBeInTheDocument()
   })
 
-  it('deletes an inactive class after the preview and name check', async () => {
+  // DCR-016: 반도 학생처럼 [삭제]를 누르면 확인 없이 바로 지운다(기준선 v17)
+  function stubDelete(classes: (typeof active)[]) {
     const calls: { url: string; method: string; body: unknown }[] = []
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         const method = init?.method ?? 'GET'
-        calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : null })
-        if (url.endsWith('/deletion-preview')) {
-          return Response.json({
-            deletable: true,
-            reason: null,
-            counts: { schedules: 0, enrollments: 3, sessions: 12, daily_records: 150, exams_unlinked: 1 },
-          })
-        }
+        calls.push({ url, method, body: init?.body ?? null })
         if (method === 'DELETE') return new Response(null, { status: 204 })
-        return Response.json(calls.some((c) => c.method === 'DELETE') ? [] : [inactive])
+        const deleted = calls.filter((c) => c.method === 'DELETE').map((c) => c.url)
+        return Response.json(classes.filter((klass) => !deleted.includes(`/api/classes/${klass.id}`)))
       }),
     )
+    return calls
+  }
+
+  it('deletes an active class straight from the row without asking', async () => {
+    const calls = stubDelete([active])
+    const confirm = vi.fn(() => true)
+    vi.stubGlobal('confirm', confirm)
+
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: '고2 윤B 삭제' }))
+
+    await waitFor(() => expect(screen.queryByText(/고2 윤B/)).not.toBeInTheDocument())
+    expect(calls.filter((c) => c.method === 'DELETE')).toEqual([
+      { url: '/api/classes/1', method: 'DELETE', body: null },
+    ])
+    expect(confirm).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('puts delete right after edit on every row, active or not', async () => {
+    stubDelete([active, inactive])
 
     renderPage()
     await userEvent.click(await screen.findByRole('button', { name: '비활성 포함' }))
-    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '삭제' }))
 
-    const dialog = await screen.findByRole('dialog', { name: '고3 종강반 반 삭제' })
-    expect(await within(dialog).findByText('학생 일일 기록 150건')).toBeInTheDocument()
-    expect(within(dialog).getByText('반 연결이 끊기는 시험 1건')).toBeInTheDocument()
-    await userEvent.type(within(dialog).getByLabelText('확인용 이름'), '고3 종강반')
-    await userEvent.click(within(dialog).getByRole('button', { name: '영구 삭제' }))
-
-    await waitFor(() => expect(calls.some((c) => c.method === 'DELETE' && c.url === '/api/classes/2')).toBe(true))
+    for (const name of ['고2 윤B', '고3 종강반']) {
+      const row = (await screen.findByRole('button', { name: `${name} 삭제` })).parentElement!
+      const labels = within(row).getAllByRole('button').map((button) => button.textContent)
+      expect(labels.slice(-2)).toEqual(['수정', '삭제'])
+    }
   })
 
-  it('offers no delete button for an active class', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json([active])))
+  it('deletes an active class from the edit dialog right away', async () => {
+    const calls = stubDelete([active])
 
     renderPage()
     await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '삭제' }))
 
-    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
+    await waitFor(() => expect(calls.filter((c) => c.method === 'DELETE').map((c) => c.url)).toEqual(['/api/classes/1']))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText(/고2 윤B/)).not.toBeInTheDocument())
   })
 
   it('registers a class with weekday and start-time slots', async () => {
@@ -650,6 +665,7 @@ describe('teacher view', () => {
     expect(screen.queryByRole('button', { name: '반 등록' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('반 이름')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '고2 윤B 비활성' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '고2 윤B 삭제' })).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: '수정' }))
     const dialog = within(screen.getByRole('dialog'))

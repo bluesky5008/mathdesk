@@ -13,7 +13,6 @@ import {
   cancelEnrollment,
   createClass,
   deleteClass,
-  fetchClassDeletionPreview,
   createEnrollment,
   endEnrollment,
   fetchClasses,
@@ -28,7 +27,6 @@ import {
 } from '../api'
 import { dayBefore, today } from '../lib/date'
 import { describeClasses, releaseFromToday, releaseNotice, useCurrentClasses } from '../lib/currentClasses'
-import { DeleteDialog } from './DeleteDialog'
 
 export const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 
@@ -354,14 +352,6 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
   )
 }
 
-const DELETE_LABELS = {
-  schedules: '시간표',
-  enrollments: '반 배정',
-  sessions: '수업',
-  daily_records: '학생 일일 기록',
-  exams_unlinked: '반 연결이 끊기는 시험',
-}
-
 // 담당 강사 선택지: 사용 중인 강사. 이미 지정된 강사가 나중에 사용 안 함이 되었으면 그 사람도 남겨
 // 반을 고칠 때 담당이 저절로 지워지지 않게 한다(서버도 기존 지정은 그대로 허용한다)
 function TeacherSelect({
@@ -413,7 +403,6 @@ export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {
     schedules: Schedule[]
   }>({ name: '', grade: '', teacher_id: null, schedules: [] })
   const [edit, setEdit] = useState<Klass | null>(null)
-  const [deleting, setDeleting] = useState<Klass | null>(null)
   const [roster, setRoster] = useState<Klass | null>(null)
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['classes'] })
@@ -459,6 +448,15 @@ export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {
         schedules: klass.schedules,
       }),
     onSuccess: () => void refresh(),
+  })
+
+  // 반은 확인 없이 바로 하드 삭제한다(DCR-016). 되살리려면 백업에서 복원해야 한다
+  const remove = useMutation({
+    mutationFn: (id: number) => deleteClass(id),
+    onSuccess: () => {
+      setEdit(null)
+      void refresh()
+    },
   })
 
   function confirmDeactivate(klass: Klass) {
@@ -584,13 +582,26 @@ export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {
                   <Button type="button" variant="outline" size="sm" onClick={() => setEdit(klass)}>
                     수정
                   </Button>
+                  {isDirector && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-danger"
+                      aria-label={`${klass.name} 삭제`}
+                      disabled={remove.isPending}
+                      onClick={() => remove.mutate(klass.id)}
+                    >
+                      삭제
+                    </Button>
+                  )}
                 </span>
               </li>
             ))}
           </ul>
-          {deactivate.isError && (
+          {(deactivate.error ?? remove.error) && (
             <p role="alert" className="px-5 py-3 text-sm text-danger">
-              {deactivate.error.message}
+              {(deactivate.error ?? remove.error)?.message}
             </p>
           )}
         </CardContent>
@@ -655,12 +666,15 @@ export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {
                 </p>
               )}
               <div className="col-span-2 mt-2 flex justify-between gap-2">
-                {/* 퇴원·비활성으로 저장된 대상만 삭제할 수 있다(DCR-006). 선행 조건은 서버도 다시 확인한다 */}
-                {isDirector && classes.data?.find((c) => c.id === edit.id)?.is_active === false ? (
-                  <Button type="button" variant="ghost" className="text-danger" onClick={() => {
-                      setDeleting(classes.data?.find((c) => c.id === edit.id) ?? null)
-                      setEdit(null)
-                    }}>
+                {/* 원장은 활성 여부와 관계없이 반을 확인 없이 바로 삭제한다(DCR-016) */}
+                {isDirector ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-danger"
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate(edit.id)}
+                  >
                     삭제
                   </Button>
                 ) : (
@@ -680,20 +694,6 @@ export function ClassesPage({ isDirector = false }: { isDirector?: boolean } = {
         </DialogContent>
       </Dialog>
 
-      {deleting && (
-        <DeleteDialog
-          title={`${deleting.name} 반 삭제`}
-          name={deleting.name}
-          labels={DELETE_LABELS}
-          preview={() => fetchClassDeletionPreview(deleting.id)}
-          remove={(confirmName) => deleteClass(deleting.id, confirmName)}
-          onDone={() => {
-            setDeleting(null)
-            void refresh()
-          }}
-          onClose={() => setDeleting(null)}
-        />
-      )}
     </section>
   )
 }
