@@ -81,16 +81,24 @@ def test_student_account_needs_a_student_phone(api, klass):
     assert _issue(api, without_phone, "student").status_code == 422
 
 
-def test_siblings_share_one_guardian_account(api, klass, student):
+def test_siblings_share_one_guardian_account_only_after_confirmation(api, klass, student):
+    """DCR-026: 오타로 남의 학부모에게 연결되지 않도록, 기존 계정 연결은 확인이 있어야 한다."""
     sibling = klass["student_ids"][1]
     api.patch(f"/api/students/{sibling}", json={"name": "김정현", "guardian_phone": GUARDIAN_PHONE})
 
     first = _issue(api, student, "guardian")
-    second = _issue(api, sibling, "guardian")
-
     assert first.status_code == 201 and first.json()["linked"] is False
+    assert _accounts(api, sibling)["guardians"][0]["existing"] == {"login_id": GUARDIAN_ID, "students": ["김나윤"]}
+    assert _accounts(api, student)["guardians"][0]["existing"] is None
+
+    unconfirmed = _issue(api, sibling, "guardian")
+    assert unconfirmed.status_code == 409
+    assert _accounts(api, sibling)["guardians"][0]["state"] == "none"
+
+    second = _issue(api, sibling, "guardian", confirm_link=True)
     assert second.status_code == 201 and second.json()["linked"] is True
     assert first.json()["user_id"] == second.json()["user_id"]
+    assert _accounts(api, sibling)["guardians"][0]["existing"] is None
 
     assert _login(api, GUARDIAN_ID, GUARDIAN_ID).status_code == 200
     _change(api, GUARDIAN_ID, "parent-password-1")
@@ -172,7 +180,7 @@ def test_a_guardian_keeps_access_while_one_sibling_remains(api, klass, student):
     sibling = klass["student_ids"][1]
     api.patch(f"/api/students/{sibling}", json={"name": "김정현", "guardian_phone": GUARDIAN_PHONE})
     _issue(api, student, "guardian")
-    _issue(api, sibling, "guardian")
+    _issue(api, sibling, "guardian", confirm_link=True)
 
     api.patch(f"/api/students/{sibling}", json={"name": "김정현", "status": "withdrawn"})
 
@@ -186,7 +194,7 @@ def test_deleting_a_student_removes_orphaned_portal_accounts_only(api, klass, st
     api.patch(f"/api/students/{sibling}", json={"name": "김정현", "guardian_phone": GUARDIAN_PHONE})
     _issue(api, student, "student")
     _issue(api, student, "guardian")
-    _issue(api, sibling, "guardian")
+    _issue(api, sibling, "guardian", confirm_link=True)
     _login(api, STUDENT_ID, STUDENT_ID)
     token = api.cookies.get(SESSION_COOKIE)
 

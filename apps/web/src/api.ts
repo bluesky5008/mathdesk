@@ -36,6 +36,8 @@ export type Student = {
   score_note: string | null
   // 포털 계정 상태 요약(FR-48 상세): none · pending · active · expired · inactive
   portal?: { student: PortalState; guardian: PortalState }
+  // 같은 학부모 번호를 가진 다른 학생 이름(DCR-026). 오타 안내용
+  guardian_phone_shared_with?: string[]
 }
 
 export type PortalState = 'none' | 'pending' | 'active' | 'expired' | 'inactive'
@@ -860,9 +862,12 @@ export function deleteClass(id: number): Promise<void> {
 
 export type PortalAccount = { state: PortalState; login_id: string | null; user_id: number | null }
 
+/** 그 보호자 번호가 이미 다른 학생의 학부모 계정일 때(DCR-026) — 연결 전 확인용 */
+export type ExistingAccount = { login_id: string; students: string[] }
+
 export type PortalAccounts = {
   student: PortalAccount
-  guardians: (PortalAccount & { guardian_id: number })[]
+  guardians: (PortalAccount & { guardian_id: number; existing?: ExistingAccount | null })[]
 }
 
 export type IssuedAccount = { user_id: number; login_id: string; state: PortalState; linked: boolean }
@@ -871,10 +876,14 @@ export function fetchPortalAccounts(studentId: number): Promise<PortalAccounts> 
   return request<PortalAccounts>(`/students/${studentId}/portal-accounts`)
 }
 
-export function issuePortalAccount(studentId: number, kind: 'student' | 'guardian'): Promise<IssuedAccount> {
+export function issuePortalAccount(
+  studentId: number,
+  kind: 'student' | 'guardian',
+  confirmLink = false,
+): Promise<IssuedAccount> {
   return request<IssuedAccount>(`/students/${studentId}/portal-accounts`, {
     method: 'POST',
-    body: JSON.stringify({ kind }),
+    body: JSON.stringify(confirmLink ? { kind, confirm_link: true } : { kind }),
   })
 }
 

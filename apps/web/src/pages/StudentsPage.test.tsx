@@ -719,3 +719,75 @@ describe('StudentsPage portal accounts', () => {
     expect(dialog.queryByRole('button', { name: /발급/ })).not.toBeInTheDocument()
   })
 })
+
+// TASK-95: 형제 연결 확인 카드와 같은 학부모 번호 안내(DCR-026, AC-50 ④·AC-53)
+describe('StudentsPage sibling link confirmation and shared guardian phone', () => {
+  const sibling = { ...student, id: 2, name: '김정현', portal: { student: 'none', guardian: 'none' }, guardian_phone_shared_with: ['김나윤'] }
+  const accounts = {
+    student: { state: 'none', login_id: null, user_id: null },
+    guardians: [{ guardian_id: 5, state: 'none', login_id: null, user_id: null, existing: { login_id: '01077778888', students: ['김나윤'] } }],
+  }
+
+  function stub(rows: object[] = [sibling]) {
+    const writes: { url: string; body: Record<string, unknown> | null }[] = []
+    stubFetch((url, init) => {
+      if (init?.method === 'POST') {
+        writes.push({ url, body: init.body ? JSON.parse(String(init.body)) : null })
+        if (url.endsWith('/portal-accounts')) {
+          return Response.json({ user_id: 12, login_id: '01077778888', state: 'active', linked: true }, { status: 201 })
+        }
+        return Response.json({ ...sibling, id: 3, name: '홍길동' }, { status: 201 })
+      }
+      if (url.endsWith('/portal-accounts')) return Response.json(accounts)
+      return Response.json(url.includes('/students') ? rows : [])
+    })
+    return writes
+  }
+
+  it('asks for confirmation before linking to another student\'s guardian account', async () => {
+    const writes = stub()
+    renderPage({ isDirector: true })
+
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    expect(await dialog.findByText('이 번호는 김나윤 학생의 학부모 계정과 같습니다.')).toBeInTheDocument()
+    await userEvent.click(dialog.getByRole('button', { name: '학부모 계정 발급' }))
+
+    expect(writes).toHaveLength(0)
+    const card = within(dialog.getByRole('alertdialog'))
+    expect(card.getByText(/김나윤/)).toBeInTheDocument()
+    await userEvent.click(card.getByRole('button', { name: '형제가 맞습니다, 연결' }))
+
+    await waitFor(() =>
+      expect(writes[0]).toEqual({ url: '/api/students/2/portal-accounts', body: { kind: 'guardian', confirm_link: true } }),
+    )
+  })
+
+  it('cancels the confirmation card without linking', async () => {
+    const writes = stub()
+    renderPage({ isDirector: true })
+
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    await userEvent.click(await dialog.findByRole('button', { name: '학부모 계정 발급' }))
+    await userEvent.click(within(dialog.getByRole('alertdialog')).getByRole('button', { name: '취소' }))
+
+    expect(dialog.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(writes).toHaveLength(0)
+  })
+
+  it('shows the shared guardian phone notice in the list, the edit dialog and after registering', async () => {
+    stub()
+    renderPage({ isDirector: true })
+
+    expect(await screen.findByText('김나윤과 같음')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    expect(dialog.getByText('학부모 연락처가 김나윤 학생과 같습니다. 형제가 아니면 번호를 확인하세요.')).toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+
+    await userEvent.type(screen.getByLabelText('이름'), '홍길동')
+    await userEvent.click(screen.getByRole('button', { name: '학생 등록' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('학부모 연락처가 김나윤 학생과 같습니다')
+  })
+})

@@ -274,3 +274,25 @@ def test_score_note_over_500_characters_is_rejected(api):
 
     assert _student(api, score_note="가" * 501).status_code == 422
     assert _student(api, score_note="가" * 500).status_code == 201
+
+
+# DCR-026 (AC-53): 같은 학부모 번호를 가진 다른 학생이 있으면 안내한다(저장은 막지 않는다)
+def test_students_sharing_a_guardian_phone_are_named_for_each_other(api):
+    api.sign_in("director_a")
+    first = api.post("/api/students", json={"name": "김나윤", "guardian_phone": "010-9876-5432"})
+    assert first.json()["guardian_phone_shared_with"] == []
+
+    second = api.post("/api/students", json={"name": "김정현", "guardian_phone": "010 9876 5432"})
+    assert second.status_code == 201
+    assert second.json()["guardian_phone_shared_with"] == ["김나윤"]
+
+    other = api.post("/api/students", json={"name": "박서준", "guardian_phone": "010-1111-2222"})
+    assert other.json()["guardian_phone_shared_with"] == []
+    none = api.post("/api/students", json={"name": "이하준"})
+    assert none.json()["guardian_phone_shared_with"] == []
+
+    listed = {s["name"]: s["guardian_phone_shared_with"] for s in api.get("/api/students").json()}
+    assert listed == {"김나윤": ["김정현"], "김정현": ["김나윤"], "박서준": [], "이하준": []}
+
+    edited = api.patch(f"/api/students/{other.json()['id']}", json={"name": "박서준", "guardian_phone": "01098765432"})
+    assert edited.json()["guardian_phone_shared_with"] == ["김나윤", "김정현"]
