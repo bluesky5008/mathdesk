@@ -85,6 +85,29 @@ def test_class_stats_gives_rows_distribution_and_a_period_comparison(api, klass)
     assert body["compare"]["start"] == WEEKS[0]
 
 
+def test_a_day_without_attendance_input_is_not_counted_as_a_class(api, klass):
+    """TASK-86: 일일 입력에서 날짜를 열기만 해도 수업 행이 생긴다. 출결을 입력하지 않은 수업은
+    출결률 분모에 넣지 않는다(열어 본 날·진도만 적은 날이 결석으로 잡히던 버그)."""
+    _history(api, klass)
+    api.get("/api/daily", params={"class_id": klass["class_id"], "date": "2026-09-15"})
+    _write(api, klass["class_id"], "2026-09-16", [], {"homework": "교재 10p"})
+
+    rows = {
+        row["name"]: row
+        for row in api.get(
+            f"/api/stats/classes/{klass['class_id']}",
+            params={"start": WEEKS[1], "end": WEEKS[2]},
+        ).json()["period"]["students"]
+    }
+    week = api.get(
+        f"/api/stats/students/{klass['student_ids'][0]}", params={"to": WEEKS[-1], "weeks": 1}
+    ).json()["weeks"][0]
+
+    assert rows["김나윤"]["attendance_rate"] == 100.0
+    assert rows["김태호"]["attendance_rate"] == 50.0
+    assert week["attendance_rate"] == 100.0
+
+
 def test_export_contains_the_same_rows_as_the_class_stats_screen(api, klass):
     from io import BytesIO
     from openpyxl import load_workbook

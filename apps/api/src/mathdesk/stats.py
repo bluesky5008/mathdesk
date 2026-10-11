@@ -315,11 +315,18 @@ async def _period_records(
 async def _session_count(
     session: AsyncSession, class_id: int, start: date, end: date
 ) -> int:
+    """출결률의 분모. 일일 입력은 날짜를 열기만 해도 수업 행을 만들므로 출결을 입력한 수업만 센다."""
     return (
         await session.scalar(
             select(func.count(ClassSession.id)).where(
                 ClassSession.class_id == class_id,
                 ClassSession.session_date.between(start, end),
+                select(StudentDailyRecord.id)
+                .where(
+                    StudentDailyRecord.session_id == ClassSession.id,
+                    StudentDailyRecord.attendance_status != "unchecked",
+                )
+                .exists(),
             )
         )
         or 0
