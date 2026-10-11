@@ -22,6 +22,7 @@ WIDTHS = [int(w) for w in os.environ.get("VER35_WIDTHS", "390,768,1280").split("
 
 BROWSE = [("종합 대시보드", "/"), ("알림문자", "/messages"),
           ("학생 관리", "/students"), ("반 관리", "/students/classes"),
+          ("학교 관리", "/students/schools"),
           ("주간 시간표", "/timetable"), ("성적 통계", "/stats"),
           ("시험지 분석", "/exams"), ("학원 설정", "/settings")]
 DESKTOP_ONLY = [("일일 입력", "/daily")]
@@ -33,7 +34,9 @@ ACCOUNTS = [{"id": i, "login_id": f"teacher{i:02d}", "display_name": f"강사{i:
 CLASSES = [{"id": i, "name": n, "grade": "고2", "teacher_id": 1, "is_active": True,
             "schedules": [{"weekday": 4, "start_time": "18:00:00", "end_time": "22:00:00"}]}
            for i, n in enumerate(["고3 윤A", "고2 윤B", "고2 윤C", "고1 윤D"], 1)]
-STUDENTS = [{"id": i, "name": f"학생{i:02d}", "school": "한영고등학교", "grade": "고2",
+SCHOOLS = [{"id": i, "name": n, "student_count": c} for i, n, c in
+           [(1, "대명고등학교", 0), (2, "한영외국어고등학교", 30), (3, "한영고등학교", 47)]]
+STUDENTS = [{"id": i, "name": f"학생{i:02d}", "school_id": 3, "school": "한영고등학교", "grade": "고2",
              "phone": "010-1234-5678", "status": "enrolled", "omr_number": f"1000{i:02d}00",
              "guardian_phone": "010-8765-4321", "score_note": "중간 85, 서술형 감점 많음. 오답 노트 확인 예정"}
             for i in range(1, 48)]
@@ -136,6 +139,7 @@ def body_for(path: str):
     if "/stats/classes" in path: return CLASS_STATS
     if "/consults" in path: return CONSULTS
     if "/deletion-preview" in path: return {"deletable": True, "reason": None, "counts": {"guardians": 1, "enrollments": 1, "daily_records": 24, "exam_attempts": 2, "omr_scans": 2, "messages": 15, "consults": 3}}
+    if path.endswith("/api/schools"): return SCHOOLS
     if "/classes" in path: return CLASSES
     if "/students" in path: return STUDENTS
     if "/dashboard" in path: return DASHBOARD
