@@ -10,10 +10,12 @@ import type { DeletionPreview } from '../api'
 /**
  * 되돌릴 수 없는 삭제의 마지막 확인(DCR-006). 함께 지워질 건수를 보여 주고
  * 이름을 그대로 입력해야 삭제한다. 서버도 같은 이름을 다시 확인한다.
+ * `warning`은 건수보다 먼저 보인다(재원 학생 삭제, DCR-012).
  */
 export function DeleteDialog({
   title,
   name,
+  warning,
   labels,
   preview,
   remove,
@@ -22,6 +24,7 @@ export function DeleteDialog({
 }: {
   title: string
   name: string
+  warning?: string
   labels: Record<string, string>
   preview: () => Promise<DeletionPreview>
   remove: (confirmName: string) => Promise<void>
@@ -49,6 +52,7 @@ export function DeleteDialog({
         ) : (
           <form className="grid gap-4" onSubmit={submit}>
             <div className="text-sm">
+              {warning && <p className="mb-3 break-keep font-medium text-danger">{warning}</p>}
               <p className="mb-2">다음이 함께 삭제됩니다.</p>
               <ul className="list-disc pl-5 text-muted-fg">
                 {Object.entries(counts.data?.counts ?? {})

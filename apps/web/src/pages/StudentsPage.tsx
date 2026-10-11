@@ -388,6 +388,18 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                     >
                       수정
                     </Button>
+                    {isDirector && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="ml-1 text-danger"
+                        aria-label={`${student.name} 삭제`}
+                        onClick={() => setDeleting(student)}
+                      >
+                        삭제
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -431,8 +443,8 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                 </p>
               )}
               <div className="col-span-2 mt-2 flex justify-between gap-2">
-                {/* 퇴원·비활성으로 저장된 대상만 삭제할 수 있다(DCR-006). 선행 조건은 서버도 다시 확인한다 */}
-                {students.data?.find((s) => s.id === edit.id)?.status === 'withdrawn' ? (
+                {/* 원장은 상태와 관계없이 학생을 삭제할 수 있다(DCR-012) */}
+                {isDirector ? (
                   <Button type="button" variant="ghost" className="text-danger" onClick={() => {
                       setDeleting(students.data?.find((s) => s.id === edit.id) ?? null)
                       setEdit(null)
@@ -461,6 +473,12 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
         <DeleteDialog
           title={`${deleting.name} 학생 삭제`}
           name={deleting.name}
+          warning={
+            deleting.status === 'withdrawn'
+              ? undefined
+              : `${STATUS[deleting.status as keyof typeof STATUS] ?? deleting.status} 중인 학생입니다. ` +
+                '오늘 수업 명단과 일일 입력에서 바로 빠지고, 출결·성적 기록까지 모두 지워집니다.'
+          }
           labels={DELETE_LABELS}
           preview={() => fetchStudentDeletionPreview(deleting.id)}
           remove={(confirmName) => deleteStudent(deleting.id, confirmName)}

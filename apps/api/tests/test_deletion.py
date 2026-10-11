@@ -1,4 +1,4 @@
-"""TASK-62 — 퇴원 학생·비활성 반의 삭제(FR-05 상세·FR-07, AC-36, DES-04 상세, DCR-006)."""
+"""TASK-62·80 — 학생·비활성 반의 삭제(FR-05 상세·FR-07, AC-36, DES-04 상세, DCR-006·DCR-012)."""
 import asyncio
 
 import pytest
@@ -105,15 +105,27 @@ def _student_rows(db, student_id):
 # ── 학생(AC-36 ①②④) ────────────────────────────────────────────────
 
 
-def test_an_enrolled_student_cannot_be_deleted(api, history, migrated_database):
-    before = _student_rows(migrated_database, history["target"])
+def _set_status(api, student_id, status):
+    row = next(s for s in api.get("/api/students").json() if s["id"] == student_id)
+    body = {k: row[k] for k in ("name", "school", "grade", "phone", "omr_number")} | {"status": status}
+    assert api.patch(f"/api/students/{student_id}", json=body).status_code == 200
+
+
+# DCR-012: 재원·휴원 학생도 퇴원을 거치지 않고 같은 범위로 지운다(기준선 v13)
+@pytest.mark.parametrize("status", ["enrolled", "paused"])
+def test_a_student_in_class_is_deleted_without_withdrawing_first(api, history, migrated_database, status):
+    _set_status(api, history["target"], status)
+    other_before = _student_rows(migrated_database, history["other"])
 
     preview = api.get(f"/api/students/{history['target']}/deletion-preview").json()
     response = _delete(api, f"/api/students/{history['target']}", "김나윤")
 
-    assert preview["deletable"] is False and "퇴원" in preview["reason"]
-    assert response.status_code == 409
-    assert _student_rows(migrated_database, history["target"]) == before
+    assert preview["deletable"] is True and preview["reason"] is None
+    assert response.status_code == 204, response.text
+    assert set(_student_rows(migrated_database, history["target"]).values()) == {0}
+    assert _student_rows(migrated_database, history["other"]) == other_before
+    logs = _db(migrated_database, lambda s: s.scalars(select(AuditLog).where(AuditLog.action == "student.delete")))
+    assert f"status={status}" in next(iter(logs)).detail
 
 
 def test_preview_counts_what_will_be_deleted(api, history):
@@ -167,6 +179,7 @@ def test_student_deletion_is_audited_without_the_name(api, history, migrated_dat
     assert log.target == f"student:{history['target']}"
     assert "김나윤" not in (log.detail or "") and "010" not in (log.detail or "")
     assert "daily_records=1" in log.detail
+    assert "status=withdrawn" in log.detail
 
 
 # ── 반(AC-36 ①③④) ─────────────────────────────────────────────────

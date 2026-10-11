@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v12`
+> 기준선: `v13`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (19/26)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (19/27)
+   ├─ [▶] TASK-80 재원 학생의 바로 삭제 (DCR-012) ..... in-progress
    ├─ [✓] TASK-79 학년·상태 드롭다운 (FR-05) ........ 2026-10-11 12:14
    ├─ [✓] TASK-78 학생 목록에서 반 배정 (FR-08) ....... 2026-10-11 12:05
    ├─ [✓] TASK-76 OMR 판정 기준: 조명 보정 ........... 2026-09-28 17:55
@@ -246,7 +247,7 @@ flowchart TD
     classDef gate fill:#ffcdd2,stroke:#c62828
 ```
 
-사이클 3 (노드 24)
+사이클 3 (노드 25)
 
 ```mermaid
 flowchart TD
@@ -266,6 +267,9 @@ flowchart TD
     T77 -. depends .-> T78
     C3 --> T79["TASK-79 학년·상태 드롭다운 (FR-05)"]:::done
     T78 -. depends .-> T79
+    C3 --> T80["TASK-80 재원 학생의 바로 삭제 (DCR-012)"]:::active
+    T62 -. depends .-> T80
+    T79 -. depends .-> T80
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
     C3 --> T75["TASK-75 OMR 방향 자동 판별"]:::done
     C3 --> T76["TASK-76 OMR 판정 기준: 조명 보정"]:::done
@@ -1066,6 +1070,18 @@ flowchart TD
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
 
+### TASK-80: 재원 학생의 바로 삭제
+
+- 상태: in-progress
+- 상위: 없음
+- 목표: 원장은 학생 목록 각 행의 [삭제](상담/퇴원/수정 옆)로 재원·휴원·퇴원 어느 학생이든 삭제한다. 미리보기·이름 입력 확인·함께 지우는 범위는 그대로이고, 재원·휴원 학생은 미리보기에 경고를 먼저 보인다. 감사 로그에 삭제 당시 상태를 남긴다. [수정] 창의 [삭제]도 상태와 관계없이 원장에게 보인다. 반 삭제는 그대로(비활성만).
+- 관련 요구사항과 설계: [DCR-012](./work/20260922-mathdesk-baseline/DCR-012-재원-학생의-바로-삭제.md)(기준선 `v13`, 승인 2026-10-11) — [FR-05 상세](./requirements.md#fr-05-상세)(삭제)·[AC-36](./requirements.md#인수-조건), [DES-04 상세](./design.md#des-04-상세--학생반-삭제-dcr-006-dcr-012)
+- 변경 대상: `apps/api/src/mathdesk/deletion.py`(학생 선행 조건 제거, 감사 로그 상태), `tests/test_deletion.py`, `apps/web/src/pages/StudentsPage.tsx`(행 [삭제], 수정 창 [삭제] 조건), `pages/DeleteDialog.tsx`(경고 문구 자리), 웹 테스트
+- 의존성: TASK-62(삭제 기능), TASK-79(같은 목록)
+- 위험: 실수 삭제는 백업 복원으로만 되돌린다 — 이름 입력 확인 유지. 테스트 운영에 자동 백업 없음(TASK-57 대기)
+- 검증 방법: 선행 테스트 — API(재원·휴원 학생 미리보기 `deletable=true`, 이름 확인 후 204·기록 전부 삭제·다른 학생 불변, 감사 로그 `status=`), 기존 "재원 학생 삭제 409" 테스트는 새 기준선에 맞춰 바꾼다. 웹(원장 모든 행에 [삭제], 강사 없음, 재원 학생 미리보기 경고, 이름 입력 후 `DELETE`). VER-35
+- 완료 조건: 테스트 운영 배포
+
 ### TASK-79: 학년·상태 드롭다운
 
 - 상태: completed (2026-10-11 12:14)
@@ -1280,7 +1296,7 @@ flowchart TD
 - 상태: completed (2026-09-24 18:08)
 - 상위: 없음
 - 목표: 퇴원 학생·비활성 반을 기록째 삭제하는 기능(미리보기·이름 확인)을 구현한다.
-- 관련 요구사항과 설계: [FR-05 상세·FR-07](./requirements.md#fr-05-상세), [AC-36](./requirements.md#인수-조건), [DES-04 상세](./design.md#des-04-상세--학생반-삭제-dcr-006), [DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md)
+- 관련 요구사항과 설계: [FR-05 상세·FR-07](./requirements.md#fr-05-상세), [AC-36](./requirements.md#인수-조건), [DES-04 상세](./design.md#des-04-상세--학생반-삭제-dcr-006-dcr-012), [DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md)
 - 변경 대상: `apps/api/src/mathdesk/masterdata.py`(또는 삭제 전용 모듈), `apps/web/src/pages/StudentsPage.tsx`·`ClassesPage.tsx`, `api.ts`
 - 의존성: 없음
 - 위험: 되돌릴 수 없는 삭제. 삭제 규칙이 참조 테이블을 빠뜨리면 외래키 오류(삭제 실패) 또는 고아 데이터가 생긴다

@@ -1,7 +1,8 @@
-"""퇴원 학생·비활성 반의 삭제(FR-05 상세·FR-07, AC-36, DES-04 상세, DCR-006).
+"""학생·비활성 반의 삭제(FR-05 상세·FR-07, AC-36, DES-04 상세, DCR-006·DCR-012).
 
 되돌릴 수 없는 작업이다. 그래서 세 가지를 지킨다.
-- 선행 조건: 학생은 퇴원, 반은 비활성이어야 한다(활동 중인 대상을 실수로 지우지 않게).
+- 선행 조건: 반은 비활성이어야 한다. 학생은 상태와 관계없이 지운다(DCR-012) — 재원 경고는 화면이 띄우고
+  감사 로그에 삭제 당시 상태를 남긴다.
 - 이름 확인: 요청 본문의 `confirm_name`이 대상 이름과 같아야 한다.
 - 한 트랜잭션: 대상 행을 잠그고 확인 → 연관 삭제 → 대상 삭제. 중간에 실패하면 전부 되돌린다.
 
@@ -97,17 +98,11 @@ async def _student_counts(session: AsyncSession, student_id: int) -> dict[str, i
     }
 
 
-def _student_blocker(student: Student) -> str | None:
-    if student.status != "withdrawn":
-        return "재원·휴원 중인 학생은 삭제할 수 없습니다. 먼저 퇴원 처리해 주세요."
-    return None
-
-
 @router.get("/students/{student_id}/deletion-preview")
 async def preview_student_deletion(student_id: int, scope: CurrentScope, session: Db) -> PreviewOut:
+    # 학생은 상태와 관계없이 지울 수 있다(DCR-012). 재원 경고는 화면이 상태를 보고 띄운다
     student = await _student(session, scope, student_id)
-    reason = _student_blocker(student)
-    return PreviewOut(deletable=reason is None, reason=reason, counts=await _student_counts(session, student.id))
+    return PreviewOut(deletable=True, reason=None, counts=await _student_counts(session, student.id))
 
 
 @router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -115,12 +110,11 @@ async def delete_student(
     student_id: int, payload: DeleteIn, scope: CurrentScope, session: Db
 ) -> Response:
     student = await _student(session, scope, student_id, lock=True)
-    if reason := _student_blocker(student):
-        raise HTTPException(status.HTTP_409_CONFLICT, reason)
     if payload.confirm_name.strip() != student.name:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "확인용 이름이 학생 이름과 다릅니다.")
 
     counts = await _student_counts(session, student.id)
+    state = student.status
     scan_ids = list(await session.scalars(_scans(student.id)))
     # 답안지 교정 기록은 외래키가 아니라 `omr_scan:{id}:{필드}` 문자열로 답안지를 가리킨다
     for scan_id in scan_ids:
@@ -135,7 +129,8 @@ async def delete_student(
     # 이름·연락처는 감사 로그에 쓰지 않는다(개인정보)
     session.add(AuditLog(
         campus_id=scope.campus_id, actor_id=scope.user.id, action="student.delete",
-        target=f"student:{student_id}", detail=" ".join(f"{k}={v}" for k, v in counts.items()),
+        target=f"student:{student_id}",
+        detail=" ".join(f"{k}={v}" for k, v in {"status": state, **counts}.items()),
     ))
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

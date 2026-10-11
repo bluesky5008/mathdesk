@@ -201,7 +201,7 @@ describe('StudentsPage', () => {
       return Response.json(calls.some((c) => c.method === 'DELETE') ? [] : [withdrawn])
     })
 
-    renderPage()
+    renderPage({ isDirector: true })
     await userEvent.click(await screen.findByRole('button', { name: '퇴원 포함' }))
     await userEvent.click(await screen.findByRole('button', { name: '수정' }))
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '삭제' }))
@@ -222,12 +222,45 @@ describe('StudentsPage', () => {
     })
   })
 
-  it('offers no delete button while the student is still enrolled', async () => {
-    stubFetch(() => Response.json([student]))
+  // DCR-012: 재원·휴원 학생도 행의 [삭제]로 바로 지운다. 재원 경고를 먼저 보인다(기준선 v13)
+  it('deletes an enrolled student straight from the row after a warning', async () => {
+    const calls: { url: string; method: string }[] = []
+    stubFetch((url, init) => {
+      const method = init?.method ?? 'GET'
+      calls.push({ url, method })
+      if (url.endsWith('/deletion-preview')) {
+        return Response.json({ deletable: true, reason: null, counts: { daily_records: 3 } })
+      }
+      if (method === 'DELETE') return new Response(null, { status: 204 })
+      return Response.json(calls.some((c) => c.method === 'DELETE') ? [] : [student, withdrawn])
+    })
+
+    renderPage({ isDirector: true })
+    await userEvent.click(await screen.findByRole('button', { name: '김나윤 삭제' }))
+
+    const dialog = within(await screen.findByRole('dialog', { name: '김나윤 학생 삭제' }))
+    expect(dialog.getByText(/재원 중인 학생입니다/)).toBeInTheDocument()
+    await userEvent.type(dialog.getByLabelText('확인용 이름'), '김나윤')
+    await userEvent.click(await dialog.findByRole('button', { name: '영구 삭제' }))
+
+    await waitFor(() => expect(calls).toContainEqual({ url: '/api/students/1', method: 'DELETE' }))
+  })
+
+  it('offers delete on every row and in the edit dialog to directors only', async () => {
+    stubFetch(() => Response.json([student, withdrawn]))
+    const { unmount } = renderPage({ isDirector: true })
+
+    await userEvent.click(await screen.findByRole('button', { name: '퇴원 포함' }))
+    expect(screen.getByRole('button', { name: '김나윤 삭제' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '박서준 삭제' })).toBeInTheDocument()
+    await userEvent.click(screen.getAllByRole('button', { name: '수정' })[0])
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: '삭제' })).toBeInTheDocument()
+    unmount()
 
     renderPage()
-    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
-
+    await userEvent.click(await screen.findByRole('button', { name: '퇴원 포함' }))
+    expect(screen.queryByRole('button', { name: /삭제$/ })).not.toBeInTheDocument()
+    await userEvent.click(screen.getAllByRole('button', { name: '수정' })[1])
     expect(within(screen.getByRole('dialog')).queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
   })
 })
