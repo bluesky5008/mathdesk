@@ -2,12 +2,12 @@ from datetime import date, time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import or_, select
+from pydantic import BaseModel, Field, StringConstraints, field_validator
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
-from .models import AppUser, AppUserCampus, AuditLog, ClassSchedule, Enrollment, Guardian, Klass, Student
+from .models import AppUser, AppUserCampus, AuditLog, ClassSchedule, Enrollment, Guardian, Klass, School, Student
 from .scope import CurrentScope, Scope, ScopedRepository
 
 Db = Annotated[AsyncSession, Depends(get_session)]
@@ -41,7 +41,8 @@ class GuardianOut(GuardianIn):
 
 class StudentIn(BaseModel):
     name: str = Field(min_length=1, max_length=50)
-    school: str | None = Field(default=None, max_length=100)
+    # DCR-015: 등록된 학교 중에서 고른다. 보내지 않으면 수정 시 그대로 둔다
+    school_id: int | None = None
     grade: str | None = Field(default=None, max_length=20)
     phone: str | None = Field(default=None, max_length=20)
     status: str = Field(default="enrolled", pattern="^(enrolled|paused|withdrawn)$")
@@ -54,7 +55,8 @@ class StudentIn(BaseModel):
 class StudentOut(BaseModel):
     id: int
     name: str
-    school: str | None
+    school_id: int | None
+    school: str | None = None  # 학교 이름(읽기 전용)
     grade: str | None
     phone: str | None
     status: str
@@ -175,9 +177,21 @@ async def _guardian_phones(session: AsyncSession, student_ids: list[int]) -> dic
     return phones
 
 
-def _student_out(student: Student, guardian_phone: str | None) -> StudentOut:
+def _student_out(student: Student, guardian_phone: str | None, school: str | None) -> StudentOut:
     out = StudentOut.model_validate(student, from_attributes=True)
-    return out.model_copy(update={"guardian_phone": guardian_phone})
+    return out.model_copy(update={"guardian_phone": guardian_phone, "school": school})
+
+
+async def _school_name(session: AsyncSession, scope: Scope, school_id: int | None) -> str | None:
+    """학생이 고른 학교의 이름. 같은 캠퍼스의 학교가 아니면 422(DCR-015)."""
+    if school_id is None:
+        return None
+    name = await session.scalar(
+        select(School.name).where(School.id == school_id, School.campus_id == scope.campus_id)
+    )
+    if name is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "학교를 찾을 수 없습니다.")
+    return name
 
 
 async def _sync_guardian(session: AsyncSession, student_id: int, phone: str | None) -> None:
@@ -201,20 +215,26 @@ async def list_students(
     q: str | None = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> list[StudentOut]:
-    statement = visible_students(session, scope).order_by(Student.id)
+    statement = (
+        visible_students(session, scope)
+        .add_columns(School.name)
+        .outerjoin(School, School.id == Student.school_id)
+        .order_by(Student.id)
+    )
     if q:
         statement = statement.where(Student.name.ilike(f"%{q}%"))
     if status_filter:
         statement = statement.where(Student.status == status_filter)
-    students = list(await session.scalars(statement))
-    phones = await _guardian_phones(session, [student.id for student in students])
-    return [_student_out(student, phones.get(student.id)) for student in students]
+    rows = (await session.execute(statement)).all()
+    phones = await _guardian_phones(session, [student.id for student, _ in rows])
+    return [_student_out(student, phones.get(student.id), school) for student, school in rows]
 
 
 @router.post("/students", status_code=status.HTTP_201_CREATED)
 async def create_student(payload: StudentIn, scope: CurrentScope, session: Db) -> StudentOut:
     scope.require_director()
     omr_number = await _validated_omr_number(session, scope, payload.omr_number)
+    school = await _school_name(session, scope, payload.school_id)
     student = Student(
         **payload.model_dump(exclude={"omr_number", "guardian_phone"}),
         omr_number=omr_number,
@@ -224,7 +244,7 @@ async def create_student(payload: StudentIn, scope: CurrentScope, session: Db) -
     await session.flush()
     await _sync_guardian(session, student.id, payload.guardian_phone)
     await session.commit()
-    return _student_out(student, payload.guardian_phone or None)
+    return _student_out(student, payload.guardian_phone or None, school)
 
 
 @router.patch("/students/{student_id}")
@@ -237,15 +257,95 @@ async def update_student(
         session, scope, payload.omr_number, exclude_id=student_id
     )
     fields = payload.model_dump(exclude={"omr_number", "guardian_phone"})
-    if "score_note" not in payload.model_fields_set:
-        del fields["score_note"]
+    for optional in ("score_note", "school_id"):
+        if optional not in payload.model_fields_set:
+            del fields[optional]
+    if "school_id" in fields:
+        await _school_name(session, scope, payload.school_id)
     for field, value in fields.items():
         setattr(student, field, value)
     if "guardian_phone" in payload.model_fields_set:
         await _sync_guardian(session, student_id, payload.guardian_phone)
     await session.commit()
     phones = await _guardian_phones(session, [student_id])
-    return _student_out(student, phones.get(student_id))
+    return _student_out(student, phones.get(student_id), await _school_name(session, scope, student.school_id))
+
+
+# ── 학교(FR-43, DCR-015) — 원장 전용 ─────────────────────────────────────
+
+SchoolName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+
+
+class SchoolIn(BaseModel):
+    name: SchoolName
+
+
+class SchoolOut(BaseModel):
+    id: int
+    name: str
+    student_count: int = 0
+
+
+async def _check_school_name(session: AsyncSession, scope: Scope, name: str, exclude_id: int | None = None) -> None:
+    statement = select(School.id).where(School.campus_id == scope.campus_id, School.name == name)
+    if exclude_id is not None:
+        statement = statement.where(School.id != exclude_id)
+    if await session.scalar(statement):
+        raise HTTPException(status.HTTP_409_CONFLICT, "이미 등록된 학교입니다.")
+
+
+@router.get("/schools")
+async def list_schools(scope: CurrentScope, session: Db) -> list[SchoolOut]:
+    scope.require_director()
+    rows = await session.execute(
+        select(School.id, School.name, func.count(Student.id))
+        .outerjoin(Student, Student.school_id == School.id)
+        .where(School.campus_id == scope.campus_id)
+        .group_by(School.id)
+        .order_by(School.name)
+    )
+    return [SchoolOut(id=id, name=name, student_count=count) for id, name, count in rows]
+
+
+@router.post("/schools", status_code=status.HTTP_201_CREATED)
+async def create_school(payload: SchoolIn, scope: CurrentScope, session: Db) -> SchoolOut:
+    scope.require_director()
+    await _check_school_name(session, scope, payload.name)
+    school = School(campus_id=scope.campus_id, name=payload.name)
+    session.add(school)
+    await session.commit()
+    return SchoolOut(id=school.id, name=school.name)
+
+
+@router.patch("/schools/{school_id}")
+async def update_school(school_id: int, payload: SchoolIn, scope: CurrentScope, session: Db) -> SchoolOut:
+    scope.require_director()
+    school = await _repo(session, scope).get(School, school_id)
+    await _check_school_name(session, scope, payload.name, exclude_id=school_id)
+    school.name = payload.name
+    await session.commit()
+    return SchoolOut(id=school.id, name=school.name)
+
+
+@router.delete("/schools/{school_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_school(school_id: int, scope: CurrentScope, session: Db) -> None:
+    """확인 없이 지우고 그 학교 학생들의 학교를 비운다(사용자 결정). 학생은 지우지 않는다."""
+    scope.require_director()
+    school = await _repo(session, scope).get(School, school_id)
+    cleared = await session.execute(
+        update(Student).where(Student.school_id == school_id).values(school_id=None)
+    )
+    session.add(
+        AuditLog(
+            campus_id=scope.campus_id,
+            actor_id=scope.user.id,
+            action="school.delete",
+            target=f"school:{school_id}",
+            detail=f"{school.name}, 학생 {cleared.rowcount}명",
+        )
+    )
+    await session.delete(school)
+    await session.commit()
 
 
 @router.get("/students/{student_id}/guardians")

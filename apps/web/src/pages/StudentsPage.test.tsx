@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { dayBefore, today } from '../lib/date'
@@ -10,7 +11,9 @@ function renderPage(props: { isDirector?: boolean } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <StudentsPage {...props} />
+      <MemoryRouter>
+        <StudentsPage {...props} />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -26,7 +29,8 @@ function stubFetch(handler: (url: string, init?: RequestInit) => Response) {
 const student = {
   id: 1,
   name: '김나윤',
-  school: '한영고',
+  school_id: 3 as number | null,
+  school: '한영고' as string | null,
   grade: '고2',
   phone: '010-1111-2222',
   status: 'enrolled',
@@ -128,7 +132,7 @@ describe('StudentsPage', () => {
     expect(patched[0].url).toBe('/api/students/1')
     expect(patched[0].body).toMatchObject({
       name: '김나윤',
-      school: '한영고',
+      school_id: 3,
       phone: '010-1111-2222',
       omr_number: '90000001',
       status: 'withdrawn',
@@ -156,7 +160,7 @@ describe('StudentsPage', () => {
     await waitFor(() => expect(screen.queryByText('김나윤')).not.toBeInTheDocument())
     expect(patched[0].body).toEqual({
       name: '김나윤',
-      school: '한영고',
+      school_id: 3,
       grade: '고2',
       phone: '010-1111-2222',
       omr_number: '90000001',
@@ -198,6 +202,7 @@ describe('StudentsPage', () => {
       const method = init?.method ?? 'GET'
       calls.push({ url, method, body: init?.body ?? null })
       if (method === 'DELETE') return new Response(null, { status: 204 })
+      if (url === '/api/schools') return Response.json([])
       const deleted = calls.filter((c) => c.method === 'DELETE').map((c) => c.url)
       return Response.json(rows.filter((row) => !deleted.includes(`/api/students/${row.id}`)))
     })
@@ -460,7 +465,7 @@ describe('StudentsPage grade and status dropdowns', () => {
 function toPayloadOf(s: typeof student) {
   return {
     name: s.name,
-    school: s.school,
+    school_id: s.school_id,
     grade: s.grade,
     phone: s.phone,
     omr_number: s.omr_number,
@@ -532,5 +537,87 @@ describe('StudentsPage guardian phone and score note', () => {
     expect(row.getByText('010-1111-2222')).toBeInTheDocument()
     expect(row.getByText('010-7777-8888')).toBeInTheDocument()
     expect(row.getByText(note)).toHaveAttribute('title', note)
+  })
+})
+
+// TASK-83: 학교는 등록된 학교 중에서 고른다(DCR-015, FR-05, AC-42)
+describe('StudentsPage school dropdown', () => {
+  const schools = [
+    { id: 4, name: '대명고', student_count: 0 },
+    { id: 3, name: '한영고', student_count: 1 },
+  ]
+
+  function stubWrites(rows = [student], registered = schools) {
+    const writes: { method: string; body: Record<string, unknown> }[] = []
+    const urls: string[] = []
+    stubFetch((url, init) => {
+      urls.push(url)
+      if (init?.method === 'POST' || init?.method === 'PATCH') {
+        writes.push({ method: init.method, body: JSON.parse(String(init.body)) })
+        return Response.json(student)
+      }
+      if (url === '/api/schools') return Response.json(registered)
+      return Response.json(url.includes('/students') ? rows : [])
+    })
+    return { writes, urls }
+  }
+
+  const optionsOf = (select: HTMLElement) =>
+    within(select).getAllByRole('option').map((option) => option.textContent)
+
+  it('picks a registered school when registering', async () => {
+    const { writes } = stubWrites([])
+    renderPage({ isDirector: true })
+
+    const school = screen.getByLabelText('학교')
+    await waitFor(() => expect(optionsOf(school)).toEqual(['선택', '대명고', '한영고']))
+    await userEvent.type(screen.getByLabelText('이름'), '홍길동')
+    await userEvent.selectOptions(school, '대명고')
+    await userEvent.click(screen.getByRole('button', { name: '학생 등록' }))
+
+    await waitFor(() => expect(writes[0]?.body).toMatchObject({ name: '홍길동', school_id: 4 }))
+    expect(writes[0].body).not.toHaveProperty('school')
+  })
+
+  it('registers without a school when none is picked', async () => {
+    const { writes } = stubWrites([])
+    renderPage({ isDirector: true })
+
+    await userEvent.type(await screen.findByLabelText('이름'), '홍길동')
+    await userEvent.click(screen.getByRole('button', { name: '학생 등록' }))
+
+    await waitFor(() => expect(writes[0]?.body).toMatchObject({ name: '홍길동', school_id: null }))
+  })
+
+  it('shows the current school in the edit dialog and saves a new pick', async () => {
+    const { writes } = stubWrites()
+    renderPage({ isDirector: true })
+
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    const school = within(screen.getByRole('dialog')).getByLabelText('학교')
+    await waitFor(() => expect(school).toHaveValue('3'))
+    await userEvent.selectOptions(school, '대명고')
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(writes[0]?.body).toMatchObject({ school_id: 4 }))
+  })
+
+  it('points to the school tab when no school is registered yet', async () => {
+    stubWrites([], [])
+    renderPage({ isDirector: true })
+
+    const link = await screen.findByRole('link', { name: '학교 탭' })
+    expect(link).toHaveAttribute('href', '/students/schools')
+    expect(link.closest('p')).toHaveTextContent('학교 탭에서 먼저 학교를 등록하세요')
+  })
+
+  it('does not ask teachers for the school list but keeps showing school names', async () => {
+    const { urls } = stubWrites()
+    renderPage()
+
+    const row = within(await screen.findByRole('row', { name: /김나윤/ }))
+    expect(row.getByText('한영고')).toBeInTheDocument()
+    expect(urls).not.toContain('/api/schools')
+    expect(screen.queryByRole('link', { name: '학교 탭' })).not.toBeInTheDocument()
   })
 })

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 
 import { PageHeader } from '../components/PageHeader'
 import { describeClasses, releaseFromToday, releaseNotice, useCurrentClasses } from '../lib/currentClasses'
@@ -26,15 +27,17 @@ import {
   deleteStudent,
   fetchClasses,
   fetchEnrollments,
+  fetchSchools,
   fetchStudents,
   updateStudent,
   type Klass,
+  type School,
   type Student,
 } from '../api'
 
 const FIELDS = [
   ['name', '이름'],
-  ['school', '학교'],
+  ['school_id', '학교'],
   ['grade', '학년'],
   ['phone', '학생 연락처'],
   ['guardian_phone', '학부모 연락처'],
@@ -55,14 +58,15 @@ function gradeOptions(current: string) {
 // 목록 칸의 드롭다운은 평소에는 글자처럼 보이고 가리키면 테두리가 보인다
 const INLINE_SELECT = '-ml-2 h-8 border-transparent bg-transparent text-muted-fg hover:border-border'
 
-const EMPTY = { name: '', school: '', grade: '', phone: '', guardian_phone: '', omr_number: '', score_note: '' }
+// school은 고른 학교의 이름이다. 목록에 없는 현재 학교를 선택지에 남길 때만 쓰고 보내지 않는다
+const EMPTY = { name: '', school_id: '', school: '', grade: '', phone: '', guardian_phone: '', omr_number: '', score_note: '' }
 
 type Form = typeof EMPTY
 
 function toPayload(form: Form, status: string) {
   return {
     name: form.name,
-    school: form.school || null,
+    school_id: form.school_id ? Number(form.school_id) : null,
     grade: form.grade || null,
     phone: form.phone || null,
     omr_number: form.omr_number || null,
@@ -75,6 +79,7 @@ function toPayload(form: Form, status: string) {
 function toForm(student: Student): Form {
   return {
     name: student.name,
+    school_id: student.school_id ? String(student.school_id) : '',
     school: student.school ?? '',
     grade: student.grade ?? '',
     phone: student.phone ?? '',
@@ -84,20 +89,42 @@ function toForm(student: Student): Form {
   }
 }
 
+// 학교는 등록된 학교 중에서 고른다(DCR-015). 목록에 없는 현재 학교는 그 학생의 선택지에 남긴다
+function schoolOptions(schools: School[], form: Form) {
+  const current = form.school_id && !schools.some((school) => String(school.id) === form.school_id)
+  return current ? [...schools, { id: Number(form.school_id), name: form.school }] : schools
+}
+
 function StudentFields({
   prefix,
   form,
   onChange,
+  schools,
   className,
 }: {
   prefix: string
   form: Form
   onChange: (form: Form) => void
+  schools: School[]
   className?: string
 }) {
   return FIELDS.map(([field, label]) => (
     <Field key={field} label={label} htmlFor={prefix + field} className={className}>
-      {field === 'grade' ? (
+      {field === 'school_id' ? (
+        <Select
+          id={prefix + field}
+          className="w-full"
+          value={form.school_id}
+          onChange={(event) => onChange({ ...form, school_id: event.target.value })}
+        >
+          <option value="">선택</option>
+          {schoolOptions(schools, form).map((school) => (
+            <option key={school.id} value={school.id}>
+              {school.name}
+            </option>
+          ))}
+        </Select>
+      ) : field === 'grade' ? (
         <Select
           id={prefix + field}
           className="w-full"
@@ -194,6 +221,8 @@ function ClassPicker({ student, current }: { student: Student; current: Klass[] 
 export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = {}) {
   const queryClient = useQueryClient()
   const students = useQuery({ queryKey: ['students'], queryFn: fetchStudents })
+  // 학교 목록은 원장만 읽는다(강사는 학생을 등록·수정하지 않는다)
+  const schools = useQuery({ queryKey: ['schools'], queryFn: fetchSchools, enabled: isDirector })
   const currentClasses = useCurrentClasses()
   const [form, setForm] = useState(EMPTY)
   const [showWithdrawn, setShowWithdrawn] = useState(false)
@@ -266,10 +295,20 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
               prefix=""
               form={form}
               onChange={setForm}
+              schools={schools.data ?? []}
               className="min-w-36 flex-1 xl:w-36 xl:flex-none"
             />
             <Button type="submit">학생 등록</Button>
           </form>
+          {schools.isSuccess && schools.data.length === 0 && (
+            <p className="mt-3 text-xs text-muted-fg">
+              등록된 학교가 없습니다.{' '}
+              <Link to="/students/schools" className="underline underline-offset-4">
+                학교 탭
+              </Link>
+              에서 먼저 학교를 등록하세요.
+            </p>
+          )}
           {create.isError && (
             <p role="alert" className="mt-3 text-sm text-danger">
               {create.error.message}
@@ -440,6 +479,7 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                 prefix="edit-"
                 form={edit.form}
                 onChange={(form) => setEdit({ ...edit, form })}
+                schools={schools.data ?? []}
               />
               <Field label="상태" htmlFor="edit-status">
                 <Select

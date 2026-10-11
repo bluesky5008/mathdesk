@@ -5,12 +5,15 @@ const TABS = [
   { to: '/students/classes', label: '반' },
 ]
 
+// 학교 관리는 원장 전용이다(FR-43, DCR-015)
+const DIRECTOR_TABS = [...TABS, { to: '/students/schools', label: '학교' }]
+
 /** 학생/반 관리의 하위 탭. 탭마다 주소가 있어 새로 고침·뒤로 가기에도 탭이 유지된다. */
-export function ManageTabs() {
+export function ManageTabs({ isDirector = false }: { isDirector?: boolean } = {}) {
   return (
     <>
       <nav aria-label="학생/반 관리" className="mb-5 flex gap-1 border-b">
-        {TABS.map(({ to, label }) => (
+        {(isDirector ? DIRECTOR_TABS : TABS).map(({ to, label }) => (
           <NavLink
             key={to}
             to={to}

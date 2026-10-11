@@ -18,6 +18,7 @@ from .models import (
     Enrollment,
     Guardian,
     Klass,
+    School,
     Student,
 )
 
@@ -66,6 +67,7 @@ async def seed(database_url: str) -> None:
             session.add(AppUserCampus(user_id=director.id, campus_id=campus.id))
 
             sequence = 0
+            schools: dict[str, School] = {}
             for name, grade, weekday, start, end, size in CLASS_SPECS:
                 klass = Klass(
                     campus_id=campus.id, name=name, grade=grade, teacher_id=director.id
@@ -78,12 +80,18 @@ async def seed(database_url: str) -> None:
                     )
                 )
 
+                school_name = f"{grade[:2]}학교"
+                if school_name not in schools:
+                    schools[school_name] = School(campus_id=campus.id, name=school_name)
+                    session.add(schools[school_name])
+                    await session.flush()
+
                 for _ in range(size):
                     sequence += 1
                     student = Student(
                         campus_id=campus.id,
                         name=f"학생{sequence:02d}",
-                        school=f"{grade[:2]}학교",
+                        school_id=schools[school_name].id,
                         grade=grade,
                         omr_number=omr_number(sequence),
                     )

@@ -18,6 +18,7 @@ from .masterdata import (
     Enrollment,
     Guardian,
     Klass,
+    School,
     Student,
 )
 from .messaging import GradeComment, MessageLog, MessageTemplate
@@ -48,6 +49,7 @@ __all__ = [
     "MessageLog",
     "MessageTemplate",
     "OmrScan",
+    "School",
     "Student",
     "StoredFile",
     "StudentDailyRecord",

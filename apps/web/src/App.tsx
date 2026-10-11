@@ -11,6 +11,7 @@ import { DailyPage } from './pages/DailyPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ExamsPage } from './pages/ExamsPage'
 import { MessagesPage } from './pages/MessagesPage'
+import { SchoolsPage } from './pages/SchoolsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { StudentsPage } from './pages/StudentsPage'
 import { TimetablePage } from './pages/TimetablePage'
@@ -91,9 +92,10 @@ export function App() {
             />
           }
         />
-        <Route path="/students" element={<ManageTabs />}>
+        <Route path="/students" element={<ManageTabs isDirector={user.role === 'director'} />}>
           <Route index element={<StudentsPage isDirector={user.role === 'director'} />} />
           <Route path="classes" element={<ClassesPage isDirector={user.role === 'director'} />} />
+          {user.role === 'director' && <Route path="schools" element={<SchoolsPage />} />}
         </Route>
       </Routes>
     </AppShell>

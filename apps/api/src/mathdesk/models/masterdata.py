@@ -36,6 +36,17 @@ class AppUserCampus(Base):
     campus_id: Mapped[int] = mapped_column(ForeignKey("campus.id"), primary_key=True)
 
 
+class School(Base):
+    """원장이 관리하는 학교 목록(FR-43, DCR-015). 학생은 id로 참조해 이름 변경이 모두에 반영된다."""
+
+    __tablename__ = "school"
+    __table_args__ = (UniqueConstraint("campus_id", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    campus_id: Mapped[int] = mapped_column(ForeignKey("campus.id"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+
+
 class Student(Base):
     __tablename__ = "student"
     __table_args__ = (UniqueConstraint("campus_id", "omr_number"),)
@@ -43,7 +54,7 @@ class Student(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     campus_id: Mapped[int] = mapped_column(ForeignKey("campus.id"), index=True)
     name: Mapped[str] = mapped_column(String(50))
-    school: Mapped[str | None] = mapped_column(String(100))
+    school_id: Mapped[int | None] = mapped_column(ForeignKey("school.id", ondelete="SET NULL"), index=True)
     grade: Mapped[str | None] = mapped_column(String(20))
     phone: Mapped[str | None] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(

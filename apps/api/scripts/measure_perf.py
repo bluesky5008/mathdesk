@@ -69,8 +69,8 @@ async def build_dataset() -> None:
         for seat in range(STUDENTS_PER_CLASS):
             number = class_index * STUDENTS_PER_CLASS + seat + 1
             student_id = await connection.fetchval(
-                "INSERT INTO student (campus_id, name, school, grade, status, omr_number)"
-                " VALUES ($1, $2, '한영고', '고2', 'enrolled', $3) RETURNING id",
+                "INSERT INTO student (campus_id, name, grade, status, omr_number)"
+                " VALUES ($1, $2, '고2', 'enrolled', $3) RETURNING id",
                 campus_id,
                 f"학생{number:03d}",
                 f"1000{number // 10 % 10}{number % 10}{number // 100 % 3}0",

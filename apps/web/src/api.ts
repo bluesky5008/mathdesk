@@ -24,7 +24,9 @@ export type Brand = {
 export type Student = {
   id: number
   name: string
-  school: string | null
+  // 등록된 학교 중에서 고른다(DCR-015). school은 그 학교 이름(읽기 전용)
+  school_id: number | null
+  school?: string | null
   grade: string | null
   phone: string | null
   status: string
@@ -163,6 +165,25 @@ export function createStudent(payload: Partial<Student>): Promise<Student> {
 
 export function updateStudent(id: number, payload: Partial<Student>): Promise<Student> {
   return request<Student>(`/students/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
+export type School = { id: number; name: string; student_count: number }
+
+// 학교 관리는 원장 전용이다(FR-43, DCR-015)
+export function fetchSchools(): Promise<School[]> {
+  return request<School[]>('/schools')
+}
+
+export function createSchool(name: string): Promise<School> {
+  return request<School>('/schools', { method: 'POST', body: JSON.stringify({ name }) })
+}
+
+export function updateSchool(id: number, name: string): Promise<School> {
+  return request<School>(`/schools/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) })
+}
+
+export function deleteSchool(id: number): Promise<void> {
+  return request<void>(`/schools/${id}`, { method: 'DELETE' })
 }
 
 export function fetchClasses(includeInactive = false): Promise<Klass[]> {

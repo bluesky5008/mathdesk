@@ -102,3 +102,19 @@ it('switches between the student and class tabs', async () => {
   expect(await screen.findByRole('heading', { name: '학생 관리' })).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: '반 관리' })).not.toBeInTheDocument()
 })
+
+// TASK-83: 학교 탭은 원장에게만 보인다(DCR-015)
+it('shows the school tab to directors at its own address', async () => {
+  mountApp(signedIn, '/students/schools')
+
+  expect(await screen.findByRole('heading', { name: '학교 관리' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: '학교' })).toHaveAttribute('aria-current', 'page')
+})
+
+it('hides the school tab from teachers', async () => {
+  const teacher = { ...DIRECTOR, id: 2, login_id: 'teacher', role: 'teacher' }
+  mountApp((url) => (url === '/api/auth/me' ? Response.json(teacher) : Response.json([])), '/students')
+
+  expect(await screen.findByRole('link', { name: '반' })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: '학교' })).not.toBeInTheDocument()
+})
