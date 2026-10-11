@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v26`
+> 기준선: `v27`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (35/41)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (35/42)
+   ├─ [~] TASK-95 형제 연결 확인·같은 번호 안내 (DCR-026) in-progress
    ├─ [✓] TASK-94 포털 기록 달력·추이 그래프 (DCR-025) .. 2026-10-11 23:25
    ├─ [✓] TASK-93 학생·학부모 포털 (DCR-024) ............ 2026-10-11 22:09
    ├─ [✓] TASK-92 반 단위 일괄 발송 (DCR-023) ........... 2026-10-11 19:55
@@ -307,6 +308,8 @@ flowchart TD
     C3 --> T92["TASK-92 반 단위 일괄 발송 (DCR-023)"]:::done
     C3 --> T93["TASK-93 학생·학부모 포털 (DCR-024)"]:::done
     C3 --> T94["TASK-94 포털 기록 달력·추이 그래프 (DCR-025)"]:::done
+    C3 --> T95["TASK-95 형제 연결 확인·같은 번호 안내 (DCR-026)"]:::active
+    T93 -. depends .-> T95
     T93 -. depends .-> T94
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
     C3 --> T75["TASK-75 OMR 방향 자동 판별"]:::done
@@ -1107,6 +1110,18 @@ flowchart TD
 ### 사이클 3 — 운영 이관 (2026-09-24 계획)
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
+
+### TASK-95: 형제 연결 확인과 같은 학부모 번호 안내
+
+- 상태: in-progress
+- 상위: 없음
+- 목표: [DCR-026](./work/20260922-mathdesk-baseline/DCR-026-형제-연결-확인과-같은-학부모-번호-안내.md)(기준선 `v27`, 승인 2026-10-11) 구현 — (a) API: 발급 `confirm_link`·409, 조회 `existing`, `StudentOut.guardian_phone_shared_with` (b) 웹: 확인 카드·사전 안내(`PortalAccountsSection`), 등록 폼·목록·수정 창 안내(`StudentsPage`) (c) 테스트 운영 배포.
+- 관련 요구사항과 설계: [FR-48 상세](./requirements.md#fr-48-상세), FR-06, [AC-50 ④·AC-53](./requirements.md#인수-조건), [DES-26 상세](./design.md#des-26-상세--학생학부모-포털-dcr-024-adr-014)
+- 변경 대상: `portal_accounts.py`, `masterdata.py`, `tests/test_portal_accounts.py`, `tests/test_masterdata.py`; 웹 `api.ts`, `pages/PortalAccountsSection.tsx`, `pages/StudentsPage.tsx`, 테스트
+- 의존성: TASK-93
+- 위험: 없음(마이그레이션 없음)
+- 검증 방법: 선행 테스트 — API(확인 없는 형제 발급 409·연결 없음, `existing`, 확인 후 201; `guardian_phone_shared_with` 형식 무관·본인 제외), 웹(카드 → `confirm_link: true` 본문, 등록 안내, 목록·수정 창 안내). API·웹 전체, `npm run build`
+- 완료 조건: 테스트 운영 배포 후 정용진·오인성(같은 학부모 번호)에서 안내 확인
 
 ### TASK-94: 포털 기록 달력과 추이 그래프
 
