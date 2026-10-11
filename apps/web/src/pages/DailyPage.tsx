@@ -322,7 +322,7 @@ export function DailyPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>오늘 진도 &amp; 코멘트</CardTitle>
+          <CardTitle>오늘 진도</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {PERIODS.map((period) => (
