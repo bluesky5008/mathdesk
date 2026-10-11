@@ -38,7 +38,7 @@
 | ADR-011 | adr | 리포트 카드 HTML 렌더링 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) | ADR-010 관련, DCR-003 |
 | ADR-012 | adr | 테마 팔레트와 적용 방식 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md) | ADR-010·ADR-011 관련, DCR-004 |
 | ADR-013 | adr | 운영 배포처 — 클라이언트별 AWS Lightsail 단일 서버 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | ADR-001 Phase B 구체화, ADR-008 적용, DCR-022 |
-| ADR-014 | adr | 포털 권한 모델 | proposed | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md) | ADR-007 보완, DCR-024 |
+| ADR-014 | adr | 포털 권한 모델 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md) | ADR-007 보완, DCR-024 |
 | DCR-001 | dcr | 테스트 운영 환경 노출 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) | ADR-008 |
 | DCR-002 | dcr | M6 LLM 공급자 중립화와 Claude 연결 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) | ADR-009 |
 | DCR-003 | dcr | 브랜드 자산으로서의 시각 설계 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) | ADR-010, ADR-011 |
@@ -62,7 +62,7 @@
 | DCR-021 | dcr | 학생별 정보 이미지 저장 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md) | FR-45 상세 보강·AC-47 신설, DES-08 상세·REST 추가, DCR-020 관련 |
 | DCR-022 | dcr | 운영 배포처 — 클라이언트별 AWS Lightsail 서버 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md) | ADR-013, 범위·NFR-08·11·17 변경, NFR-20·AC-48·DES-25 신설 |
 | DCR-023 | dcr | 반 단위 일괄 발송 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) | FR-47·AC-49 신설, REST 2건, DES-18 작업 종류 |
-| DCR-024 | dcr | 학생·학부모 포털 | awaiting-approval | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md) | ADR-014, FR-48·FR-49·AC-50~52 신설, FR-02·03·05·39·NFR-07 수정, DES-03·04·26 |
+| DCR-024 | dcr | 학생·학부모 포털 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md) | ADR-014, FR-48·FR-49·AC-50~52 신설, FR-02·03·05·39·NFR-07 수정, DES-03·04·26, 기준선 v25 |
 
 ## 번호 발행 규칙
 

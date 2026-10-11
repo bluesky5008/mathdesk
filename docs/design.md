@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v24`
+> 기준선: `v25`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -99,10 +99,10 @@
 
 | ID | 항목 | 내용 |
 |---|---|---|
-| DES-01 | Web SPA | 화면·라우팅·입력 상태 관리. 서버 상태는 TanStack Query 캐시로 다루고 저장 단위별로 별도 뮤테이션을 둔다 |
+| DES-01 | Web SPA | 화면·라우팅·입력 상태 관리. 서버 상태는 TanStack Query 캐시로 다루고 저장 단위별로 별도 뮤테이션을 둔다. 포털 역할이면 별도 셸·라우트(`/portal/*`)를 그린다([DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md)) |
 | DES-02 | API 서버 골격 | FastAPI 앱, 의존성 주입, 요청 검증(Pydantic), 공통 오류 표현, 트랜잭션 경계 |
-| DES-03 | 인증·권한 | 로그인·세션, 비밀번호 해시, 역할(`원장`·`강사`) 판정, 캠퍼스 스코프 강제. [상세](#des-03-상세) |
-| DES-04 | 마스터 데이터 서비스 | 캠퍼스·사용자·학생·보호자·반·시간표·수강 등록·상담일지 CRUD와 무결성 규칙 |
+| DES-03 | 인증·권한 | 로그인·세션, 비밀번호 해시, 역할(`원장`·`강사`) 판정, 캠퍼스 스코프 강제. [상세](#des-03-상세) 포털 역할(`학생`·`학부모`)은 기존 스코프에서 기본 거부하고 포털 의존성으로만 통과시킨다([ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md)) |
+| DES-04 | 마스터 데이터 서비스 | 캠퍼스·사용자·학생·보호자·반·시간표·수강 등록·상담일지 CRUD와 무결성 규칙. 포털 계정 발급·재발급·상태 연동과 삭제 시 고아 계정 정리([DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md)) |
 | DES-05 | 일일 기록 서비스 | 수업 세션(반 단위)과 학생 일일 기록의 부분 갱신, 출결 확정·해제, 재검사 대상 판정. [상세](#des-05-상세) |
 | DES-06 | 집계 서비스 | 대시보드 KPI와 통계 조회를 SQL 집계로 계산. 저장 집계 테이블을 두지 않는다 |
 | DES-07 | 메시지 렌더러 | 세션·학생 기록·등급 문구·템플릿을 병합해 본문 문자열 생성. 반 공통 구획(진도·오늘의 테스트=`class_session.test_name`·과제·영상·선생님 코멘트=`class_session.teacher_note`) 다음에 학생 개별 구획(출결·과제피드백·테스트 점수·개별 코멘트=`student_daily_record.comment`)을 둔다([DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md), [DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md)). 오늘의 테스트는 테스트명이 있을 때, 테스트 점수는 그 학생의 점수가 있을 때 나온다. 순수 함수로 두어 단위 테스트 대상으로 삼는다 |
@@ -124,6 +124,7 @@
 | DES-24 | 디자인 시스템 | 디자인 토큰 단일 소스(`tokens.css`), 테마 팔레트 5벌, 공통 컴포넌트(버튼·폼·표·카드·대화상자·월 달력), 표 기반 입력 컴포넌트. 웹과 리포트 카드가 같은 토큰 파일의 스케일을 공유하고 색은 각자의 팔레트를 따른다. 상세는 [DES-24 상세](#des-24-상세) |
 | DES-25 | 운영 서빙(클라이언트별 서버) | 클라이언트 명의 AWS 계정의 Lightsail 단일 서버에 `compose.prod.yaml`(postgres·app·cloudflared 토큰 터널)로 기동. 호스트 포트 없음, 방화벽 SSH만, 서버에서 이미지 빌드, `.env` 한 벌, 자동 일일 백업(14일)+스냅샷(7개), 테스트 운영은 스테이징. 상세는 [DES-25 상세](#des-25-상세)([ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)) |
 | DES-23 | 테스트 운영 서빙 | 웹 정적 빌드를 API가 SPA fallback으로 서빙하고, `Secure` 쿠키와 노출 표면 축소를 설정으로 제어한다. 외부 경로는 cloudflared 터널 하나다 |
+| DES-26 | 포털 조회 서비스 | 학생·학부모 포털 전용 REST(`/api/portal/*`). 기존 이력·통계·메시지 렌더의 내부 함수를 재사용하되 응답 모델을 포털 전용으로 좁혀 다른 학생·연락처 정보를 담지 않는다. 상세는 [DES-26 상세](#des-26-상세) ([DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md)) |
 
 #### DES-03 상세
 
@@ -141,12 +142,14 @@
 | 시험·OMR | 가능 | 담당 반 시험만 가능 |
 | 사용자·연동 설정 | 가능 | 불가 |
 
+- **포털 역할([ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md), [DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md)):** `user_role`에 `student`·`guardian`을 더한다. `current_scope`는 `director`·`teacher`만 통과시키고 포털 역할에는 403을 돌려준다. 포털 라우터는 `/api/portal` 아래에만 두고 `current_portal_scope`만 쓴다. 이 의존성은 포털 역할만 통과시키고 `PortalScope(user, campus_id, student_ids)`를 돌려주며 `student_ids`는 `app_user_student`에서 재원·휴원 학생만 담는다. 포털 엔드포인트는 `student_id ∉ student_ids`면 403. 로그인(`POST /auth/login`)은 포털 역할이고 `must_change_password`가 참이며 `issued_at + MATHDESK_PORTAL_ISSUE_TTL_DAYS(기본 7일) < now`이면 401(만료 문구). 권한 매트릭스에서 학생·학부모는 포털 API만 가능하고 나머지는 전부 불가, 원장·강사는 포털 API 불가. NFR-07 엔드포인트 목록 테스트를 양방향으로 확장한다.
+
 #### DES-04 상세 — 학생·반 삭제 ([DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md), [DCR-012](./work/20260922-mathdesk-baseline/DCR-012-재원-학생의-바로-삭제.md))
 
 - 선행 조건: 없다. 학생은 상태와, 반은 활성 여부와 관계없이 삭제할 수 있고 미리보기 `deletable`은 항상 `true`다. 학생·반 목록 각 행과 [수정] 창의 [삭제](원장만)는 확인 창 없이 바로 `DELETE`를 보낸다([DCR-013](./work/20260922-mathdesk-baseline/DCR-013-학생-즉시-삭제.md), [DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md)). 원장만(강사 403), 캠퍼스 스코프는 공통 규칙.
 - `GET …/deletion-preview`는 분류별 삭제 건수를 돌려준다(학생·반 모두 계약만 유지 — 화면은 쓰지 않는다). 학생·반 `DELETE`는 본문이 없다(와도 무시). 성공 시 `204`.
 - 한 트랜잭션에서 대상 행을 잠그고 연관 데이터 삭제 → 대상 삭제를 한다. 실패하면 전부 되돌린다.
-- 학생 삭제: `guardian`, `enrollment`, `student_daily_record`, `exam_answer`→`exam_attempt`, 매칭된 `omr_scan`과 그 `label_correction`(`source_ref=omr_scan:{id}:…`), `message_log`, `consult_log`. `stored_file`(OMR 원본 PDF)은 남긴다.
+- 학생 삭제: `guardian`, `enrollment`, `student_daily_record`, `exam_answer`→`exam_attempt`, 매칭된 `omr_scan`과 그 `label_correction`(`source_ref=omr_scan:{id}:…`), `message_log`, `consult_log`. `stored_file`(OMR 원본 PDF)은 남긴다. `app_user_student` 연결을 지우고, 연결이 0이 된 포털 계정(`student`·`guardian`)은 `user_session`·`app_user_campus`를 지우고 `audit_log.actor_id`를 NULL로 바꾼 뒤 `app_user`를 지운다. 미리보기 `counts`에 `portal_accounts`를 더한다([DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md)).
 - 반 삭제: `class_schedule`, `enrollment`, 그 반 `class_session`의 `student_daily_record`·`class_session_progress`와 세션. `exam.class_id`는 `NULL`로 바꾸고 시험·응시는 남긴다. `message_log`는 남기고 `session_id`만 `NULL`로 바꾼다([DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) 보정).
 - 감사 로그 `student.delete`·`class.delete`: 대상 ID와 분류별 건수, 학생은 삭제 당시 상태(`enrolled`·`paused`·`withdrawn`), 반은 삭제 당시 활성 여부(`is_active=true|false`). 이름·연락처는 쓰지 않는다.
 - 새 테이블이 `student`·`class`를 참조하게 되면 삭제 규칙에 함께 분류해야 한다(모델 외래키를 읽는 테스트가 누락을 잡는다).
@@ -161,6 +164,14 @@
 - **기록이 있는 세션:** `class_session`에 `student_daily_record`가 1건 이상 있거나, `class_session_progress`가 있거나, `homework`·`video_url`·`teacher_note`·`test_name` 중 하나가 NULL이 아니거나, `attendance_confirmed_at`이 있으면 기록이 있는 세션이다. `GET /daily`가 조회 시 세션을 만들므로, 수업일 달력(FR-46)과 학생별 이력(FR-45)은 이 정의로 빈 세션을 뺀다. 두 조회 REST(`GET /daily/calendar`, `GET /daily/history`)가 헬퍼 하나를 공유한다([DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md)).
 - **학생별 이력:** `GET /daily/history`는 `to`까지 기록이 있는 세션 중 그 학생이 배정되어 있던 날만 최신 순으로 `limit`(1~50, 기본 20)개 돌려준다. 행마다 출결·사유, 재검사 판정(`GET /daily`와 같은 규칙으로 날짜마다 계산), 과제 등급, 테스트명, 점수, 그 세션의 반 평균(`summary.test_average`와 같은 식), 코멘트를 담는다. 그 학생의 기록 행이 없는 날도 세션이 기록이 있으면 빈 값으로 들어간다. 배정 이력이 없는 학생·담당 외 반은 403.
 - **수업일 달력:** `GET /daily/calendar?class_id=&month=YYYY-MM`은 그 달의 기록이 있는 세션 날짜만 준다. 시간표 요일은 화면이 `GET /classes`의 `schedules`로 안다.
+
+#### DES-26 상세 — 학생·학부모 포털 ([DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md), [ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md))
+
+- **발급(DES-04, 원장만):** `GET /students/{id}/portal-accounts` → `{student: {state, login_id?, user_id?}, guardians: [{guardian_id, state, login_id?, user_id?}]}`(강사는 담당 반 학생 조회 가능). `POST /students/{id}/portal-accounts` 본문 `{kind: "student"|"guardian", guardian_id?}` → 201 `{user_id, login_id, state, linked}`(`linked`는 기존 학부모 계정에 연결만 한 경우). 번호 없음·형식 오류 422, 충돌 409. `POST /students/{id}/portal-accounts/{user_id}/reissue` → 204(비밀번호를 로그인 ID로, `must_change_password`·`issued_at` 갱신, 세션 전부 삭제). `GET /students` 응답에 `portal: {student: state, guardian: state}` 요약. 상태값은 `none`·`pending`·`active`·`expired`·`inactive`.
+- **발급 로직:** `portal_accounts.py`의 `issue_portal_account(session, scope, student, kind, guardian)` 서비스 함수. 로그인 ID = 전화번호 숫자열(10~11자리), 비밀번호 = 로그인 ID 해시, `must_change_password=True`, `issued_at=now`, `app_user_campus`에 학생 캠퍼스 1행, `app_user_student` 1행. 같은 로그인 ID가 있으면 (학부모↔학부모)만 연결 추가, 그 밖은 409. 추후 학생 등록 시 자동 발급은 이 함수를 등록 핸들러에서 부르면 된다(범위 밖).
+- **상태 연동:** 학생 `status` 변경과 삭제가 연결 계정의 `is_active`를 재계산한다 — 연결 학생 중 `enrolled`·`paused`가 하나 이상이면 `true`, 아니면 `false`(비활성화 시 세션 삭제). 발급·재발급·연결·비활성·삭제는 감사 로그(`portal.issue`·`portal.reissue`·`portal.link`·`portal.deactivate`·`portal.delete`, 전화번호 없음).
+- **포털 REST(`/api/portal`, `current_portal_scope`):** `GET /portal/students` → `[{id, name, grade, status, classes: [{id, name, teacher_name}]}]`. `GET /portal/students/{id}/summary` → `{attendance: {last_30_days: {present, total}, all_time: {present, total}}, latest_session, latest_tests[≤3], timetable: [{class_name, weekday, start_time, end_time}]}`. `GET /portal/students/{id}/sessions?before=&limit=20` → `[{date, class_name, progress: [{period, content}], homework, video_url, teacher_note, test_name, attendance, attendance_reason, homework_grade, grade_comment, recheck, test_score, class_average, comment}]`(`daily.py` 이력 헬퍼와 등급 문구 조회 공유). `GET /portal/students/{id}/test-trend?count=10|20` → `stats.py` 학생 통계 함수의 본인 회차. `GET /portal/students/{id}/exams` → `[{exam_id, name, exam_date, score, max_score}]`, `GET /portal/students/{id}/exams/{exam_id}` → `{…, answers: [{no, raw_value, is_correct, points}]}`(반 단위 통계 없음). `GET /portal/students/{id}/consults` → `[{consulted_on, content, follow_up}]` 본인 전부. `GET /portal/students/{id}/messages?before=&limit=20` → `[{sent_at, body}]` 성공 발송 스냅샷, 같은 세션 중복 제거, `is_test` 제외. 응답에 전화번호·보호자 정보 없음.
+- **웹:** `App.tsx`가 `role`이 `student`·`guardian`이면 `PortalApp`을 그린다. `LoginForm`·`ForcedPasswordChange`·테마 재사용. 포털 셸은 상단 학원명·자녀 선택(2명 이상)·로그아웃, 하단 탭(홈·기록·추이·시험·상담·문자). 모바일 우선, DES-24 공통 컴포넌트. 학생 관리 화면은 목록에 "포털" 열(학생/학부모 상태 배지), [수정] 창에 "포털 계정" 구획(상태·[발급]/[재발급], 원장만 버튼).
 
 #### DES-25 상세
 
@@ -245,8 +256,9 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | 테이블 | 주요 컬럼 | 비고 |
 |---|---|---|
 | `campus` | `id`, `name`, `is_active` | 모든 도메인 테이블의 스코프 기준 |
-| `app_user` | `id`, `login_id`, `password_hash`, `display_name`, `role`, `is_active` | 역할 `director`·`teacher` `must_change_password`(원장이 정한 비밀번호면 참 — 참인 동안 `GET /auth/me`·로그아웃·`POST /auth/password` 외 요청은 공통 스코프 검사에서 403, [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md)) |
+| `app_user` | `id`, `login_id`, `password_hash`, `display_name`, `role`, `is_active` | 역할 `director`·`teacher` `must_change_password`(원장이 정한 비밀번호면 참 — 참인 동안 `GET /auth/me`·로그아웃·`POST /auth/password` 외 요청은 공통 스코프 검사에서 403, [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md)) 역할에 `student`·`guardian`(포털 계정) 추가, `issued_at`(포털 발급·재발급 시각, NULL 허용 — [DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md)) |
 | `app_user_campus` | `user_id`, `campus_id` | 접근 가능 캠퍼스 |
+| `app_user_student` | `user_id`, `student_id`, `guardian_id`, `created_at` | 포털 계정–학생 연결(계정 1 : 학생 N). `(user_id, student_id)` PK, `guardian_id`는 학부모 계정이 발급된 보호자(NULL 허용) — [DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md) |
 | `student` | `id`, `campus_id`, `name`, `school_id`, `grade`, `phone`, `status`, `omr_number`, `score_note` | `omr_number`는 캠퍼스 내 유일, 자리별 범위 검증(FR-05). `score_note`는 성적·비고 텍스트(NULL 허용, 500자 이내 — [DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md)). `school_id`는 `school` FK(NULL 허용, `ON DELETE SET NULL`) — 학교 이름은 `school`에만 둔다([DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) |
 | `school` | `id`, `campus_id`, `name` | `(campus_id, name)` 유일. 이름은 앞뒤 공백을 지우고 1~100자(FR-43, [DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) |
 | `guardian` | `id`, `student_id`, `relation`, `name`, `phone`, `is_notify_target` | |
@@ -291,7 +303,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 |---|---|
 | 인증 | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/password`(본인 변경, 현재 비밀번호 확인, 다른 세션 삭제) |
 | 사용자·캠퍼스 | `GET/POST/PATCH /users`, `GET /campuses`, `POST /users/{id}/password`(원장, 같은 캠퍼스, 임시 비밀번호·변경 강제·세션 전부 삭제·잠금 해제) |
-| 학생·보호자 | `GET/POST /students`, `GET/PATCH/DELETE /students/{id}`, `GET /students/{id}/deletion-preview`, `GET/POST/PATCH /students/{id}/guardians`. 학생 입출력에 `guardian_phone`·`score_note`([DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md)): `GET`은 대표 보호자(가장 먼저 등록된 보호자)의 번호를 함께 준다(한 번의 조회). `POST`·`PATCH`는 같은 트랜잭션에서 대표 보호자를 맞춘다 — 값이 있으면 번호만 바꾸거나 관계 "학부모"·이름 빈칸·통보 대상으로 만들고, 빈 값이면 지운다. 필드를 보내지 않으면 보호자를 건드리지 않는다. 학생 입력은 `school_id`(같은 캠퍼스의 학교가 아니면 422), 출력은 `school_id`와 `school`(학교 이름, 조인으로 한 번에 읽음) — 입력 `school` 문자열은 받지 않는다([DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) |
+| 학생·보호자 | `GET/POST /students`, `GET/PATCH/DELETE /students/{id}`, `GET /students/{id}/deletion-preview`, `GET/POST/PATCH /students/{id}/guardians`. 학생 입출력에 `guardian_phone`·`score_note`([DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md)): `GET`은 대표 보호자(가장 먼저 등록된 보호자)의 번호를 함께 준다(한 번의 조회). `POST`·`PATCH`는 같은 트랜잭션에서 대표 보호자를 맞춘다 — 값이 있으면 번호만 바꾸거나 관계 "학부모"·이름 빈칸·통보 대상으로 만들고, 빈 값이면 지운다. 필드를 보내지 않으면 보호자를 건드리지 않는다. 학생 입력은 `school_id`(같은 캠퍼스의 학교가 아니면 422), 출력은 `school_id`와 `school`(학교 이름, 조인으로 한 번에 읽음) — 입력 `school` 문자열은 받지 않는다([DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) `GET/POST /students/{id}/portal-accounts`, `POST /students/{id}/portal-accounts/{user_id}/reissue`(DES-26 상세) |
 | 학교 | `GET/POST /schools`, `PATCH/DELETE /schools/{id}` — 원장 전용(강사 403), 캠퍼스 스코프. `GET`은 `[{id, name, student_count}]` 이름순(학생 수는 집계 한 번). `POST`·`PATCH`는 `{name}` 공백 제거 후 1~100자(422), 같은 캠퍼스 중복 409, 다른 캠퍼스·없는 id 403(공통 규칙). `DELETE`는 한 트랜잭션에서 그 학교 학생의 `school_id`를 NULL로 바꾸고 지우며 감사 로그 `school.delete`(이름, 학생 수)를 남긴다([DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) |
 | 반·수강 | `GET/POST /classes`, `PATCH/DELETE /classes/{id}`(강사의 `PATCH`는 담당 반만, 본문의 `teacher_id`·`is_active`가 현재 값과 같아야 하며 아니면 403·무변경, 감사 로그 `class.update` — [DCR-011](./work/20260922-mathdesk-baseline/DCR-011-강사의-담당-반-수정.md)), `GET /classes/{id}/deletion-preview`(계약만 유지), 반 `DELETE`는 본문 없음·활성 반도 204([DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md)), `GET/POST/DELETE /classes/{id}/enrollments` |
 | 주간 시간표 | `GET /timetable`(역할 스코프: 강사는 담당 반, 원장은 전체. `{class_minutes, slots[{class_id, class_name, grade, teacher, weekday, start_time, end_time}], unscheduled[]}`, `end_time`=시작+수업 길이 계산값), `PUT /settings/class-minutes`(원장, 30~480분, `integration_setting.class_minutes`, 기본 240 — [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md)) — [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) |
@@ -302,6 +314,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | OMR | `POST /exams/{id}/omr/uploads`, `GET /exams/{id}/omr/scans`, `PATCH /exams/{id}/omr/scans/{scan_id}`, `POST /exams/{id}/omr/apply` |
 | 시험 결과 | `GET /exams/{id}/results`, `GET /exams/{id}/question-stats` |
 | 상담 | `GET/POST/PATCH /students/{id}/consults` |
+| 포털 | `GET /portal/students`, `GET /portal/students/{id}/summary`, `GET /portal/students/{id}/sessions`, `GET /portal/students/{id}/test-trend`, `GET /portal/students/{id}/exams`, `GET /portal/students/{id}/exams/{exam_id}`, `GET /portal/students/{id}/consults`, `GET /portal/students/{id}/messages` — 포털 역할 전용(DES-26 상세) |
 | 설정 | `GET/PUT /settings/integrations`, `POST /settings/integrations/test` |
 
 주요 요청·응답 예시
@@ -399,7 +412,7 @@ class OmrReader(Protocol):
 | 항목 | 설계 |
 |---|---|
 | 인증 | Argon2id 해시, 서버 세션, 로그인 실패 지연(계정 유무와 무관한 동일 검증 비용)과 시도 제한(기본 연속 10회 실패 → 3분 잠금, 설정값). 쿠키의 `Secure`는 `MATHDESK_COOKIE_SECURE`로 제어하며 HTTPS 노출 구성에서 `true` |
-| 권한 | 라우터 의존성으로 `CurrentScope` 주입, 리포지토리 기반 클래스가 `campus_id` 필터를 강제, 권한 거부는 감사 로그 기록 |
+| 권한 | 라우터 의존성으로 `CurrentScope` 주입, 리포지토리 기반 클래스가 `campus_id` 필터를 강제, 권한 거부는 감사 로그 기록. 포털 역할은 `current_scope`에서 기본 거부, `/api/portal`은 `current_portal_scope`로만 통과([ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md)) |
 | 개인정보 | 외부 전송 화이트리스트(문항 텍스트·이미지). OMR 원본과 학생 식별 정보는 로컬 처리. 업로드 파일은 캠퍼스 스코프 키로 저장 |
 | 비밀 정보 | 환경변수 우선, DB 저장 시 대칭키 암호화. 응답과 로그에서 마스킹. 운영 비밀값은 서버 `.env` 한 벌(권한 600)에만 두고 저장소·메신저에 두지 않는다(DCR-022) |
 | 성능 | 대시보드·통계는 인덱스(`class_session(class_id, session_date)`, `student_daily_record(session_id)`, `enrollment(class_id, student_id, start_date)`) 기반 집계 쿼리. 무거운 작업은 백그라운드로 분리 |
@@ -504,6 +517,7 @@ ADR로 분리하지 않은 설계 판단
 | [NFR-06](./requirements.md#비기능-요구사항), [NFR-17](./requirements.md#비기능-요구사항) | [DES-03](#des-03-상세), [DES-23](#컴포넌트와-책임) | [AC-28, AC-29](./requirements.md#인수-조건) |
 | [NFR-08, NFR-11, NFR-17, NFR-20](./requirements.md#비기능-요구사항) | [DES-25](#des-25-상세) | [AC-48](./requirements.md#인수-조건) |
 | [FR-47](./requirements.md#fr-47-상세) | [DES-09](#컴포넌트와-책임), [DES-18](#컴포넌트와-책임) | [AC-49](./requirements.md#인수-조건) |
+| [FR-48, FR-49](./requirements.md#fr-48-상세), [NFR-07](./requirements.md#비기능-요구사항) | [DES-03](#des-03-상세), [DES-04](#컴포넌트와-책임), [DES-26](#des-26-상세), [DES-01](#컴포넌트와-책임) | [AC-50~AC-52](./requirements.md#인수-조건) |
 
 작업(`TASK-NN`)과 검증(`VER-NN`) 연결은 승인 후 wf-implement 스킬 계획 수립 시점에 추가한다.
 
@@ -545,6 +559,8 @@ ADR로 분리하지 않은 설계 판단
 기준선 `v23` (2026-10-11): [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md) 재승인으로 DES-25(운영 서빙, 클라이언트별 Lightsail 단일 서버)와 상세가 신설되고 보안 속성(비밀 정보·가용성·노출 표면)·전환 절차가 운영 기준으로 갱신되었으며 [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md)이 `approved`로 전이되었다.
 
 기준선 `v24` (2026-10-11): [DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) 재승인으로 DES-09·DES-18에 반 단위 일괄 발송(`message_batch`)이 더해지고 REST `POST /messages/send-batch`·`GET /messages/send-batch/preview`가 신설되었으며 메시지 발송 흐름 5·6이 갱신되었다. 데이터 모델 변경은 없다.
+
+기준선 `v25` (2026-10-11): [DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md) 재승인으로 DES-03에 포털 역할의 기본 거부와 발급 만료 검사가, DES-04 상세에 포털 계정 정리가, DES-26(포털 조회 서비스)과 데이터 모델 `app_user_student`·`app_user.issued_at`·역할 값 2개가 더해졌다. [ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md) 승인.
 
 기준선 `v18` (2026-10-11): [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) 재승인으로 `student_daily_record.comment`가 추가되고(마이그레이션 1건) 일일 기록 입출력에 `comment`가 더해졌으며(하위 호환), 메시지 렌더러가 공통 → 개별 순서로 바뀌고 강사 첨언·학생 코멘트가 본문·리포트 카드·알림톡 변수(`teacher_note`·`student_comment`)에 들어갔다. 리포트 카드의 요약 우선 레이아웃(ADR-011)은 그대로다.
 
@@ -592,6 +608,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-10-11 | DES-08 상세 학생별 정보 카드 템플릿, REST `GET /daily/history-image`, `render_html` 폭 인자 | [DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md) | approved 유지, 기준선 v21 → v22 | Claude / 사용자 |
 | 2026-10-11 | DES-25 운영 서빙 신설, 보안 속성·전환 절차 운영 기준 갱신 | [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md), [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | approved 유지, 기준선 v22 → v23 | Claude / 사용자 |
 | 2026-10-11 | DES-09·DES-18 일괄 발송, REST 2건, 발송 흐름 5·6, `message_log.session_id`(보정) | [DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) | approved 유지, 기준선 v23 → v24 | Claude / 사용자 |
+| 2026-10-11 | DES-03 포털 역할 기본 거부·발급 만료, DES-04 발급 REST 3건·고아 계정 정리, DES-26 신설(포털 REST 8건), 데이터 모델 3건 | [DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md), [ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md) | approved 유지, 기준선 v24 → v25 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |
