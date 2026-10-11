@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v18`
+> 기준선: `v19`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (27/34)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (27/35)
+   ├─ [▶] TASK-88 성적 통계 회차별 추이 (DCR-018) ... in-progress
    ├─ [✓] TASK-87 학생별 코멘트·문자 공통/개별 (DCR-017) 2026-10-11 15:40
    ├─ [✓] TASK-86 출결률 분모 버그 (FR-24·25) ....... 2026-10-11 15:25
    ├─ [✓] TASK-85 학교 칸 드롭다운 (FR-05) .......... 2026-10-11 14:55
@@ -254,7 +255,7 @@ flowchart TD
     classDef gate fill:#ffcdd2,stroke:#c62828
 ```
 
-사이클 3 (노드 27)
+사이클 3 (노드 28)
 
 ```mermaid
 flowchart TD
@@ -290,6 +291,7 @@ flowchart TD
     T83 -. depends .-> T85
     C3 --> T86["TASK-86 출결률 분모 버그 (FR-24·25)"]:::done
     C3 --> T87["TASK-87 학생별 코멘트와 문자 공통·개별 (DCR-017)"]:::done
+    C3 --> T88["TASK-88 성적 통계 회차별 추이 (DCR-018)"]:::active
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
     C3 --> T75["TASK-75 OMR 방향 자동 판별"]:::done
     C3 --> T76["TASK-76 OMR 판정 기준: 조명 보정"]:::done
@@ -1089,6 +1091,18 @@ flowchart TD
 ### 사이클 3 — 운영 이관 (2026-09-24 계획)
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
+
+### TASK-88: 성적 통계 회차별 추이
+
+- 상태: in-progress
+- 상위: 없음
+- 목표: 반 통계 카드의 점수 분포 그래프를 지우고, "학생 주간 추이"를 "회차별 성적 추이"로 바꾼다. 회차는 테스트 점수 1개(일일 테스트 + OMR 시험), 종료일까지 최근 10·20회, 전체 회차 10 이하이면 10회 고정. 표는 날짜·시험명·내 점수·반 평균·과제 등급·출결.
+- 관련 요구사항과 설계: [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md)(기준선 `v19`, 승인 2026-10-11) — [FR-24·FR-25](./requirements.md#기능-요구사항), [AC-19](./requirements.md#인수-조건), REST 대시보드·통계, DES-06
+- 변경 대상: `apps/api/src/mathdesk/stats.py`(학생 이력 회차 단위로 대체, 반 통계 `distribution`·`_bucket` 제거), `tests/test_statistics.py`, 웹 `api.ts`(타입·조회 함수), `pages/StatsPage.tsx`, `StatsPage.test.tsx`
+- 의존성: 없음
+- 위험: API 계약 대체(쓰는 곳은 성적 통계 화면 하나). 마이그레이션 없음 — 롤백은 코드 되돌리기
+- 검증 방법: 선행 테스트 — API(일일만·OMR만·같은 날 둘 다 회차 구성과 순서, 테스트 없는 수업 제외, 종료일 이후 제외·시작일 무시, `rounds` 10/20과 `total`, 15는 422, 미응시 `score` null·`class_average` 있음, 회차 날짜의 과제 등급·출결, 강사 담당 반 밖 403, 반 통계에 `distribution` 없음). 웹(점수 분포 없음, 카드 제목, `total ≤ 10`이면 10회 고정·비활성, `total > 10`이면 20회 선택 시 `rounds=20` 조회, 표 열·값). VER-35, `npm run build`
+- 완료 조건: 테스트 운영 배포 후 고1 인A(19회차)로 10·20회 전환 확인
 
 ### TASK-87: 학생별 코멘트와 문자 공통·개별 구조
 

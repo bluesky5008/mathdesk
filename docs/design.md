@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v18`
+> 기준선: `v19`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -276,7 +276,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | 반·수강 | `GET/POST /classes`, `PATCH/DELETE /classes/{id}`(강사의 `PATCH`는 담당 반만, 본문의 `teacher_id`·`is_active`가 현재 값과 같아야 하며 아니면 403·무변경, 감사 로그 `class.update` — [DCR-011](./work/20260922-mathdesk-baseline/DCR-011-강사의-담당-반-수정.md)), `GET /classes/{id}/deletion-preview`(계약만 유지), 반 `DELETE`는 본문 없음·활성 반도 204([DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md)), `GET/POST/DELETE /classes/{id}/enrollments` |
 | 주간 시간표 | `GET /timetable`(역할 스코프: 강사는 담당 반, 원장은 전체. `{class_minutes, slots[{class_id, class_name, grade, teacher, weekday, start_time, end_time}], unscheduled[]}`, `end_time`=시작+수업 길이 계산값), `PUT /settings/class-minutes`(원장, 30~480분, `integration_setting.class_minutes`, 기본 240 — [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md)) — [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) |
 | 일일 기록 | `GET /daily?class_id=&date=`, `PUT /daily/{session_id}/notes`, `PUT /daily/{session_id}/records`, `PUT /daily/{session_id}/records/{student_id}/recheck`, `POST /daily/{session_id}/attendance/confirm`, `POST /daily/{session_id}/attendance/unlock` |
-| 대시보드·통계 | `GET /dashboard?class_id=&date=`, `GET /stats/students/{id}`, `GET /stats/classes/{id}`, `GET /stats/export` |
+| 대시보드·통계 | `GET /dashboard?class_id=&date=`, `GET /stats/students/{id}?to=&class_id=&rounds=`(`rounds`는 10·20, 기본 10, 그 밖은 422 → `total`(종료일까지 그 반의 전체 회차 수)과 `rounds[]`(최근 N회, 오래된 순: `date`·`source`(`daily`·`exam`)·`name`·`score`·`class_average`·`homework_grade`·`attendance_status`) — [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md)), `GET /stats/classes/{id}`(점수 분포 없음 — [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md)), `GET /stats/export` |
 | 메시지 | `GET /messages/preview?session_id=&student_id=`, `POST /messages/send`, `GET /messages/logs`, `GET /messages/balance`, `GET/PUT /messages/templates`, `GET/PUT /messages/grade-comments` |
 | 시험지 | `POST /exams/uploads`, `POST /exams`, `GET /exams`, `GET/PATCH /exams/{id}`, `GET/PATCH /exams/{id}/questions`, `POST /exams/{id}/analyze`, `GET /tasks/{task_id}` |
 | OMR | `POST /exams/{id}/omr/uploads`, `GET /exams/{id}/omr/scans`, `PATCH /exams/{id}/omr/scans/{scan_id}`, `POST /exams/{id}/omr/apply` |
@@ -510,6 +510,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v17` (2026-10-11): [DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md) 재승인으로 반 `DELETE`의 비활성 선행 조건(409)과 `confirm_name` 확인이 없어지고 화면의 반 삭제가 목록·수정 창 즉시 삭제로 바뀌었으며, 감사 로그 `class.delete`에 활성 여부가 더해졌다.
 
+기준선 `v19` (2026-10-11): [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md) 재승인으로 `GET /stats/students/{id}`가 주 단위(`weeks`)에서 테스트 회차 단위(`rounds`=10·20, `total`)로 대체되고 일일 테스트와 OMR 시험을 함께 회차로 센다. `GET /stats/classes/{id}`에서 `test.distribution`이 빠졌다. 데이터 모델 변경은 없다.
+
 기준선 `v18` (2026-10-11): [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) 재승인으로 `student_daily_record.comment`가 추가되고(마이그레이션 1건) 일일 기록 입출력에 `comment`가 더해졌으며(하위 호환), 메시지 렌더러가 공통 → 개별 순서로 바뀌고 강사 첨언·학생 코멘트가 본문·리포트 카드·알림톡 변수(`teacher_note`·`student_comment`)에 들어갔다. 리포트 카드의 요약 우선 레이아웃(ADR-011)은 그대로다.
 
 기준선 `v11` (2026-09-24): [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) 승인으로 `class_minutes` 기본값이 240으로 바뀌었다(구조·계약 변경 없음).
@@ -550,6 +552,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-10-11 | `school` 테이블, `student.school_id`, REST 학교 4개, 학생 입력 `school_id` | [DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md) | approved 유지, 기준선 v15 → v16 | Claude / 사용자 |
 | 2026-10-11 | 반 `DELETE` 선행 조건·본문 제거, 반 즉시 삭제, 감사 로그 활성 여부 | [DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md) | approved 유지, 기준선 v16 → v17 | Claude / 사용자 |
 | 2026-10-11 | `student_daily_record.comment`, 일일 기록 입출력 `comment`, 메시지 공통→개별 순서, 첨언·코멘트를 본문·카드·알림톡 변수에 | [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) | approved 유지, 기준선 v17 → v18 | Claude / 사용자 |
+| 2026-10-11 | 학생 통계 API 회차 단위로 대체, 반 통계 점수 분포 삭제 | [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md) | approved 유지, 기준선 v18 → v19 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |
