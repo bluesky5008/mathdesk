@@ -1,7 +1,7 @@
 import os
 from datetime import date, timedelta
 from io import BytesIO
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from openpyxl import Workbook
@@ -15,6 +15,8 @@ from .models import (
     ClassSession,
     ClassSessionProgress,
     Enrollment,
+    Exam,
+    ExamAttempt,
     Klass,
     Student,
     StudentDailyRecord,
@@ -239,20 +241,21 @@ async def dashboard(
 # DES-06대로 저장 집계 테이블 없이 SQL 집계로 계산한다.
 
 
-class StudentWeek(BaseModel):
-    week_start: date
-    test_average: float | None
-    class_test_average: float | None
-    homework_grades: list[str]
-    homework_completion: float | None
-    class_homework_completion: float | None
-    attendance_rate: float | None
+class StudentRound(BaseModel):
+    date: date
+    source: Literal["daily", "exam"]
+    name: str
+    score: float | None
+    class_average: float | None
+    homework_grade: str | None
+    attendance_status: str | None
 
 
 class StudentHistoryOut(BaseModel):
     student: dict[str, str | int]
     klass: dict[str, str | int] | None
-    weeks: list[StudentWeek]
+    total: int
+    rounds: list[StudentRound]
 
 
 class StudentRow(BaseModel):
@@ -263,16 +266,11 @@ class StudentRow(BaseModel):
     attendance_rate: float | None
 
 
-class Bucket(BaseModel):
-    bucket: str
-    count: int
-
-
 class PeriodStats(BaseModel):
     start: date
     end: date
     students: list[StudentRow]
-    test: dict[str, float | int | None | list[Bucket]]
+    test: dict[str, float | int | None]
     homework: dict[str, float | None | dict[str, int]]
     attendance_rate: float | None
 
@@ -289,12 +287,6 @@ def _mean(values: list[float]) -> float | None:
 
 def _rate(part: int, whole: int) -> float | None:
     return round(part * 100 / whole, 1) if whole else None
-
-
-def _bucket(score: float) -> str:
-    """10점 구간. 만점 100을 90~100 한 칸으로 묶어 마지막 칸이 1점짜리가 되지 않게 한다."""
-    floor = min(int(score // 10) * 10, 90)
-    return f"{floor}~{100 if floor == 90 else floor + 9}"
 
 
 async def _period_records(
@@ -358,10 +350,15 @@ async def student_history(
     scope: CurrentScope,
     session: Db,
     to: date | None = None,
-    weeks: int = 8,
+    rounds: int = 10,
     class_id: int | None = None,
 ) -> StudentHistoryOut:
-    """주 단위 시계열과 같은 주의 반 평균을 함께 준다(FR-24, AC-19)."""
+    """테스트 회차별 점수와 같은 회차의 반 평균(FR-24, AC-19, DCR-018).
+
+    테스트 점수 1개가 1회차다 — 일일 입력 테스트와 반에 연결된 OMR 채점 시험을 함께 센다.
+    """
+    if rounds not in (10, 20):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "회차는 10 또는 20입니다.")
     student = await ScopedRepository(session, scope).get(Student, student_id)
     anchor = to or date.today()
     klass = (
@@ -373,58 +370,61 @@ async def student_history(
         # 담당 반의 학생이 아니면 이름조차 돌려주지 않는다.
         raise HTTPException(status.HTTP_403_FORBIDDEN, "접근 권한이 없습니다.")
 
-    last_monday, _ = _week_bounds(anchor)
-    timeline: list[StudentWeek] = []
-    for index in range(weeks - 1, -1, -1):
-        start = last_monday - timedelta(days=7 * index)
-        end = start + timedelta(days=6)
-        if klass is None:
-            timeline.append(
-                StudentWeek(
-                    week_start=start,
-                    test_average=None,
-                    class_test_average=None,
-                    homework_grades=[],
-                    homework_completion=None,
-                    class_homework_completion=None,
-                    attendance_rate=None,
-                )
-            )
-            continue
+    timeline: list[tuple[date, int, StudentRound]] = []
+    if klass is not None:
+        # 회차마다 {학생: 점수}. 점수가 하나도 없는 수업은 회차가 아니다.
+        daily: dict[int, tuple[ClassSession, dict[int, float]]] = {}
+        mine: dict[date, StudentDailyRecord] = {}
+        for record, class_session in await session.execute(
+            select(StudentDailyRecord, ClassSession)
+            .join(ClassSession, ClassSession.id == StudentDailyRecord.session_id)
+            .where(ClassSession.class_id == klass.id, ClassSession.session_date <= anchor)
+        ):
+            if record.student_id == student_id:
+                mine[class_session.session_date] = record
+            if record.test_score_num is not None:
+                scores = daily.setdefault(class_session.id, (class_session, {}))[1]
+                scores[record.student_id] = float(record.test_score_num)
 
-        records = await _period_records(session, klass.id, start, end)
-        mine = [record for record, _ in records if record.student_id == student_id]
-        sessions = await _session_count(session, klass.id, start, end)
-        grades = [record.homework_grade for record in mine if record.homework_grade]
-        timeline.append(
-            StudentWeek(
-                week_start=start,
-                test_average=_mean(
-                    [float(r.test_score_num) for r in mine if r.test_score_num is not None]
-                ),
-                class_test_average=_mean(
-                    [
-                        float(record.test_score_num)
-                        for record, _ in records
-                        if record.test_score_num is not None
-                    ]
-                ),
-                homework_grades=grades,
-                homework_completion=_completion_rate(grades),
-                class_homework_completion=_completion_rate(
-                    [record.homework_grade for record, _ in records if record.homework_grade]
-                ),
-                attendance_rate=_rate(
-                    sum(1 for record in mine if record.attendance_status in ATTENDING),
-                    sessions,
-                ),
+        exams: dict[int, tuple[Exam, dict[int, float]]] = {}
+        for exam, attempt in await session.execute(
+            select(Exam, ExamAttempt)
+            .join(ExamAttempt, ExamAttempt.exam_id == Exam.id)
+            .where(
+                Exam.class_id == klass.id,
+                Exam.exam_date <= anchor,  # 시험일이 없으면 날짜순에 놓을 수 없어 빠진다
+                ExamAttempt.score.is_not(None),
             )
-        )
+        ):
+            exams.setdefault(exam.id, (exam, {}))[1][attempt.student_id] = float(attempt.score)
 
+        def round_of(on: date, source, name: str, scores: dict[int, float]) -> StudentRound:
+            record = mine.get(on)  # 회차 날짜의 그 반 수업 기록
+            return StudentRound(
+                date=on,
+                source=source,
+                name=name,
+                score=scores.get(student_id),
+                class_average=_mean(list(scores.values())),
+                homework_grade=record.homework_grade if record else None,
+                attendance_status=record.attendance_status if record else None,
+            )
+
+        for class_session, scores in daily.values():
+            on = class_session.session_date
+            name = class_session.test_name or "테스트"
+            timeline.append((on, 0, round_of(on, "daily", name, scores)))
+        for exam, scores in exams.values():
+            on = exam.exam_date
+            timeline.append((on, exam.id, round_of(on, "exam", exam.name, scores)))
+
+    # 날짜순, 같은 날은 일일 테스트(0) → OMR 시험(등록순)
+    timeline.sort(key=lambda item: item[:2])
     return StudentHistoryOut(
         student={"id": student.id, "name": student.name},
         klass={"id": klass.id, "name": klass.name} if klass else None,
-        weeks=timeline,
+        total=len(timeline),
+        rounds=[item[2] for item in timeline[-rounds:]],
     )
 
 
@@ -466,9 +466,6 @@ async def _period_stats(
         )
 
     scores = [float(r.test_score_num) for r, _ in records if r.test_score_num is not None]
-    distribution: dict[str, int] = {}
-    for score in scores:
-        distribution[_bucket(score)] = distribution.get(_bucket(score), 0) + 1
     grades = [record.homework_grade for record, _ in records if record.homework_grade]
     grade_counts: dict[str, int] = {}
     for grade in sorted(grades, key=HOMEWORK_GRADE.index):
@@ -481,10 +478,6 @@ async def _period_stats(
         test={
             "average": _mean(scores),
             "count": len(scores),
-            "distribution": [
-                Bucket(bucket=bucket, count=count)
-                for bucket, count in sorted(distribution.items())
-            ],
         },
         homework={
             "completion_rate": _completion_rate(grades),

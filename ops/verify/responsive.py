@@ -63,20 +63,18 @@ STAT_ROWS = [{"student_id": i, "name": f"학생{i:02d}", "test_average": 70.0 + 
               "homework_completion": 90.0, "attendance_rate": 100.0} for i in range(1, 14)]
 CLASS_STATS = {"klass": {"id": 1, "name": "고2 윤B"},
                "period": {"start": "2026-07-27", "end": "2026-09-23", "students": STAT_ROWS,
-                          "test": {"average": 77.0, "count": 39,
-                                   "distribution": [{"bucket": f"{b}~{100 if b == 90 else b + 9}", "count": c}
-                                                    for b, c in [(50, 2), (60, 5), (70, 12),
-                                                                 (80, 14), (90, 6)]]},
+                          "test": {"average": 77.0, "count": 39},
                           "homework": {"completion_rate": 90.0,
                                        "distribution": {"A": 12, "B": 20, "C": 7}},
                           "attendance_rate": 96.2},
                "compare": None}
 HISTORY = {"student": {"id": 1, "name": "학생01"}, "klass": {"id": 1, "name": "고2 윤B"},
-           "weeks": [{"week_start": f"2026-0{7 + i // 4}-{1 + (i % 4) * 7:02d}",
-                      "test_average": 70.0 + i * 3, "class_test_average": 75.0 + i,
-                      "homework_grades": ["B"], "homework_completion": 100.0,
-                      "class_homework_completion": 90.0, "attendance_rate": 100.0}
-                     for i in range(8)]}
+           "total": 19,
+           "rounds": [{"date": f"2026-09-{1 + i:02d}", "source": "exam" if i % 5 == 4 else "daily",
+                       "name": "강K 4회 확통 모의고사" if i % 5 == 4 else "주간 테스트",
+                       "score": 70.0 + i * 3, "class_average": 75.0 + i,
+                       "homework_grade": "B", "attendance_status": "early_leave"}
+                      for i in range(10)]}
 EXAMS = [{"id": i, "name": f"강K {i}회 확통", "source_file_id": i, "class_id": None,
           "exam_date": "2026-09-19", "question_count": 30, "status": "draft", "needs_review": 2}
          for i in range(1, 6)]

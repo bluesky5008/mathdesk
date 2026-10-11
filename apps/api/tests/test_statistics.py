@@ -1,4 +1,7 @@
 """FR-24~FR-26 / AC-19·AC-20 — 학생·반 통계와 엑셀 내보내기."""
+import asyncio
+
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 WEEKS = ["2026-09-04", "2026-09-11", "2026-09-18"]  # 3주 연속 금요일
 
@@ -32,30 +35,83 @@ def _history(api, klass):
         _write(api, klass["class_id"], on, records, {"test_name": "주간", "test_max_score": 100})
 
 
-def test_student_history_gives_eight_weeks_with_the_class_average(api, klass):
-    _history(api, klass)
-    student_id = klass["student_ids"][0]
+def _exam(api, migrated_database, class_id, on, scores, name="9월 모의"):
+    """OMR 채점 시험. 판독·채점은 TASK-34~36에서 검사했으므로 응시 점수를 직접 넣는다."""
+    from mathdesk.models import ExamAttempt
 
-    body = api.get(
-        f"/api/stats/students/{student_id}", params={"to": WEEKS[-1], "weeks": 8}
-    ).json()
+    exam_id = api.post(
+        "/api/exams", json={"name": name, "class_id": class_id, "exam_date": on}
+    ).json()["id"]
+
+    async def run():
+        engine = create_async_engine(migrated_database)
+        async with async_sessionmaker(engine)() as session:
+            for student_id, score in scores.items():
+                session.add(
+                    ExamAttempt(exam_id=exam_id, student_id=student_id, score=score, source="omr")
+                )
+            await session.commit()
+        await engine.dispose()
+
+    asyncio.run(run())
+    return exam_id
+
+
+def _rounds(api, student_id, **params):
+    return api.get(f"/api/stats/students/{student_id}", params={"to": WEEKS[-1], **params})
+
+
+def test_student_rounds_count_each_daily_test_and_omr_exam_with_the_class_average(
+    api, klass, migrated_database
+):
+    """DCR-018 / AC-19: 테스트 점수 1개가 1회차 — 같은 날 일일 테스트와 OMR 시험은 2회차다."""
+    _history(api, klass)
+    first, second, third = klass["student_ids"]
+    _exam(api, migrated_database, klass["class_id"], WEEKS[1], {first: 80, second: 60})
+    # 회차가 아닌 것: 테스트 없는 수업, 종료일 뒤 시험, 시험일 없는 시험, 채점 안 된 시험
+    _write(api, klass["class_id"], "2026-09-16", [], {"homework": "교재 10p"})
+    _exam(api, migrated_database, klass["class_id"], "2026-09-25", {first: 100}, "10월 모의")
+    _exam(api, migrated_database, klass["class_id"], None, {first: 100}, "날짜 없음")
+    _exam(api, migrated_database, klass["class_id"], WEEKS[0], {}, "미채점")
+
+    body = _rounds(api, first).json()
 
     assert body["student"]["name"] == "김나윤"
-    assert len(body["weeks"]) == 8
-    assert [week["week_start"] for week in body["weeks"][-3:]] == [
-        "2026-08-31",
-        "2026-09-07",
-        "2026-09-14",
+    assert body["total"] == 4
+    assert [
+        (r["date"], r["source"], r["name"], r["score"], r["class_average"]) for r in body["rounds"]
+    ] == [
+        ("2026-09-04", "daily", "주간", 85.0, 66.7),
+        ("2026-09-11", "daily", "주간", 90.0, 71.7),
+        ("2026-09-11", "exam", "9월 모의", 80.0, 70.0),
+        ("2026-09-18", "daily", "주간", 95.0, 85.0),
     ]
-    assert [week["test_average"] for week in body["weeks"][-3:]] == [85.0, 90.0, 95.0]
-    # 마지막 주 반 평균은 95·75 두 명(학생3은 결석으로 점수 없음)
-    assert body["weeks"][-1]["class_test_average"] == 85.0
-    assert [week["homework_grades"] for week in body["weeks"][-3:]] == [["A"], ["A"], ["B"]]
-    assert body["weeks"][-1]["attendance_rate"] == 100.0
-    assert body["weeks"][0]["test_average"] is None
+    # 회차 날짜의 그 반 수업 기록
+    assert [(r["homework_grade"], r["attendance_status"]) for r in body["rounds"]] == [
+        ("A", "present"), ("A", "present"), ("A", "present"), ("B", "present")
+    ]
+    # 응시하지 않은 회차는 학생 점수만 빈다
+    absent = _rounds(api, third).json()["rounds"]
+    assert [(r["score"], r["class_average"]) for r in absent[2:]] == [(None, 70.0), (None, 85.0)]
+    assert absent[3]["attendance_status"] == "absent"
 
 
-def test_class_stats_gives_rows_distribution_and_a_period_comparison(api, klass):
+def test_student_rounds_show_the_latest_ten_or_twenty(api, klass):
+    student_id = klass["student_ids"][0]
+    days = [f"2026-08-{day:02d}" for day in range(1, 13)]
+    for index, on in enumerate(days):
+        _write(api, klass["class_id"], on, [{"student_id": student_id, "test_score_num": index}])
+
+    ten = _rounds(api, student_id).json()
+    twenty = _rounds(api, student_id, rounds=20).json()
+
+    assert ten["total"] == twenty["total"] == 12
+    assert [r["date"] for r in ten["rounds"]] == days[2:]
+    assert [r["date"] for r in twenty["rounds"]] == days
+    assert _rounds(api, student_id, rounds=15).status_code == 422
+
+
+def test_class_stats_gives_rows_and_a_period_comparison(api, klass):
     _history(api, klass)
 
     body = api.get(
@@ -75,11 +131,7 @@ def test_class_stats_gives_rows_distribution_and_a_period_comparison(api, klass)
     assert rows["김태호"]["attendance_rate"] == 50.0
     assert rows["김정현"]["homework_completion"] == 0.0  # C·C는 기준(B) 미만
     assert body["period"]["test"]["average"] == 77.0  # 90·70·55·95·75
-    assert body["period"]["test"]["distribution"] == [
-        {"bucket": "50~59", "count": 1},
-        {"bucket": "70~79", "count": 2},
-        {"bucket": "90~100", "count": 2},
-    ]
+    assert "distribution" not in body["period"]["test"]  # DCR-018: 점수 분포 없음
     assert body["period"]["homework"]["distribution"] == {"A": 1, "B": 1, "C": 2, "D": 1}
     assert body["compare"]["test"]["average"] == 66.7  # 85·65·50
     assert body["compare"]["start"] == WEEKS[0]
@@ -99,13 +151,9 @@ def test_a_day_without_attendance_input_is_not_counted_as_a_class(api, klass):
             params={"start": WEEKS[1], "end": WEEKS[2]},
         ).json()["period"]["students"]
     }
-    week = api.get(
-        f"/api/stats/students/{klass['student_ids'][0]}", params={"to": WEEKS[-1], "weeks": 1}
-    ).json()["weeks"][0]
 
     assert rows["김나윤"]["attendance_rate"] == 100.0
     assert rows["김태호"]["attendance_rate"] == 50.0
-    assert week["attendance_rate"] == 100.0
 
 
 def test_export_contains_the_same_rows_as_the_class_stats_screen(api, klass):

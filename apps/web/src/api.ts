@@ -431,20 +431,23 @@ export function saveBrand(payload: Brand): Promise<Brand> {
   return request<Brand>('/settings/brand', { method: 'PUT', body: JSON.stringify(payload) })
 }
 
-export type StudentWeek = {
-  week_start: string
-  test_average: number | null
-  class_test_average: number | null
-  homework_grades: string[]
-  homework_completion: number | null
-  class_homework_completion: number | null
-  attendance_rate: number | null
+/** 테스트 점수 1개가 1회차다 — 일일 입력 테스트(`daily`)와 OMR 채점 시험(`exam`). */
+export type StudentRound = {
+  date: string
+  source: 'daily' | 'exam'
+  name: string
+  score: number | null
+  class_average: number | null
+  homework_grade: string | null
+  attendance_status: string | null
 }
 
 export type StudentHistory = {
   student: { id: number; name: string }
   klass: { id: number; name: string } | null
-  weeks: StudentWeek[]
+  /** 종료일까지 그 반의 전체 회차 수 */
+  total: number
+  rounds: StudentRound[]
 }
 
 export type StudentStatRow = {
@@ -459,7 +462,7 @@ export type PeriodStats = {
   start: string
   end: string
   students: StudentStatRow[]
-  test: { average: number | null; count: number; distribution: { bucket: string; count: number }[] }
+  test: { average: number | null; count: number }
   homework: { completion_rate: number | null; distribution: Record<string, number> }
   attendance_rate: number | null
 }
@@ -478,9 +481,10 @@ export function fetchStudentHistory(
   studentId: number,
   to: string,
   classId: number,
+  rounds: 10 | 20,
 ): Promise<StudentHistory> {
   return request<StudentHistory>(
-    `/stats/students/${studentId}?to=${to}&weeks=8&class_id=${classId}`,
+    `/stats/students/${studentId}?to=${to}&rounds=${rounds}&class_id=${classId}`,
   )
 }
 

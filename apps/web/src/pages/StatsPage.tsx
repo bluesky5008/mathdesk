@@ -2,8 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
   Line,
@@ -14,6 +12,7 @@ import {
   YAxis,
 } from 'recharts'
 
+import { ATTENDANCE } from '../components/AttendanceButtons'
 import { PageHeader } from '../components/PageHeader'
 import { buttonStyles } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
@@ -33,7 +32,7 @@ import {
   fetchClassStats,
   fetchStudentHistory,
   statsExportUrl,
-  type StudentWeek,
+  type StudentRound,
 } from '../api'
 import { today } from '../lib/date'
 
@@ -51,6 +50,8 @@ function weeksAgo(count: number): string {
 
 const num = (value: number | null) => (value === null ? '—' : String(value))
 const pct = (value: number | null) => (value === null ? '—' : `${value}%`)
+const attendance = (status: string | null) =>
+  ATTENDANCE.find(([value]) => value === status)?.[1] ?? '—'
 
 const CHART_MARGIN = { top: 8, right: 16, bottom: 0, left: -20 }
 
@@ -63,19 +64,23 @@ function axisProps() {
   }
 }
 
-function TrendChart({ weeks }: { weeks: StudentWeek[] }) {
-  const data = weeks.map((week) => ({
-    week: week.week_start.slice(5),
-    mine: week.test_average,
-    klass: week.class_test_average,
-  }))
+/** 가로축은 고른 회차 수만큼 칸을 둔다. 회차가 적으면 왼쪽부터 채워 점 간격이 회차 수에 따라 달라지지 않게 한다. */
+function TrendChart({ rounds, slots }: { rounds: StudentRound[]; slots: number }) {
+  const data = Array.from({ length: slots }, (_, index) => {
+    const round = rounds[index]
+    return round
+      ? { label: round.date.slice(5), name: round.name, mine: round.score, klass: round.class_average }
+      : { label: '' }
+  })
   return (
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data} margin={CHART_MARGIN}>
         <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis dataKey="week" {...axisProps()} />
+        <XAxis dataKey="label" {...axisProps()} />
         <YAxis domain={[0, 100]} {...axisProps()} />
-        <Tooltip />
+        <Tooltip
+          labelFormatter={(label, payload) => [label, payload[0]?.payload.name].filter(Boolean).join(' ')}
+        />
         <Legend />
         <Line
           type="monotone"
@@ -102,20 +107,6 @@ function TrendChart({ weeks }: { weeks: StudentWeek[] }) {
   )
 }
 
-function DistributionChart({ data }: { data: { bucket: string; count: number }[] }) {
-  return (
-    <ResponsiveContainer width="100%" height={200}>
-      <BarChart data={data} margin={CHART_MARGIN}>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis dataKey="bucket" {...axisProps()} />
-        <YAxis allowDecimals={false} {...axisProps()} />
-        <Tooltip />
-        <Bar name="학생 수" dataKey="count" fill={MINE} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-      </BarChart>
-    </ResponsiveContainer>
-  )
-}
-
 export function StatsPage() {
   const classes = useQuery({ queryKey: ['classes'], queryFn: () => fetchClasses() })
   // 대시보드의 과제·테스트 KPI 링크는 반과 그 주 범위를 주소로 넘긴다
@@ -124,6 +115,7 @@ export function StatsPage() {
   const [start, setStart] = useState(params.get('start') || weeksAgo(8))
   const [end, setEnd] = useState(params.get('end') || today())
   const [studentId, setStudentId] = useState<number | null>(null)
+  const [rounds, setRounds] = useState<10 | 20>(10)
 
   const activeClassId = classId ?? classes.data?.[0]?.id ?? null
   const stats = useQuery({
@@ -135,10 +127,13 @@ export function StatsPage() {
   const rows = stats.data?.period.students ?? []
   const activeStudentId = studentId ?? rows[0]?.student_id ?? null
   const history = useQuery({
-    queryKey: ['student-history', activeStudentId, end, activeClassId],
-    queryFn: () => fetchStudentHistory(activeStudentId!, end, activeClassId!),
+    queryKey: ['student-history', activeStudentId, end, activeClassId, rounds],
+    queryFn: () => fetchStudentHistory(activeStudentId!, end, activeClassId!, rounds),
     enabled: activeStudentId !== null && activeClassId !== null,
   })
+  // 전체 회차가 10 이하이면 10회로 고정한다(DCR-018)
+  const fixedAtTen = (history.data?.total ?? 0) <= 10
+  const slots = fixedAtTen ? 10 : rounds
 
   return (
     <section className="mb-8">
@@ -151,6 +146,7 @@ export function StatsPage() {
             onChange={(event) => {
               setClassId(Number(event.target.value))
               setStudentId(null)
+              setRounds(10)
             }}
           >
             {classes.data?.map((klass) => (
@@ -221,50 +217,64 @@ export function StatsPage() {
                   ))}
                 </TableBody>
               </Table>
-              <div className="px-5 py-4">
-                <p className="mb-2 text-xs text-muted-fg">점수 분포 (학생 수)</p>
-                <DistributionChart data={stats.data?.period.test.distribution ?? []} />
-              </div>
             </CardContent>
           </Card>
 
           <Card className="min-w-0">
             <CardHeader className="flex-row items-center justify-between gap-3">
-              <CardTitle>학생 주간 추이</CardTitle>
-              <Field label="학생" htmlFor="stats-student">
-                <Select
-                  id="stats-student"
-                  value={activeStudentId ?? ''}
-                  onChange={(event) => setStudentId(Number(event.target.value))}
-                >
-                  {rows.map((row) => (
-                    <option key={row.student_id} value={row.student_id}>
-                      {row.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+              <CardTitle>회차별 성적 추이</CardTitle>
+              <div className="flex gap-3">
+                <Field label="학생" htmlFor="stats-student">
+                  <Select
+                    id="stats-student"
+                    value={activeStudentId ?? ''}
+                    onChange={(event) => {
+                      setStudentId(Number(event.target.value))
+                      setRounds(10)
+                    }}
+                  >
+                    {rows.map((row) => (
+                      <option key={row.student_id} value={row.student_id}>
+                        {row.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="회차" htmlFor="stats-rounds">
+                  <Select
+                    id="stats-rounds"
+                    value={slots}
+                    disabled={fixedAtTen}
+                    onChange={(event) => setRounds(Number(event.target.value) as 10 | 20)}
+                  >
+                    <option value={10}>10회</option>
+                    <option value={20}>20회</option>
+                  </Select>
+                </Field>
+              </div>
             </CardHeader>
             <CardContent>
-              <TrendChart weeks={history.data?.weeks ?? []} />
-              <Table aria-label="주간 추이" className="mt-4">
+              <TrendChart rounds={history.data?.rounds ?? []} slots={slots} />
+              <Table aria-label="회차별 성적 추이" className="mt-4">
                 <TableHead>
                   <TableRow>
-                    <TableHeaderCell>주 시작</TableHeaderCell>
+                    <TableHeaderCell>날짜</TableHeaderCell>
+                    <TableHeaderCell>시험명</TableHeaderCell>
                     <TableHeaderCell>내 점수</TableHeaderCell>
                     <TableHeaderCell>반 평균</TableHeaderCell>
-                    <TableHeaderCell>과제 완수율</TableHeaderCell>
-                    <TableHeaderCell>출결률</TableHeaderCell>
+                    <TableHeaderCell>과제 등급</TableHeaderCell>
+                    <TableHeaderCell>출결</TableHeaderCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(history.data?.weeks ?? []).map((week) => (
-                    <TableRow key={week.week_start}>
-                      <TableCell className="whitespace-nowrap">{week.week_start}</TableCell>
-                      <TableCell className="tabular-nums">{num(week.test_average)}</TableCell>
-                      <TableCell className="tabular-nums">{num(week.class_test_average)}</TableCell>
-                      <TableCell className="tabular-nums">{pct(week.homework_completion)}</TableCell>
-                      <TableCell className="tabular-nums">{pct(week.attendance_rate)}</TableCell>
+                  {(history.data?.rounds ?? []).map((round, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="whitespace-nowrap">{round.date}</TableCell>
+                      <TableCell className="whitespace-nowrap">{round.name}</TableCell>
+                      <TableCell className="tabular-nums">{num(round.score)}</TableCell>
+                      <TableCell className="tabular-nums">{num(round.class_average)}</TableCell>
+                      <TableCell>{round.homework_grade ?? '—'}</TableCell>
+                      <TableCell className="whitespace-nowrap">{attendance(round.attendance_status)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

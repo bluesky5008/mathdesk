@@ -7,7 +7,7 @@ import { Toggle, type Tone } from './ui/toggle'
 // 잠긴 칸은 disabled 대신 aria-disabled로 둔다. disabled는 클릭 이벤트가 없어 왜 안 눌리는지 알려 줄 수 없다
 const LOCKED = 'cursor-not-allowed opacity-50'
 
-const ATTENDANCE = [
+export const ATTENDANCE = [
   ['present', '출석', 'success'],
   ['late', '지각', 'warning'],
   ['absent', '결석', 'danger'],
