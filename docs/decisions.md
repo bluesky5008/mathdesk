@@ -37,6 +37,7 @@
 | ADR-010 | adr | 웹 UI 디자인 시스템 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md) | ADR-011 관련, DCR-003 |
 | ADR-011 | adr | 리포트 카드 HTML 렌더링 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) | ADR-010 관련, DCR-003 |
 | ADR-012 | adr | 테마 팔레트와 적용 방식 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md) | ADR-010·ADR-011 관련, DCR-004 |
+| ADR-013 | adr | 운영 배포처 — 클라이언트별 AWS Lightsail 단일 서버 | awaiting-approval | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | ADR-001 Phase B 구체화, ADR-008 적용, DCR-022 |
 | DCR-001 | dcr | 테스트 운영 환경 노출 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) | ADR-008 |
 | DCR-002 | dcr | M6 LLM 공급자 중립화와 Claude 연결 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) | ADR-009 |
 | DCR-003 | dcr | 브랜드 자산으로서의 시각 설계 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) | ADR-010, ADR-011 |
@@ -58,11 +59,13 @@
 | DCR-019 | dcr | 테스트명 입력과 문자·리포트 공통 구획 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md) | FR-13 상세·AC-44 신설, FR-18 상세·AC-14 변경 |
 | DCR-020 | dcr | 일일 입력의 학생별 정보 탭과 수업일 달력 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md) | FR-45·FR-46·AC-45·AC-46 신설, DES-05 상세·REST·DES-24 추가 |
 | DCR-021 | dcr | 학생별 정보 이미지 저장 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md) | FR-45 상세 보강·AC-47 신설, DES-08 상세·REST 추가, DCR-020 관련 |
+| DCR-022 | dcr | 운영 배포처 — 클라이언트별 AWS Lightsail 서버 | awaiting-approval | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md) | ADR-013, 범위·NFR-08·11·17 변경, NFR-20·AC-48·DES-25 신설 |
+| DCR-023 | dcr | 반 단위 일괄 발송 | awaiting-approval | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) | FR-47·AC-49 신설, REST 2건, DES-18 작업 종류 |
 
 ## 번호 발행 규칙
 
 - ADR·DCR 번호는 저장소 전역 일련번호다. 새 번호는 이 등록부의 마지막 번호 다음 번호로 발행한다.
-- 다음 ADR 번호: `ADR-013`. 다음 DCR 번호: `DCR-022`.
+- 다음 ADR 번호: `ADR-014`. 다음 DCR 번호: `DCR-024`.
 - 개별 ADR·DCR 파일이 정본이며 이 등록부는 목록이다. 불일치하면 파일에 맞춰 등록부를 수정한다.
 
 ## 아웃라인 결정 항목과의 대응
