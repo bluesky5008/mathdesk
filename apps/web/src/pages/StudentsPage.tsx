@@ -252,7 +252,7 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
     },
   })
 
-  // 목록에서 바로 바꾼다(학년·상태, [퇴원]). 퇴원은 지우지 않고 상태만 바꾸므로 과거 기록은 그대로다(FR-05)
+  // 목록에서 바로 바꾼다(학교·학년·상태, [퇴원]). 퇴원은 지우지 않고 상태만 바꾸므로 과거 기록은 그대로다(FR-05)
   const quick = useMutation({
     mutationFn: ({ student, form, status }: { student: Student; form: Form; status: string }) =>
       updateStudent(student.id, toPayload(form, status)),
@@ -344,7 +344,32 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
               {visible.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell className="font-medium whitespace-nowrap">{student.name}</TableCell>
-                  <TableCell className="break-keep text-muted-fg">{student.school}</TableCell>
+                  <TableCell className="break-keep text-muted-fg">
+                    {isDirector ? (
+                      <Select
+                        aria-label={`${student.name} 학교`}
+                        className={INLINE_SELECT}
+                        value={student.school_id ?? ''}
+                        disabled={quick.isPending}
+                        onChange={(event) =>
+                          quick.mutate({
+                            student,
+                            form: { ...toForm(student), school_id: event.target.value },
+                            status: student.status,
+                          })
+                        }
+                      >
+                        <option value="">—</option>
+                        {schoolOptions(schools.data ?? [], toForm(student)).map((school) => (
+                          <option key={school.id} value={school.id}>
+                            {school.name}
+                          </option>
+                        ))}
+                      </Select>
+                    ) : (
+                      student.school
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-fg">
                     {isDirector ? (
                       <Select

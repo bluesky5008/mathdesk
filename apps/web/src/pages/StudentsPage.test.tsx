@@ -602,6 +602,40 @@ describe('StudentsPage school dropdown', () => {
     await waitFor(() => expect(writes[0]?.body).toMatchObject({ school_id: 4 }))
   })
 
+  // TASK-85: 수정 창에 들어가지 않고 목록의 학교 칸에서 바로 바꾼다
+  it('changes the school straight from the row and keeps the other fields', async () => {
+    const { writes } = stubWrites()
+    renderPage({ isDirector: true })
+
+    const school = await screen.findByLabelText('김나윤 학교')
+    await waitFor(() => expect(optionsOf(school)).toEqual(['—', '대명고', '한영고']))
+    expect(school).toHaveValue('3')
+    await userEvent.selectOptions(school, '대명고')
+
+    await waitFor(() => expect(writes).toHaveLength(1))
+    expect(writes[0]).toEqual({ method: 'PATCH', body: { ...toPayloadOf(student), school_id: 4 } })
+  })
+
+  it('clears the school from the row with —', async () => {
+    const { writes } = stubWrites()
+    renderPage({ isDirector: true })
+
+    const school = await screen.findByLabelText('김나윤 학교')
+    await waitFor(() => expect(school).toHaveValue('3'))
+    await userEvent.selectOptions(school, '—')
+
+    await waitFor(() => expect(writes[0]?.body).toEqual({ ...toPayloadOf(student), school_id: null }))
+  })
+
+  it('keeps a current school missing from the list in the row dropdown', async () => {
+    stubWrites([{ ...student, school_id: 9, school: '옛학교' }])
+    renderPage({ isDirector: true })
+
+    const school = await screen.findByLabelText('김나윤 학교')
+    await waitFor(() => expect(optionsOf(school)).toEqual(['—', '대명고', '한영고', '옛학교']))
+    expect(school).toHaveValue('9')
+  })
+
   it('points to the school tab when no school is registered yet', async () => {
     stubWrites([], [])
     renderPage({ isDirector: true })
@@ -617,6 +651,7 @@ describe('StudentsPage school dropdown', () => {
 
     const row = within(await screen.findByRole('row', { name: /김나윤/ }))
     expect(row.getByText('한영고')).toBeInTheDocument()
+    expect(row.queryByRole('combobox')).not.toBeInTheDocument()
     expect(urls).not.toContain('/api/schools')
     expect(screen.queryByRole('link', { name: '학교 탭' })).not.toBeInTheDocument()
   })
