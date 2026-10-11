@@ -348,3 +348,95 @@ describe('StudentsPage class picker', () => {
     expect(left.queryByRole('button', { name: /미배정/ })).not.toBeInTheDocument()
   })
 })
+
+// TASK-79: 학년은 고르고, 목록에서 학년·상태를 바로 바꾼다(클라이언트 요구, 사용자 결정 2026-10-11)
+describe('StudentsPage grade and status dropdowns', () => {
+  function stubWrites(rows = [student]) {
+    const writes: { method: string; url: string; body: unknown }[] = []
+    stubFetch((url, init) => {
+      if (init?.method === 'POST' || init?.method === 'PATCH') {
+        writes.push({ method: init.method, url, body: JSON.parse(String(init.body)) })
+        return Response.json(student)
+      }
+      return Response.json(url.includes('/students') ? rows : [])
+    })
+    return writes
+  }
+
+  it('picks the grade from a fixed list when registering', async () => {
+    const writes = stubWrites([])
+    renderPage({ isDirector: true })
+
+    const grade = await screen.findByLabelText('학년')
+    expect(within(grade).getAllByRole('option').map((option) => option.textContent)).toEqual([
+      '선택',
+      '예비고1',
+      '고1',
+      '고2',
+      '고3',
+    ])
+    await userEvent.type(screen.getByLabelText('이름'), '홍길동')
+    await userEvent.selectOptions(grade, '예비고1')
+    await userEvent.click(screen.getByRole('button', { name: '학생 등록' }))
+
+    await waitFor(() => expect(writes[0]?.body).toMatchObject({ name: '홍길동', grade: '예비고1' }))
+  })
+
+  it('keeps a grade outside the list when editing', async () => {
+    stubWrites([{ ...student, grade: '중3' }])
+    renderPage({ isDirector: true })
+
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+
+    expect(within(screen.getByRole('dialog')).getByLabelText('학년')).toHaveValue('중3')
+  })
+
+  it('changes grade and status straight from the row', async () => {
+    const writes = stubWrites()
+    renderPage({ isDirector: true })
+
+    await userEvent.selectOptions(await screen.findByLabelText('김나윤 학년'), '고3')
+    await waitFor(() => expect(writes).toHaveLength(1))
+    await userEvent.selectOptions(screen.getByLabelText('김나윤 상태'), 'paused')
+
+    await waitFor(() => expect(writes).toHaveLength(2))
+    expect(writes[0]).toEqual({
+      method: 'PATCH',
+      url: '/api/students/1',
+      body: { ...toPayloadOf(student), grade: '고3' },
+    })
+    expect(writes[1].body).toEqual({ ...toPayloadOf(student), status: 'paused' })
+  })
+
+  it('asks before withdrawing from the status dropdown', async () => {
+    const writes = stubWrites()
+    const confirm = vi.fn(() => false)
+    vi.stubGlobal('confirm', confirm)
+    renderPage({ isDirector: true })
+
+    const status = await screen.findByLabelText('김나윤 상태')
+    await userEvent.selectOptions(status, 'withdrawn')
+
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('과거 기록은 남습니다'))
+    expect(status).toHaveValue('enrolled')
+    expect(writes).toEqual([])
+
+    confirm.mockReturnValue(true)
+    await userEvent.selectOptions(status, 'withdrawn')
+    await waitFor(() => expect(writes[0]?.body).toEqual({ ...toPayloadOf(student), status: 'withdrawn' }))
+  })
+
+  it('shows plain grade and status to teachers', async () => {
+    stubWrites()
+    renderPage()
+
+    const row = within(await screen.findByRole('row', { name: /김나윤/ }))
+    expect(row.getByText('고2')).toBeInTheDocument()
+    expect(row.getByText('재원')).toBeInTheDocument()
+    expect(row.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+})
+
+function toPayloadOf(s: typeof student) {
+  return { name: s.name, school: s.school, grade: s.grade, phone: s.phone, omr_number: s.omr_number, status: s.status }
+}

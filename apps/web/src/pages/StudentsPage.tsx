@@ -45,6 +45,13 @@ const FIELDS = [
 // 재원 상태는 FR-05가 정한 3종이다. 퇴원은 지우지 않고 상태로만 남겨 과거 기록을 보존한다.
 const STATUS = { enrolled: '재원', paused: '휴원', withdrawn: '퇴원' } as const
 
+// 학년은 고른다(TASK-79). 서버는 자유 문자열이라 목록 밖의 기존 값은 그 학생의 선택지에 남긴다
+const GRADES = ['예비고1', '고1', '고2', '고3']
+
+function gradeOptions(current: string) {
+  return current && !GRADES.includes(current) ? [...GRADES, current] : GRADES
+}
+
 const DELETE_LABELS = {
   guardians: '보호자',
   enrollments: '반 배정',
@@ -54,6 +61,9 @@ const DELETE_LABELS = {
   messages: '발송 내역',
   consults: '상담 기록',
 }
+
+// 목록 칸의 드롭다운은 평소에는 글자처럼 보이고 가리키면 테두리가 보인다
+const INLINE_SELECT = '-ml-2 h-8 border-transparent bg-transparent text-muted-fg hover:border-border'
 
 const EMPTY = { name: '', school: '', grade: '', phone: '', omr_number: '' }
 
@@ -93,12 +103,26 @@ function StudentFields({
 }) {
   return FIELDS.map(([field, label]) => (
     <Field key={field} label={label} htmlFor={prefix + field} className={className}>
-      <Input
-        id={prefix + field}
-        className="w-full"
-        value={form[field]}
-        onChange={(event) => onChange({ ...form, [field]: event.target.value })}
-      />
+      {field === 'grade' ? (
+        <Select
+          id={prefix + field}
+          className="w-full"
+          value={form.grade}
+          onChange={(event) => onChange({ ...form, grade: event.target.value })}
+        >
+          <option value="">선택</option>
+          {gradeOptions(form.grade).map((grade) => (
+            <option key={grade}>{grade}</option>
+          ))}
+        </Select>
+      ) : (
+        <Input
+          id={prefix + field}
+          className="w-full"
+          value={form[field]}
+          onChange={(event) => onChange({ ...form, [field]: event.target.value })}
+        />
+      )}
     </Field>
   ))
 }
@@ -206,17 +230,20 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
     },
   })
 
-  // 목록에서 바로 퇴원시킨다. 지우지 않고 상태만 바꾸므로 과거 기록은 그대로다(FR-05)
-  const withdraw = useMutation({
-    mutationFn: (student: Student) => updateStudent(student.id, toPayload(toForm(student), 'withdrawn')),
+  // 목록에서 바로 바꾼다(학년·상태, [퇴원]). 퇴원은 지우지 않고 상태만 바꾸므로 과거 기록은 그대로다(FR-05)
+  const quick = useMutation({
+    mutationFn: ({ student, form, status }: { student: Student; form: Form; status: string }) =>
+      updateStudent(student.id, toPayload(form, status)),
     onSuccess: () => void refresh(),
   })
 
-  function confirmWithdraw(student: Student) {
+  function changeStatus(student: Student, status: string) {
     const message =
       `${student.name} 학생을 퇴원 처리할까요?\n` +
       '기본 목록에서 빠지고 과거 기록은 남습니다. [수정]에서 다시 재원으로 바꿀 수 있습니다.'
-    if (window.confirm(message)) withdraw.mutate(student)
+    if (status !== 'withdrawn' || window.confirm(message)) {
+      quick.mutate({ student, form: toForm(student), status })
+    }
   }
 
   function submit(event: FormEvent) {
@@ -277,7 +304,30 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                 <TableRow key={student.id}>
                   <TableCell className="font-medium whitespace-nowrap">{student.name}</TableCell>
                   <TableCell className="break-keep text-muted-fg">{student.school}</TableCell>
-                  <TableCell className="text-muted-fg">{student.grade}</TableCell>
+                  <TableCell className="text-muted-fg">
+                    {isDirector ? (
+                      <Select
+                        aria-label={`${student.name} 학년`}
+                        className={INLINE_SELECT}
+                        value={student.grade ?? ''}
+                        disabled={quick.isPending}
+                        onChange={(event) =>
+                          quick.mutate({
+                            student,
+                            form: { ...toForm(student), grade: event.target.value },
+                            status: student.status,
+                          })
+                        }
+                      >
+                        <option value="">—</option>
+                        {gradeOptions(student.grade ?? '').map((grade) => (
+                          <option key={grade}>{grade}</option>
+                        ))}
+                      </Select>
+                    ) : (
+                      student.grade
+                    )}
+                  </TableCell>
                   <TableCell className="break-keep">
                     {isDirector && student.status !== 'withdrawn' ? (
                       <ClassPicker student={student} current={currentClasses.get(student.id) ?? []} />
@@ -287,7 +337,23 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                   </TableCell>
                   <TableCell className="tabular-nums">{student.omr_number}</TableCell>
                   <TableCell className="text-muted-fg">
-                    {STATUS[student.status as keyof typeof STATUS] ?? student.status}
+                    {isDirector ? (
+                      <Select
+                        aria-label={`${student.name} 상태`}
+                        className={INLINE_SELECT}
+                        value={student.status}
+                        disabled={quick.isPending}
+                        onChange={(event) => changeStatus(student, event.target.value)}
+                      >
+                        {Object.entries(STATUS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </Select>
+                    ) : (
+                      (STATUS[student.status as keyof typeof STATUS] ?? student.status)
+                    )}
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     <Button
@@ -306,8 +372,8 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                         size="sm"
                         className="mr-1"
                         aria-label={`${student.name} 퇴원`}
-                        disabled={withdraw.isPending}
-                        onClick={() => confirmWithdraw(student)}
+                        disabled={quick.isPending}
+                        onClick={() => changeStatus(student, 'withdrawn')}
                       >
                         퇴원
                       </Button>
@@ -327,9 +393,9 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
               ))}
             </TableBody>
           </Table>
-          {withdraw.isError && (
+          {quick.isError && (
             <p role="alert" className="px-5 py-3 text-sm text-danger">
-              {withdraw.error.message}
+              {quick.error.message}
             </p>
           )}
         </CardContent>
