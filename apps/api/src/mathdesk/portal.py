@@ -196,26 +196,31 @@ def _own(scope: PortalScope, student_id: int) -> int:
     return student_id
 
 
-async def _session_rows(
-    session: AsyncSession, scope: PortalScope, student_id: int, before: date, limit: int
-) -> list[SessionRow]:
-    """학생이 배정되어 있던, 기록이 있는 수업만 최신 순(어느 반이든). `daily._history`와 같은 규칙."""
-    rows = (
-        await session.execute(
-            select(ClassSession, Klass)
-            .join(Klass, Klass.id == ClassSession.class_id)
-            .join(
-                Enrollment,
-                (Enrollment.class_id == ClassSession.class_id)
-                & (Enrollment.student_id == student_id)
-                & (Enrollment.start_date <= ClassSession.session_date)
-                & or_(Enrollment.end_date.is_(None), Enrollment.end_date >= ClassSession.session_date),
-            )
-            .where(has_records(), ClassSession.session_date <= before)
-            .order_by(ClassSession.session_date.desc(), ClassSession.id.desc())
-            .limit(limit)
+def _recorded_for(student_id: int):
+    """학생이 배정되어 있던, 기록이 있는 수업(어느 반이든). `daily._history`와 같은 규칙."""
+    return (
+        select(ClassSession)
+        .join(
+            Enrollment,
+            (Enrollment.class_id == ClassSession.class_id)
+            & (Enrollment.student_id == student_id)
+            & (Enrollment.start_date <= ClassSession.session_date)
+            & or_(Enrollment.end_date.is_(None), Enrollment.end_date >= ClassSession.session_date),
         )
-    ).all()
+        .where(has_records())
+    )
+
+
+async def _session_rows(
+    session: AsyncSession, scope: PortalScope, student_id: int, before: date, limit: int, on: date | None = None
+) -> list[SessionRow]:
+    """최신 순. `on`이 있으면 그날 기록만(반이 여럿이면 여럿) — DCR-025."""
+    statement = _recorded_for(student_id).add_columns(Klass).join(Klass, Klass.id == ClassSession.class_id)
+    if on is not None:
+        statement = statement.where(ClassSession.session_date == on)
+    else:
+        statement = statement.where(ClassSession.session_date <= before).limit(limit)
+    rows = (await session.execute(statement.order_by(ClassSession.session_date.desc(), ClassSession.id.desc()))).all()
     if not rows:
         return []
     session_ids = [s.id for s, _ in rows]
@@ -287,8 +292,37 @@ async def read_sessions(
     session: Db,
     before: date | None = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    on: date | None = None,
 ) -> list[SessionRow]:
-    return await _session_rows(session, scope, _own(scope, student_id), before or date.today(), limit)
+    return await _session_rows(session, scope, _own(scope, student_id), before or date.today(), limit, on)
+
+
+class CalendarOut(BaseModel):
+    recorded_dates: list[date]
+
+
+@router.get("/students/{student_id}/calendar")
+async def read_calendar(
+    student_id: int,
+    month: Annotated[str, Query(pattern=r"^\d{4}-\d{2}$")],
+    scope: CurrentPortalScope,
+    session: Db,
+) -> CalendarOut:
+    """그 달에 기록이 있는 수업 날짜(FR-49 상세 기록 탭, DCR-025). `GET /daily/calendar`와 같은 정의."""
+    _own(scope, student_id)
+    try:
+        first = date.fromisoformat(f"{month}-01")
+    except ValueError as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "월 형식은 YYYY-MM입니다.") from error
+    following = date(first.year + first.month // 12, first.month % 12 + 1, 1)
+    dates = await session.scalars(
+        _recorded_for(student_id)
+        .with_only_columns(ClassSession.session_date)
+        .where(ClassSession.session_date >= first, ClassSession.session_date < following)
+        .distinct()
+        .order_by(ClassSession.session_date)
+    )
+    return CalendarOut(recorded_dates=list(dates))
 
 
 # ── 홈 요약 ─────────────────────────────────────────────────────────────

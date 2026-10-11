@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { Suspense, lazy, useState, type ReactNode } from 'react'
 
 import {
+  fetchPortalCalendar,
   fetchPortalConsults,
   fetchPortalExam,
   fetchPortalExams,
   fetchPortalMessages,
   fetchPortalSessions,
+  fetchPortalSessionsOn,
   fetchPortalSummary,
   fetchPortalTestTrend,
   type PortalSession,
@@ -14,11 +16,17 @@ import {
 import { ATTENDANCE } from '../components/AttendanceButtons'
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
-import { WEEKDAYS, weekdayOf } from '../components/ui/month-calendar'
+import { Field } from '../components/ui/field'
+import { MonthCalendar, WEEKDAYS, weekdayOf } from '../components/ui/month-calendar'
+import { Select } from '../components/ui/select'
 import { Stat } from '../components/ui/stat'
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '../components/ui/table'
 import { TONE } from '../components/ui/toggle'
+import { today } from '../lib/date'
 import { usePortalStudent } from './PortalApp'
+
+// 그래프 라이브러리는 추이 탭을 열 때만 받는다(통계 화면과 같은 이유)
+const TrendChart = lazy(() => import('../components/TrendChart').then((m) => ({ default: m.TrendChart })))
 
 const RECHECK_RESULT: Record<string, string> = { pass: '합격', fail: '불합격' }
 
@@ -183,51 +191,161 @@ export function HomePage() {
   )
 }
 
+/** [기록] 탭(FR-49 상세 기록 탭, DCR-025): 달력 → 선택한 날의 기록 → 전체 기록 한 줄 표 */
 export function RecordsPage() {
   const student = usePortalStudent()
+  const [picked, setPicked] = useState<string | null>(null)
+  const [pickedMonth, setPickedMonth] = useState<string | null>(null)
   const [limit, setLimit] = useState(20)
-  const sessions = useQuery({
+  // 최초 선택은 가장 최근 기록일
+  const latest = useQuery({
+    queryKey: ['portal-sessions', student.id, 1],
+    queryFn: () => fetchPortalSessions(student.id, undefined, 1),
+  })
+  const selected = picked ?? latest.data?.[0]?.date ?? (latest.isSuccess ? today() : null)
+  const month = pickedMonth ?? selected?.slice(0, 7) ?? null
+  const calendar = useQuery({
+    queryKey: ['portal-calendar', student.id, month],
+    queryFn: () => fetchPortalCalendar(student.id, month!),
+    enabled: month !== null,
+  })
+  const day = useQuery({
+    queryKey: ['portal-sessions-on', student.id, selected],
+    queryFn: () => fetchPortalSessionsOn(student.id, selected!),
+    enabled: selected !== null,
+  })
+  const all = useQuery({
     queryKey: ['portal-sessions', student.id, limit],
     queryFn: () => fetchPortalSessions(student.id, undefined, limit),
   })
-  const rows = sessions.data ?? []
+  const recorded = new Set(calendar.data?.recorded_dates ?? [])
+  const rows = all.data ?? []
+
+  function pick(date: string) {
+    setPicked(date)
+    setPickedMonth(date.slice(0, 7))
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">{student.name} 수업 기록</h2>
-      <Loading query={sessions}>
-        {rows.length === 0 && <Empty>아직 수업 기록이 없습니다.</Empty>}
-        {rows.map((row) => (
-          <SessionCard key={`${row.date}-${row.class_name}`} row={row} />
-        ))}
-        {rows.length === limit && limit < 50 && (
-          <Button type="button" variant="outline" onClick={() => setLimit(Math.min(50, limit + 20))}>
-            더 보기
-          </Button>
-        )}
-      </Loading>
+      <Card>
+        <CardContent className="flex justify-center p-3">
+          {month && (
+            <MonthCalendar
+              month={month}
+              selected={selected}
+              onSelect={pick}
+              onMonthChange={setPickedMonth}
+              emphasized={(date) => recorded.has(date)}
+              dotted={(date) => recorded.has(date)}
+            />
+          )}
+        </CardContent>
+      </Card>
+      {selected && (
+        <Loading query={day}>
+          {(day.data ?? []).length === 0 && <Empty>이 날은 기록이 없습니다.</Empty>}
+          {(day.data ?? []).map((row) => (
+            <SessionCard key={`${row.date}-${row.class_name}`} row={row} />
+          ))}
+        </Loading>
+      )}
+      {latest.isSuccess && latest.data.length === 0 && <Empty>아직 수업 기록이 없습니다.</Empty>}
+
+      <Card>
+        <CardContent className="p-0">
+          <h3 className="px-4 pt-3 pb-1 text-xs font-medium text-muted-fg">전체 기록</h3>
+          <Table aria-label="전체 기록">
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>날짜</TableHeaderCell>
+                <TableHeaderCell>출결</TableHeaderCell>
+                <TableHeaderCell>과제</TableHeaderCell>
+                <TableHeaderCell>테스트</TableHeaderCell>
+                <TableHeaderCell>코멘트</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((row) => {
+                const attendance = ATTENDANCE.find(([status]) => status === row.attendance)
+                return (
+                  <TableRow key={`${row.date}-${row.class_name}`}>
+                    <TableCell className="whitespace-nowrap">
+                      <button
+                        type="button"
+                        className="font-medium text-brand underline-offset-2 hover:underline"
+                        onClick={() => pick(row.date)}
+                      >
+                        {shortDate(row.date)}
+                      </button>
+                      <div className="text-xs text-muted-fg">{row.class_name}</div>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{attendance ? attendance[1] : '미확인'}</TableCell>
+                    <TableCell className="tabular-nums">{row.homework_grade ?? '—'}</TableCell>
+                    <TableCell className="tabular-nums whitespace-nowrap">
+                      {row.test_score === null ? '—' : `${row.test_score} / ${row.class_average ?? '—'}`}
+                    </TableCell>
+                    <TableCell className="max-w-40 truncate text-xs" title={row.comment ?? undefined}>
+                      {row.comment}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+          {all.isSuccess && rows.length === 0 && <Empty>아직 수업 기록이 없습니다.</Empty>}
+          {rows.length === limit && limit < 50 && (
+            <div className="p-3">
+              <Button type="button" variant="outline" className="w-full" onClick={() => setLimit(Math.min(50, limit + 20))}>
+                더 보기
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
 
 export function TestsPage() {
   const student = usePortalStudent()
-  const [count, setCount] = useState(10)
+  const [count, setCount] = useState<10 | 20>(10)
   const trend = useQuery({ queryKey: ['portal-trend', student.id, count], queryFn: () => fetchPortalTestTrend(student.id, count) })
   const rounds = trend.data?.rounds ?? []
+  // 전체 회차가 10 이하이면 10회로 고정한다(FR-24, DCR-018과 같은 규칙)
+  const fixedAtTen = (trend.data?.total ?? 0) <= 10
+  const slots = fixedAtTen ? 10 : count
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-end justify-between gap-3">
         <h2 className="text-lg font-semibold">{student.name} 테스트 추이</h2>
-        {(trend.data?.total ?? 0) > 10 && (
-          <Button type="button" variant="outline" size="sm" onClick={() => setCount(count === 10 ? 20 : 10)}>
-            최근 {count === 10 ? 20 : 10}회
-          </Button>
-        )}
+        <Field label="회차" htmlFor="portal-rounds">
+          <Select
+            id="portal-rounds"
+            value={slots}
+            disabled={fixedAtTen}
+            onChange={(event) => setCount(Number(event.target.value) as 10 | 20)}
+          >
+            <option value={10}>10회</option>
+            <option value={20}>20회</option>
+          </Select>
+        </Field>
       </div>
       <Loading query={trend}>
         {rounds.length === 0 ? (
           <Empty>아직 테스트 기록이 없습니다.</Empty>
         ) : (
+          <>
+          <Card>
+            <CardContent className="p-3">
+              <figure aria-label="회차별 성적 추이 그래프" className="m-0">
+                <Suspense fallback={<p className="text-sm text-muted-fg">그래프 불러오는 중</p>}>
+                  <TrendChart rounds={rounds} slots={slots} />
+                </Suspense>
+              </figure>
+            </CardContent>
+          </Card>
           <Card>
             <CardContent className="p-0">
               <Table>
@@ -252,6 +370,7 @@ export function TestsPage() {
               </Table>
             </CardContent>
           </Card>
+          </>
         )}
       </Loading>
     </div>

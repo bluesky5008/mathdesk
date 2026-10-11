@@ -122,3 +122,24 @@ def test_consults_and_messages_are_the_students_own_successful_ones(api, portal)
 
     messages = api.get(f"/api/portal/students/{portal['target']}/messages").json()
     assert [m["body"] for m in messages] == ["실발송 본문"]  # 같은 세션의 학생·학부모 두 건은 한 건, 테스트·실패는 제외
+
+
+# ── DCR-025: 달력과 그날 기록 ─────────────────────────────────────────
+
+
+def test_calendar_lists_the_students_recorded_dates_of_the_month(api, portal):
+    response = api.get(f"/api/portal/students/{portal['target']}/calendar", params={"month": "2026-09"})
+
+    assert response.status_code == 200, response.text
+    assert response.json() == {"recorded_dates": [DATE]}
+    assert api.get(f"/api/portal/students/{portal['target']}/calendar", params={"month": "2026-08"}).json() == {"recorded_dates": []}
+    assert api.get(f"/api/portal/students/{portal['other']}/calendar", params={"month": "2026-09"}).status_code == 403
+    assert api.get(f"/api/portal/students/{portal['target']}/calendar", params={"month": "2026-9"}).status_code == 422
+
+
+def test_sessions_on_a_day_return_only_that_day(api, portal):
+    same_day = api.get(f"/api/portal/students/{portal['target']}/sessions", params={"on": DATE}).json()
+    empty = api.get(f"/api/portal/students/{portal['target']}/sessions", params={"on": "2026-09-17"}).json()
+
+    assert [row["date"] for row in same_day] == [DATE]
+    assert empty == []

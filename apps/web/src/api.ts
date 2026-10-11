@@ -941,6 +941,16 @@ export function fetchPortalSessions(studentId: number, before?: string, limit = 
   return request<PortalSession[]>(`/portal/students/${studentId}/sessions${query}`)
 }
 
+/** 그 달의 기록 있는 수업 날짜(FR-49 상세 기록 탭, DCR-025) */
+export function fetchPortalCalendar(studentId: number, month: string): Promise<{ recorded_dates: string[] }> {
+  return request(`/portal/students/${studentId}/calendar?month=${month}`)
+}
+
+/** 그날의 기록만(반이 여럿이면 여럿) */
+export function fetchPortalSessionsOn(studentId: number, on: string): Promise<PortalSession[]> {
+  return request<PortalSession[]>(`/portal/students/${studentId}/sessions?on=${on}`)
+}
+
 export function fetchPortalTestTrend(studentId: number, count = 10): Promise<{ total: number; rounds: StudentRound[] }> {
   return request(`/portal/students/${studentId}/test-trend?count=${count}`)
 }
