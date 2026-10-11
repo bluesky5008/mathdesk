@@ -1,9 +1,9 @@
-"""학생·비활성 반의 삭제(FR-05 상세·FR-07, AC-36, DES-04 상세, DCR-006·DCR-012).
+"""학생·비활성 반의 삭제(FR-05 상세·FR-07, AC-36, DES-04 상세, DCR-006·DCR-012·DCR-013).
 
 되돌릴 수 없는 작업이다. 그래서 세 가지를 지킨다.
-- 선행 조건: 반은 비활성이어야 한다. 학생은 상태와 관계없이 지운다(DCR-012) — 재원 경고는 화면이 띄우고
-  감사 로그에 삭제 당시 상태를 남긴다.
-- 이름 확인: 요청 본문의 `confirm_name`이 대상 이름과 같아야 한다.
+- 선행 조건: 반은 비활성이어야 한다. 학생은 상태와 관계없이 지운다(DCR-012) — 감사 로그에 삭제
+  당시 상태를 남긴다.
+- 이름 확인: 반은 요청 본문의 `confirm_name`이 대상 이름과 같아야 한다. 학생은 확인 없이 지운다(DCR-013).
 - 한 트랜잭션: 대상 행을 잠그고 확인 → 연관 삭제 → 대상 삭제. 중간에 실패하면 전부 되돌린다.
 
 삭제·보존 목록은 아래 상수가 정본이다. 새 테이블이 학생·반(또는 여기서 지우는 테이블)을
@@ -100,18 +100,15 @@ async def _student_counts(session: AsyncSession, student_id: int) -> dict[str, i
 
 @router.get("/students/{student_id}/deletion-preview")
 async def preview_student_deletion(student_id: int, scope: CurrentScope, session: Db) -> PreviewOut:
-    # 학생은 상태와 관계없이 지울 수 있다(DCR-012). 재원 경고는 화면이 상태를 보고 띄운다
+    # 학생은 상태와 관계없이 지울 수 있다(DCR-012). 화면은 학생 삭제에 미리보기를 쓰지 않는다(DCR-013)
     student = await _student(session, scope, student_id)
     return PreviewOut(deletable=True, reason=None, counts=await _student_counts(session, student.id))
 
 
 @router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_student(
-    student_id: int, payload: DeleteIn, scope: CurrentScope, session: Db
-) -> Response:
+async def delete_student(student_id: int, scope: CurrentScope, session: Db) -> Response:
+    # 학생은 확인 없이 바로 지운다(DCR-013). 본문이 와도 읽지 않는다
     student = await _student(session, scope, student_id, lock=True)
-    if payload.confirm_name.strip() != student.name:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "확인용 이름이 학생 이름과 다릅니다.")
 
     counts = await _student_counts(session, student.id)
     state = student.status

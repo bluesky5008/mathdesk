@@ -728,12 +728,9 @@ export function saveAlimtalkSettings(settings: {
 
 export type DeletionPreview = { deletable: boolean; reason: string | null; counts: Record<string, number> }
 
-export function fetchStudentDeletionPreview(id: number): Promise<DeletionPreview> {
-  return request<DeletionPreview>(`/students/${id}/deletion-preview`)
-}
-
-export function deleteStudent(id: number, confirmName: string): Promise<void> {
-  return request<void>(`/students/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm_name: confirmName }) })
+/** 학생은 확인 없이 바로 하드 삭제한다(DCR-013). */
+export function deleteStudent(id: number): Promise<void> {
+  return request<void>(`/students/${id}`, { method: 'DELETE' })
 }
 
 export function fetchClassDeletionPreview(id: number): Promise<DeletionPreview> {

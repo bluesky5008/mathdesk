@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v13`
+> 기준선: `v14`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -141,8 +141,8 @@
 
 #### DES-04 상세 — 학생·반 삭제 ([DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md), [DCR-012](./work/20260922-mathdesk-baseline/DCR-012-재원-학생의-바로-삭제.md))
 
-- 선행 조건: 반 `비활성`(아니면 `409`, 변경 없음). 학생은 상태와 관계없이 삭제할 수 있고 미리보기 `deletable`은 항상 `true`다. 화면은 재원·휴원 학생 미리보기에 경고를 먼저 보이고, 학생 목록 각 행과 [수정] 창에 [삭제]를 둔다(원장만). 원장만(강사 403), 캠퍼스 스코프는 공통 규칙.
-- `GET …/deletion-preview`는 분류별 삭제 건수를 돌려준다. `DELETE`는 본문의 `confirm_name`이 대상 이름과 같아야 하며(다르면 `422`, 변경 없음) 성공 시 `204`.
+- 선행 조건: 반 `비활성`(아니면 `409`, 변경 없음). 학생은 상태와 관계없이 삭제할 수 있고 미리보기 `deletable`은 항상 `true`다. 학생 목록 각 행과 [수정] 창의 [삭제](원장만)는 확인 창 없이 바로 `DELETE`를 보낸다([DCR-013](./work/20260922-mathdesk-baseline/DCR-013-학생-즉시-삭제.md)). 원장만(강사 403), 캠퍼스 스코프는 공통 규칙.
+- `GET …/deletion-preview`는 분류별 삭제 건수를 돌려준다(반 삭제 창이 쓴다, 학생 것은 계약만 유지). 반 `DELETE`는 본문의 `confirm_name`이 대상 이름과 같아야 하며(다르면 `422`, 변경 없음), 학생 `DELETE`는 본문이 없다(와도 무시). 성공 시 `204`.
 - 한 트랜잭션에서 대상 행을 잠그고 선행 조건 확인 → 연관 데이터 삭제 → 대상 삭제를 한다. 실패하면 전부 되돌린다.
 - 학생 삭제: `guardian`, `enrollment`, `student_daily_record`, `exam_answer`→`exam_attempt`, 매칭된 `omr_scan`과 그 `label_correction`(`source_ref=omr_scan:{id}:…`), `message_log`, `consult_log`. `stored_file`(OMR 원본 PDF)은 남긴다.
 - 반 삭제: `class_schedule`, `enrollment`, 그 반 `class_session`의 `student_daily_record`·`class_session_progress`와 세션. `exam.class_id`는 `NULL`로 바꾸고 시험·응시는 남긴다.
@@ -498,6 +498,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v13` (2026-10-11): [DCR-012](./work/20260922-mathdesk-baseline/DCR-012-재원-학생의-바로-삭제.md) 재승인으로 DES-04 상세의 학생 삭제 선행 조건이 없어지고 감사 로그에 삭제 당시 상태가 추가되었다(계약 형식 변경 없음).
 
+기준선 `v14` (2026-10-11): [DCR-013](./work/20260922-mathdesk-baseline/DCR-013-학생-즉시-삭제.md) 재승인(안 A)으로 학생 `DELETE`의 `confirm_name` 확인이 없어지고 화면의 학생 삭제가 즉시 삭제로 바뀌었다.
+
 기준선 `v11` (2026-09-24): [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) 승인으로 `class_minutes` 기본값이 240으로 바뀌었다(구조·계약 변경 없음).
 
 기준선 `v10` (2026-09-24): [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) 재승인으로 `POST /auth/password`·`POST /users/{id}/password`와 `app_user.must_change_password`가 신설되고, 변경 강제 중에는 공통 스코프 검사가 요청을 거부한다.
@@ -531,6 +533,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-09-23 | DES-24 상세의 대상 환경을 화면 부류별 차등으로 교체, 좁은 폭 레이아웃 방침 추가 | [DCR-005](./work/20260922-mathdesk-baseline/DCR-005-모바일-지원-범위.md) | approved 유지, 기준선 v5 → v6 | Claude / 사용자 |
 | 2026-09-24 | 강사의 담당 반 수정 규칙, 권한 매트릭스 | [DCR-011](./work/20260922-mathdesk-baseline/DCR-011-강사의-담당-반-수정.md) | approved 유지, 기준선 v11 → v12 | Claude / 사용자 |
 | 2026-10-11 | 학생 삭제 선행 조건 제거, 감사 로그 상태 | [DCR-012](./work/20260922-mathdesk-baseline/DCR-012-재원-학생의-바로-삭제.md) | approved 유지, 기준선 v12 → v13 | Claude / 사용자 |
+| 2026-10-11 | 학생 즉시 삭제, 학생 `DELETE` 본문 제거 | [DCR-013](./work/20260922-mathdesk-baseline/DCR-013-학생-즉시-삭제.md) | approved 유지, 기준선 v13 → v14 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |

@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v13`
+> 기준선: `v14`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (20/27)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (20/28)
+   ├─ [▶] TASK-81 학생 즉시 삭제 (DCR-013) .......... in-progress
    ├─ [✓] TASK-80 재원 학생의 바로 삭제 (DCR-012) ..... 2026-10-11 12:29
    ├─ [✓] TASK-79 학년·상태 드롭다운 (FR-05) ........ 2026-10-11 12:14
    ├─ [✓] TASK-78 학생 목록에서 반 배정 (FR-08) ....... 2026-10-11 12:05
@@ -247,7 +248,7 @@ flowchart TD
     classDef gate fill:#ffcdd2,stroke:#c62828
 ```
 
-사이클 3 (노드 25)
+사이클 3 (노드 26)
 
 ```mermaid
 flowchart TD
@@ -270,6 +271,8 @@ flowchart TD
     C3 --> T80["TASK-80 재원 학생의 바로 삭제 (DCR-012)"]:::done
     T62 -. depends .-> T80
     T79 -. depends .-> T80
+    C3 --> T81["TASK-81 학생 즉시 삭제 (DCR-013)"]:::active
+    T80 -. depends .-> T81
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
     C3 --> T75["TASK-75 OMR 방향 자동 판별"]:::done
     C3 --> T76["TASK-76 OMR 판정 기준: 조명 보정"]:::done
@@ -1069,6 +1072,18 @@ flowchart TD
 ### 사이클 3 — 운영 이관 (2026-09-24 계획)
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
+
+### TASK-81: 학생 즉시 삭제
+
+- 상태: in-progress
+- 상위: 없음
+- 목표: 원장이 학생 목록 행이나 [수정] 창의 [삭제]를 누르면 확인 없이 바로 그 학생을 하드 삭제하고 목록에서 뺀다. 서버의 학생 `DELETE`는 이름 확인을 하지 않는다(본문이 와도 무시). 반 삭제는 미리보기·이름 입력 그대로.
+- 관련 요구사항과 설계: [DCR-013](./work/20260922-mathdesk-baseline/DCR-013-학생-즉시-삭제.md)(안 A, 기준선 `v14`, 승인 2026-10-11) — [FR-05 상세](./requirements.md#fr-05-상세)(삭제)·[AC-36](./requirements.md#인수-조건), [DES-04 상세](./design.md#des-04-상세--학생반-삭제-dcr-006-dcr-012)
+- 변경 대상: `apps/api/src/mathdesk/deletion.py`(학생 `DELETE` 본문 제거), `tests/test_deletion.py`, `apps/web/src/api.ts`(`deleteStudent`), `pages/StudentsPage.tsx`(삭제 창 대신 즉시 삭제), 웹 테스트
+- 의존성: TASK-80
+- 위험: 오클릭 보호 없음(사용자 수용). 복구는 DB 전체 백업 복원뿐, 테스트 운영 자동 백업 없음(TASK-57)
+- 검증 방법: 선행 테스트 — API(본문 없이 204·기록 전부 삭제·다른 학생 불변, 반 이름 불일치 422 유지), 웹(행·수정 창 [삭제] 클릭 즉시 `DELETE`·목록에서 빠짐, 확인 창 없음, 강사 화면에 없음). VER-35
+- 완료 조건: 테스트 운영 배포
 
 ### TASK-80: 재원 학생의 바로 삭제
 

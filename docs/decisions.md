@@ -49,7 +49,7 @@
 | DCR-010 | dcr | 수업 길이 기본값 4시간 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | DCR-008 기본값 대체 |
 | DCR-011 | dcr | 강사의 담당 반 수정 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-011](./work/20260922-mathdesk-baseline/DCR-011-강사의-담당-반-수정.md) | ADR-007 관련 |
 | DCR-012 | dcr | 재원 학생의 바로 삭제 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-012](./work/20260922-mathdesk-baseline/DCR-012-재원-학생의-바로-삭제.md) | DCR-006 학생 선행 조건 변경 |
-| DCR-013 | dcr | 학생 즉시 삭제 | awaiting-approval | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-013](./work/20260922-mathdesk-baseline/DCR-013-학생-즉시-삭제.md) | DCR-006·DCR-012 학생 확인 절차 변경 |
+| DCR-013 | dcr | 학생 즉시 삭제 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-013](./work/20260922-mathdesk-baseline/DCR-013-학생-즉시-삭제.md) | DCR-006·DCR-012 학생 확인 절차 변경 |
 
 ## 번호 발행 규칙
 

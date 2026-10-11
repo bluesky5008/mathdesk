@@ -140,14 +140,24 @@ def test_preview_counts_what_will_be_deleted(api, history):
     }
 
 
-def test_a_wrong_confirmation_name_changes_nothing(api, history, migrated_database):
-    _withdraw(api, history["target"])
-    before = _student_rows(migrated_database, history["target"])
+# DCR-013: 학생은 이름 확인 없이 바로 지운다(기준선 v14). 반은 이름 확인 그대로
+def test_a_student_is_deleted_without_a_confirmation_name(api, history, migrated_database):
+    other_before = _student_rows(migrated_database, history["other"])
 
-    response = _delete(api, f"/api/students/{history['target']}", "김나운")
+    response = api.request("DELETE", f"/api/students/{history['target']}")
+
+    assert response.status_code == 204, response.text
+    assert set(_student_rows(migrated_database, history["target"]).values()) == {0}
+    assert _student_rows(migrated_database, history["other"]) == other_before
+
+
+def test_a_wrong_class_name_changes_nothing(api, history, migrated_database):
+    _deactivate(api, history["class_id"])
+
+    response = _delete(api, f"/api/classes/{history['class_id']}", "고2 윤C")
 
     assert response.status_code == 422
-    assert _student_rows(migrated_database, history["target"]) == before
+    assert any(c["id"] == history["class_id"] for c in api.get("/api/classes", params={"include_inactive": "true"}).json())
 
 
 def test_deleting_a_withdrawn_student_removes_all_their_records_and_only_theirs(

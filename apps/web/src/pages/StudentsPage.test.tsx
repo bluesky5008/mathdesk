@@ -185,65 +185,46 @@ describe('StudentsPage', () => {
     expect(screen.queryByRole('button', { name: '박서준 퇴원' })).not.toBeInTheDocument()
   })
 
-  it('deletes a withdrawn student after showing what goes with them and checking the name', async () => {
+  // DCR-013: 학생 [삭제]는 확인 없이 바로 하드 삭제한다(기준선 v14)
+  function stubDelete(rows: (typeof student)[]) {
     const calls: { url: string; method: string; body: unknown }[] = []
     stubFetch((url, init) => {
       const method = init?.method ?? 'GET'
-      calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : null })
-      if (url.endsWith('/deletion-preview')) {
-        return Response.json({
-          deletable: true,
-          reason: null,
-          counts: { guardians: 1, enrollments: 1, daily_records: 24, exam_attempts: 2, omr_scans: 2, messages: 15, consults: 3 },
-        })
-      }
+      calls.push({ url, method, body: init?.body ?? null })
       if (method === 'DELETE') return new Response(null, { status: 204 })
-      return Response.json(calls.some((c) => c.method === 'DELETE') ? [] : [withdrawn])
+      const deleted = calls.filter((c) => c.method === 'DELETE').map((c) => c.url)
+      return Response.json(rows.filter((row) => !deleted.includes(`/api/students/${row.id}`)))
     })
+    return calls
+  }
 
+  it('deletes a student straight from the row without asking', async () => {
+    const calls = stubDelete([student, withdrawn])
+    const confirm = vi.fn(() => true)
+    vi.stubGlobal('confirm', confirm)
     renderPage({ isDirector: true })
+
+    await userEvent.click(await screen.findByRole('button', { name: '김나윤 삭제' }))
+
+    await waitFor(() => expect(screen.queryByText('김나윤')).not.toBeInTheDocument())
+    expect(calls.filter((c) => c.method === 'DELETE')).toEqual([
+      { url: '/api/students/1', method: 'DELETE', body: null },
+    ])
+    expect(confirm).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('deletes a student from the edit dialog right away', async () => {
+    const calls = stubDelete([withdrawn])
+    renderPage({ isDirector: true })
+
     await userEvent.click(await screen.findByRole('button', { name: '퇴원 포함' }))
     await userEvent.click(await screen.findByRole('button', { name: '수정' }))
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '삭제' }))
 
-    const dialog = await screen.findByRole('dialog', { name: '박서준 학생 삭제' })
-    expect(await within(dialog).findByText('출결·과제 기록 24건')).toBeInTheDocument()
-    expect(within(dialog).getByText(/되돌릴 수 없습니다/)).toBeInTheDocument()
-    const confirm = within(dialog).getByRole('button', { name: '영구 삭제' })
-    expect(confirm).toBeDisabled()
-    await userEvent.type(within(dialog).getByLabelText('확인용 이름'), '박서준')
-    await userEvent.click(confirm)
-
     await waitFor(() => expect(screen.queryByText('박서준')).not.toBeInTheDocument())
-    expect(calls.find((c) => c.method === 'DELETE')).toEqual({
-      url: '/api/students/2',
-      method: 'DELETE',
-      body: { confirm_name: '박서준' },
-    })
-  })
-
-  // DCR-012: 재원·휴원 학생도 행의 [삭제]로 바로 지운다. 재원 경고를 먼저 보인다(기준선 v13)
-  it('deletes an enrolled student straight from the row after a warning', async () => {
-    const calls: { url: string; method: string }[] = []
-    stubFetch((url, init) => {
-      const method = init?.method ?? 'GET'
-      calls.push({ url, method })
-      if (url.endsWith('/deletion-preview')) {
-        return Response.json({ deletable: true, reason: null, counts: { daily_records: 3 } })
-      }
-      if (method === 'DELETE') return new Response(null, { status: 204 })
-      return Response.json(calls.some((c) => c.method === 'DELETE') ? [] : [student, withdrawn])
-    })
-
-    renderPage({ isDirector: true })
-    await userEvent.click(await screen.findByRole('button', { name: '김나윤 삭제' }))
-
-    const dialog = within(await screen.findByRole('dialog', { name: '김나윤 학생 삭제' }))
-    expect(dialog.getByText(/재원 중인 학생입니다/)).toBeInTheDocument()
-    await userEvent.type(dialog.getByLabelText('확인용 이름'), '김나윤')
-    await userEvent.click(await dialog.findByRole('button', { name: '영구 삭제' }))
-
-    await waitFor(() => expect(calls).toContainEqual({ url: '/api/students/1', method: 'DELETE' }))
+    expect(calls.filter((c) => c.method === 'DELETE').map((c) => c.url)).toEqual(['/api/students/2'])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('offers delete on every row and in the edit dialog to directors only', async () => {

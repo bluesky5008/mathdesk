@@ -26,13 +26,11 @@ import {
   deleteStudent,
   fetchClasses,
   fetchEnrollments,
-  fetchStudentDeletionPreview,
   fetchStudents,
   updateStudent,
   type Klass,
   type Student,
 } from '../api'
-import { DeleteDialog } from './DeleteDialog'
 
 const FIELDS = [
   ['name', '이름'],
@@ -50,16 +48,6 @@ const GRADES = ['예비고1', '고1', '고2', '고3']
 
 function gradeOptions(current: string) {
   return current && !GRADES.includes(current) ? [...GRADES, current] : GRADES
-}
-
-const DELETE_LABELS = {
-  guardians: '보호자',
-  enrollments: '반 배정',
-  daily_records: '출결·과제 기록',
-  exam_attempts: '시험 응시',
-  omr_scans: '답안지',
-  messages: '발송 내역',
-  consults: '상담 기록',
 }
 
 // 목록 칸의 드롭다운은 평소에는 글자처럼 보이고 가리키면 테두리가 보인다
@@ -205,7 +193,6 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
   const [showWithdrawn, setShowWithdrawn] = useState(false)
   const [edit, setEdit] = useState<{ id: number; form: Form; status: string } | null>(null)
   const [consulting, setConsulting] = useState<{ id: number; name: string } | null>(null)
-  const [deleting, setDeleting] = useState<Student | null>(null)
 
   const visible = (students.data ?? []).filter(
     (student) => showWithdrawn || student.status !== 'withdrawn',
@@ -234,6 +221,12 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
   const quick = useMutation({
     mutationFn: ({ student, form, status }: { student: Student; form: Form; status: string }) =>
       updateStudent(student.id, toPayload(form, status)),
+    onSuccess: () => void refresh(),
+  })
+
+  // 학생은 확인 없이 바로 하드 삭제한다(DCR-013). 되살리려면 백업에서 복원해야 한다
+  const remove = useMutation({
+    mutationFn: (id: number) => deleteStudent(id),
     onSuccess: () => void refresh(),
   })
 
@@ -395,7 +388,8 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                         size="sm"
                         className="ml-1 text-danger"
                         aria-label={`${student.name} 삭제`}
-                        onClick={() => setDeleting(student)}
+                        disabled={remove.isPending}
+                        onClick={() => remove.mutate(student.id)}
                       >
                         삭제
                       </Button>
@@ -408,6 +402,11 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
           {quick.isError && (
             <p role="alert" className="px-5 py-3 text-sm text-danger">
               {quick.error.message}
+            </p>
+          )}
+          {remove.isError && (
+            <p role="alert" className="px-5 py-3 text-sm text-danger">
+              {remove.error.message}
             </p>
           )}
         </CardContent>
@@ -443,10 +442,10 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                 </p>
               )}
               <div className="col-span-2 mt-2 flex justify-between gap-2">
-                {/* 원장은 상태와 관계없이 학생을 삭제할 수 있다(DCR-012) */}
+                {/* 원장은 상태와 관계없이 학생을 확인 없이 바로 삭제한다(DCR-012·DCR-013) */}
                 {isDirector ? (
                   <Button type="button" variant="ghost" className="text-danger" onClick={() => {
-                      setDeleting(students.data?.find((s) => s.id === edit.id) ?? null)
+                      remove.mutate(edit.id)
                       setEdit(null)
                     }}>
                     삭제
@@ -469,26 +468,6 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
       </Dialog>
 
       {consulting && <ConsultDialog student={consulting} onClose={() => setConsulting(null)} />}
-      {deleting && (
-        <DeleteDialog
-          title={`${deleting.name} 학생 삭제`}
-          name={deleting.name}
-          warning={
-            deleting.status === 'withdrawn'
-              ? undefined
-              : `${STATUS[deleting.status as keyof typeof STATUS] ?? deleting.status} 중인 학생입니다. ` +
-                '오늘 수업 명단과 일일 입력에서 바로 빠지고, 출결·성적 기록까지 모두 지워집니다.'
-          }
-          labels={DELETE_LABELS}
-          preview={() => fetchStudentDeletionPreview(deleting.id)}
-          remove={(confirmName) => deleteStudent(deleting.id, confirmName)}
-          onDone={() => {
-            setDeleting(null)
-            void refresh()
-          }}
-          onClose={() => setDeleting(null)}
-        />
-      )}
     </section>
   )
 }
