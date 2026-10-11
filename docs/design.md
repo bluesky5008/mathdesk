@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v25`
+> 기준선: `v26`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
