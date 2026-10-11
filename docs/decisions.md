@@ -53,7 +53,7 @@
 | DCR-014 | dcr | 학부모 연락처와 성적 칸 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md) | FR-05·FR-06 보강 |
 | DCR-015 | dcr | 학교 관리와 학교 드롭다운 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md) | FR-05 보강, FR-43 신설 |
 | DCR-016 | dcr | 반 바로 삭제 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md) | DCR-006 반 선행 조건·확인 절차 변경 |
-| DCR-017 | dcr | 학생별 코멘트와 문자 공통·개별 구조 | awaiting-approval | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) | FR-14·FR-18 상세·AC-14 변경, FR-44·AC-43 신설 |
+| DCR-017 | dcr | 학생별 코멘트와 문자 공통·개별 구조 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) | FR-14·FR-18 상세·AC-14 변경, FR-44·AC-43 신설 |
 
 ## 번호 발행 규칙
 
