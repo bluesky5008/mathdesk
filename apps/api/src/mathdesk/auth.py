@@ -10,7 +10,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .db import get_session
-from .models import AppUser, AuditLog, UserSession
+from .models import PORTAL_ROLES, AppUser, AuditLog, UserSession
 from .security import UNUSABLE_PASSWORD, hash_password, verify_password
 
 SESSION_COOKIE = "mathdesk_session"
@@ -24,6 +24,20 @@ def _max_attempts() -> int:
 
 def _lockout() -> timedelta:
     return timedelta(seconds=int(os.environ.get("MATHDESK_LOGIN_LOCKOUT_SECONDS", "180")))
+
+
+def portal_issue_ttl() -> timedelta:
+    """포털 계정이 발급 뒤 최초 비밀번호 변경 없이 쓸 수 있는 기간(FR-48 상세, 기본 7일)."""
+    return timedelta(days=int(os.environ.get("MATHDESK_PORTAL_ISSUE_TTL_DAYS", "7")))
+
+
+def issue_expired(user: AppUser, now: datetime) -> bool:
+    return (
+        user.role in PORTAL_ROLES
+        and user.must_change_password
+        and user.issued_at is not None
+        and now > user.issued_at + portal_issue_ttl()
+    )
 
 
 def _cookie_secure() -> bool:
@@ -130,6 +144,11 @@ async def login(payload: LoginRequest, response: Response, session: Db) -> Curre
             await _record_failure(session, user, now)
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "자격 증명이 올바르지 않습니다."
+        )
+
+    if issue_expired(user, now):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "발급 기간이 지났습니다. 학원에 재발급을 요청하세요."
         )
 
     user.failed_login_count = 0

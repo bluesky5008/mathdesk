@@ -21,6 +21,8 @@ from .messaging import router as messaging_router
 from .omr import router as omr_router
 from .omr_review import router as omr_review_router
 from .omr_scoring import router as omr_scoring_router
+from .portal import router as portal_router
+from .portal_accounts import router as portal_accounts_router
 from .stats import router as stats_router
 from .tasks import TaskRunner, router as tasks_router
 from .timetable import router as timetable_router
@@ -85,6 +87,8 @@ def create_app(web_dist: Path | str | None = None) -> FastAPI:
     app.include_router(masterdata_router)
     app.include_router(consult_router)
     app.include_router(deletion_router)
+    app.include_router(portal_accounts_router)
+    app.include_router(portal_router)
     app.include_router(daily_router)
     app.include_router(stats_router)
     app.include_router(messaging_router)

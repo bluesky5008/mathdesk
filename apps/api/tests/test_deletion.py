@@ -136,7 +136,7 @@ def test_preview_counts_what_will_be_deleted(api, history):
     assert preview["deletable"] is True
     assert preview["counts"] == {
         "guardians": 1, "enrollments": 1, "daily_records": 1, "exam_attempts": 1,
-        "omr_scans": 1, "messages": 1, "consults": 1,
+        "omr_scans": 1, "messages": 1, "consults": 1, "portal_accounts": 0,
     }
 
 

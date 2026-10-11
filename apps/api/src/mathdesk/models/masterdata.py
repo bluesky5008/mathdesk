@@ -1,9 +1,13 @@
 from datetime import date, datetime, time
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, Time, UniqueConstraint, false
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, Time, UniqueConstraint, false, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, enum_column
+
+# 포털 계정 역할(DCR-024·ADR-014). 기존 스코프는 이 역할을 기본 거부한다
+PORTAL_ROLES = ("student", "guardian")
+STAFF_ROLES = ("director", "teacher")
 
 
 class Campus(Base):
@@ -21,12 +25,14 @@ class AppUser(Base):
     login_id: Mapped[str] = mapped_column(String(50), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     display_name: Mapped[str] = mapped_column(String(50))
-    role: Mapped[str] = mapped_column(enum_column("user_role", "director", "teacher"))
+    role: Mapped[str] = mapped_column(enum_column("user_role", *STAFF_ROLES, *PORTAL_ROLES))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     failed_login_count: Mapped[int] = mapped_column(default=0, server_default="0")
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # 원장이 정한 비밀번호(새 계정·재설정·최초 원장)면 참 — 본인이 바꾸기 전에는 공통 스코프 검사가 막는다.
     must_change_password: Mapped[bool] = mapped_column(default=False, server_default=false())
+    # 포털 계정의 발급·재발급 시각(FR-48 상세). 변경 대기가 발급 유효기간을 넘기면 로그인을 거부한다
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AppUserCampus(Base):
@@ -34,6 +40,17 @@ class AppUserCampus(Base):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id"), primary_key=True)
     campus_id: Mapped[int] = mapped_column(ForeignKey("campus.id"), primary_key=True)
+
+
+class AppUserStudent(Base):
+    """포털 계정–학생 연결(계정 1 : 학생 N, ADR-014). 학부모 계정은 어느 보호자 번호로 발급됐는지 남긴다."""
+
+    __tablename__ = "app_user_student"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id"), primary_key=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("student.id"), primary_key=True)
+    guardian_id: Mapped[int | None] = mapped_column(ForeignKey("guardian.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class School(Base):

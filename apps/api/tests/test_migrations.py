@@ -25,6 +25,7 @@ EXPECTED_TABLES = {
     "label_correction",
     "llm_call_log",
     "consult_log",
+    "app_user_student",
 }
 
 # 기준선 v3 (DCR-002): 공급자가 가변이고 캐싱 후 실비용을 재구성할 수 있어야 한다(NFR-15).

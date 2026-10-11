@@ -11,8 +11,11 @@ from .exam import (
     OmrScan,
 )
 from .masterdata import (
+    PORTAL_ROLES,
+    STAFF_ROLES,
     AppUser,
     AppUserCampus,
+    AppUserStudent,
     Campus,
     ClassSchedule,
     Enrollment,
@@ -25,8 +28,11 @@ from .messaging import GradeComment, MessageLog, MessageTemplate
 from .system import AuditLog, BackgroundTask, IntegrationSetting, LlmCallLog, StoredFile
 
 __all__ = [
+    "PORTAL_ROLES",
+    "STAFF_ROLES",
     "AppUser",
     "AppUserCampus",
+    "AppUserStudent",
     "AuditLog",
     "BackgroundTask",
     "Base",

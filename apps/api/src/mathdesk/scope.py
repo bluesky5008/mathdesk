@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .auth import CurrentAppUser
 from .db import get_session
-from .models import AppUser, AppUserCampus
+from .models import PORTAL_ROLES, AppUser, AppUserCampus, AppUserStudent, Student
 
 Db = Annotated[AsyncSession, Depends(get_session)]
 
@@ -38,9 +38,10 @@ async def current_scope(
     session: Db,
     campus_id: Annotated[int | None, Header(alias="X-Campus-Id")] = None,
 ) -> Scope:
-    # 원장이 정한 비밀번호로 들어온 사용자는 본인 비밀번호를 정하기 전까지 아무 기능도 쓰지 못한다.
-    if user.must_change_password:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "비밀번호를 먼저 바꿔 주세요.")
+    # 포털 계정(학생·학부모)은 원장·강사 API를 쓸 수 없다 — 기본 거부(ADR-014)
+    if user.role in PORTAL_ROLES:
+        raise _forbidden()
+    _require_own_password(user)
     accessible = list(
         await session.scalars(
             select(AppUserCampus.campus_id).where(AppUserCampus.user_id == user.id)
@@ -58,6 +59,45 @@ async def current_scope(
 
 
 CurrentScope = Annotated[Scope, Depends(current_scope)]
+
+
+def _require_own_password(user: AppUser) -> None:
+    # 원장이 정한 비밀번호로 들어온 사용자는 본인 비밀번호를 정하기 전까지 아무 기능도 쓰지 못한다.
+    if user.must_change_password:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "비밀번호를 먼저 바꿔 주세요.")
+
+
+@dataclass(frozen=True)
+class PortalScope:
+    """포털 API(`/api/portal`)만 통과하는 검사 지점(ADR-014). 연결된 재원·휴원 학생만 본다."""
+
+    user: AppUser
+    campus_id: int
+    student_ids: tuple[int, ...]
+
+    def require_student(self, student_id: int) -> None:
+        if student_id not in self.student_ids:
+            raise _forbidden()
+
+
+async def current_portal_scope(user: CurrentAppUser, session: Db) -> PortalScope:
+    if user.role not in PORTAL_ROLES:
+        raise _forbidden()
+    _require_own_password(user)
+    rows = (
+        await session.execute(
+            select(Student.id, Student.campus_id)
+            .join(AppUserStudent, AppUserStudent.student_id == Student.id)
+            .where(AppUserStudent.user_id == user.id, Student.status != "withdrawn")
+            .order_by(Student.id)
+        )
+    ).all()
+    if not rows:
+        raise _forbidden()
+    return PortalScope(user=user, campus_id=rows[0].campus_id, student_ids=tuple(r.id for r in rows))
+
+
+CurrentPortalScope = Annotated[PortalScope, Depends(current_portal_scope)]
 
 
 class ScopedRepository:

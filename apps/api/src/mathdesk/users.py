@@ -6,7 +6,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
-from .models import AppUser, AppUserCampus, AuditLog, Campus, UserSession
+from .models import STAFF_ROLES, AppUser, AppUserCampus, AuditLog, Campus, UserSession
 from .scope import CurrentScope
 from .security import hash_password
 
@@ -60,7 +60,7 @@ def _users_in_campus(campus_id: int):
     return (
         select(AppUser)
         .join(AppUserCampus, AppUserCampus.user_id == AppUser.id)
-        .where(AppUserCampus.campus_id == campus_id)
+        .where(AppUserCampus.campus_id == campus_id, AppUser.role.in_(STAFF_ROLES))
         .order_by(AppUser.id)
     )
 
