@@ -139,7 +139,7 @@
 | 시험·OMR | 가능 | 담당 반 시험만 가능 |
 | 사용자·연동 설정 | 가능 | 불가 |
 
-#### DES-04 상세 — 학생·반 삭제 ([DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md), [DCR-012](./work/20260922-mathdesk-baseline/DCR-012-재원-학생의-바로-삭제.md), [DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md))
+#### DES-04 상세 — 학생·반 삭제 ([DCR-006](./work/20260922-mathdesk-baseline/DCR-006-퇴원-비활성-학생과-반의-삭제.md), [DCR-012](./work/20260922-mathdesk-baseline/DCR-012-재원-학생의-바로-삭제.md))
 
 - 선행 조건: 없다. 학생은 상태와, 반은 활성 여부와 관계없이 삭제할 수 있고 미리보기 `deletable`은 항상 `true`다. 학생·반 목록 각 행과 [수정] 창의 [삭제](원장만)는 확인 창 없이 바로 `DELETE`를 보낸다([DCR-013](./work/20260922-mathdesk-baseline/DCR-013-학생-즉시-삭제.md), [DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md)). 원장만(강사 403), 캠퍼스 스코프는 공통 규칙.
 - `GET …/deletion-preview`는 분류별 삭제 건수를 돌려준다(학생·반 모두 계약만 유지 — 화면은 쓰지 않는다). 학생·반 `DELETE`는 본문이 없다(와도 무시). 성공 시 `204`.

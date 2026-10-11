@@ -1087,7 +1087,7 @@ flowchart TD
 - 상태: in-progress
 - 상위: 없음
 - 목표: 원장은 반 목록 각 행의 [수정] 오른쪽 [삭제]로 활성·비활성 어느 반이든 확인 없이 바로 하드 삭제한다. [수정] 창의 [삭제]도 활성 여부와 관계없이 즉시 삭제. 서버의 반 `DELETE`는 비활성 조건·이름 확인을 하지 않는다(본문이 와도 무시). 감사 로그에 삭제 당시 활성 여부. 함께 지우는 범위는 그대로.
-- 관련 요구사항과 설계: [DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md)(기준선 `v17`, 승인 2026-10-11) — [FR-05 상세](./requirements.md#fr-05-상세)(삭제)·[FR-07](./requirements.md#기능-요구사항)·[AC-36](./requirements.md#인수-조건), [DES-04 상세](./design.md#des-04-상세--학생반-삭제-dcr-006-dcr-012-dcr-016)
+- 관련 요구사항과 설계: [DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md)(기준선 `v17`, 승인 2026-10-11) — [FR-05 상세](./requirements.md#fr-05-상세)(삭제)·[FR-07](./requirements.md#기능-요구사항)·[AC-36](./requirements.md#인수-조건), [DES-04 상세](./design.md#des-04-상세--학생반-삭제-dcr-006-dcr-012)
 - 변경 대상: `apps/api/src/mathdesk/deletion.py`, `tests/test_deletion.py`, `apps/web/src/api.ts`(`deleteClass`), `pages/ClassesPage.tsx`(행 [삭제], 수정 창 [삭제]), `pages/DeleteDialog.tsx` 삭제, 웹 테스트
 - 의존성: TASK-81(같은 방식)
 - 위험: 오클릭 보호 없음(사용자 수용). 복구는 백업 복원뿐, 테스트 운영 자동 백업 없음(TASK-57)
