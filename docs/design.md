@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v21`
+> 기준선: `v22`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -182,7 +182,7 @@
 
 - 서버가 HTML 템플릿을 조립하고 `tokens.css`를 인라인한 뒤 헤드리스 Chromium(Playwright)으로 스크린샷을 찍는다. 외부 입력을 렌더하지 않으며 값은 전부 서버가 조립한 내부 데이터다.
 - 브라우저 인스턴스는 FastAPI lifespan에서 1개를 warm으로 유지하고 요청마다 페이지만 연다. 콜드 스타트를 요청 경로에서 제거한다(NFR-19).
-- 난이도 분석표 카드(FR-30)도 같은 렌더러를 쓰고 템플릿만 다르다.
+- 난이도 분석표 카드(FR-30)와 **학생별 정보 카드**(FR-45 상세, `GET /daily/history-image`)도 같은 렌더러를 쓰고 템플릿만 다르다. 학생별 정보 카드는 머리말(`.hero`)·요약(`.facts`)·토큰 인라인·브랜드 색 검증을 리포트 카드와 공유하고 6열 표를 더하며, 폭은 960 CSS px(리포트 카드 760)·2배 촬영이다. `ReportRenderer.render_html`이 폭 인자를 받는다(기본 760). 요약(출석 N/M회·테스트 평균)은 서버가 행에서 웹과 같은 규칙으로 계산한다([DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md)).
 - 웹 미리보기와 발송 이미지가 같은 HTML·CSS를 쓰므로 미리보기와 결과가 갈라지지 않는다.
 - 렌더 실패는 카드 생성 실패로만 처리한다. 카드는 첨부이므로 문자 본문 발송은 계속 가능해야 한다.
 - 시각 회귀는 기준 이미지 비교로 고정하고 **컨테이너에서 검증한다**(폰트 가용성 차이 전례).
@@ -279,7 +279,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | 학교 | `GET/POST /schools`, `PATCH/DELETE /schools/{id}` — 원장 전용(강사 403), 캠퍼스 스코프. `GET`은 `[{id, name, student_count}]` 이름순(학생 수는 집계 한 번). `POST`·`PATCH`는 `{name}` 공백 제거 후 1~100자(422), 같은 캠퍼스 중복 409, 다른 캠퍼스·없는 id 403(공통 규칙). `DELETE`는 한 트랜잭션에서 그 학교 학생의 `school_id`를 NULL로 바꾸고 지우며 감사 로그 `school.delete`(이름, 학생 수)를 남긴다([DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) |
 | 반·수강 | `GET/POST /classes`, `PATCH/DELETE /classes/{id}`(강사의 `PATCH`는 담당 반만, 본문의 `teacher_id`·`is_active`가 현재 값과 같아야 하며 아니면 403·무변경, 감사 로그 `class.update` — [DCR-011](./work/20260922-mathdesk-baseline/DCR-011-강사의-담당-반-수정.md)), `GET /classes/{id}/deletion-preview`(계약만 유지), 반 `DELETE`는 본문 없음·활성 반도 204([DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md)), `GET/POST/DELETE /classes/{id}/enrollments` |
 | 주간 시간표 | `GET /timetable`(역할 스코프: 강사는 담당 반, 원장은 전체. `{class_minutes, slots[{class_id, class_name, grade, teacher, weekday, start_time, end_time}], unscheduled[]}`, `end_time`=시작+수업 길이 계산값), `PUT /settings/class-minutes`(원장, 30~480분, `integration_setting.class_minutes`, 기본 240 — [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md)) — [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) |
-| 일일 기록 | `GET /daily?class_id=&date=`, `PUT /daily/{session_id}/notes`, `PUT /daily/{session_id}/records`, `PUT /daily/{session_id}/records/{student_id}/recheck`, `POST /daily/{session_id}/attendance/confirm`, `POST /daily/{session_id}/attendance/unlock`, `GET /daily/calendar?class_id=&month=YYYY-MM`(`{recorded_dates[]}`), `GET /daily/history?class_id=&student_id=&to=&limit=`(`{student, klass, rows[{date, attendance_status, attendance_reason, recheck, homework_grade, test_name, test_score_num, class_average, comment}]}`, 조회 전용, [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md)) |
+| 일일 기록 | `GET /daily?class_id=&date=`, `PUT /daily/{session_id}/notes`, `PUT /daily/{session_id}/records`, `PUT /daily/{session_id}/records/{student_id}/recheck`, `POST /daily/{session_id}/attendance/confirm`, `POST /daily/{session_id}/attendance/unlock`, `GET /daily/calendar?class_id=&month=YYYY-MM`(`{recorded_dates[]}`), `GET /daily/history?class_id=&student_id=&to=&limit=`(`{student, klass, rows[{date, attendance_status, attendance_reason, recheck, homework_grade, test_name, test_score_num, class_average, comment}]}`, 조회 전용, [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md)), `GET /daily/history-image?class_id=&student_id=&to=&limit=`(`image/png`, 매개변수·권한은 `history`와 같음, [DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md)) |
 | 대시보드·통계 | `GET /dashboard?class_id=&date=`, `GET /stats/students/{id}?to=&class_id=&rounds=`(`rounds`는 10·20, 기본 10, 그 밖은 422 → `total`(종료일까지 그 반의 전체 회차 수)과 `rounds[]`(최근 N회, 오래된 순: `date`·`source`(`daily`·`exam`)·`name`·`score`·`class_average`·`homework_grade`·`attendance_status`) — [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md)), `GET /stats/classes/{id}`(점수 분포 없음 — [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md)), `GET /stats/export` |
 | 메시지 | `GET /messages/preview?session_id=&student_id=`, `POST /messages/send`, `GET /messages/logs`, `GET /messages/balance`, `GET/PUT /messages/templates`, `GET/PUT /messages/grade-comments` |
 | 시험지 | `POST /exams/uploads`, `POST /exams`, `GET /exams`, `GET/PATCH /exams/{id}`, `GET/PATCH /exams/{id}/questions`, `POST /exams/{id}/analyze`, `GET /tasks/{task_id}` |
@@ -475,7 +475,7 @@ ADR로 분리하지 않은 설계 판단
 | [FR-04](./requirements.md#기능-요구사항) | [DES-20](#컴포넌트와-책임) | [AC-23](./requirements.md#인수-조건) |
 | [FR-05~FR-08, FR-39](./requirements.md#기능-요구사항) | [DES-04](#컴포넌트와-책임) | [AC-04, AC-05, AC-36, AC-37](./requirements.md#인수-조건) |
 | [FR-09~FR-14](./requirements.md#fr-09-상세) | [DES-05](#des-05-상세) | [AC-06~AC-12](./requirements.md#인수-조건) |
-| [FR-45, FR-46](./requirements.md#fr-45-상세) | [DES-05 상세](#des-05-상세), [DES-24](#des-24-상세) | [AC-45, AC-46](./requirements.md#인수-조건) |
+| [FR-45, FR-46](./requirements.md#fr-45-상세) | [DES-05 상세](#des-05-상세), [DES-08 상세](#des-08-상세), [DES-24](#des-24-상세) | [AC-45, AC-46, AC-47](./requirements.md#인수-조건) |
 | [FR-15~FR-17, FR-24~FR-26](./requirements.md#fr-15-상세) | [DES-06](#컴포넌트와-책임), [DES-22](#컴포넌트와-책임) | [AC-07, AC-13, AC-19, AC-20](./requirements.md#인수-조건) |
 | [FR-18~FR-22](./requirements.md#fr-18-상세) | [DES-07](#컴포넌트와-책임), [DES-08](#컴포넌트와-책임) | [AC-14~AC-16](./requirements.md#인수-조건) |
 | [FR-23, FR-37, FR-38](./requirements.md#fr-23-상세) | [DES-09](#컴포넌트와-책임), [DES-19](#컴포넌트와-책임) | [AC-17, AC-18, AC-26](./requirements.md#인수-조건) |
@@ -521,6 +521,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v21` (2026-10-11): [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md) 재승인으로 DES-05 상세에 "기록이 있는 세션" 정의와 조회 REST 2건(`GET /daily/calendar`, `GET /daily/history`)이 더해지고, DES-24 공통 컴포넌트에 월 달력이 더해졌다. 웹 라우트 `/daily`는 [반별 정보]·`/daily/students` [학생별 정보]의 중첩 라우트가 되며 반·날짜·학생 선택은 주소 쿼리가 정본이다. 데이터 모델 변경은 없다.
 
+기준선 `v22` (2026-10-11): [DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md) 재승인으로 DES-08 상세에 학생별 정보 카드 템플릿(폭 960)과 `GET /daily/history-image`가 더해지고 `ReportRenderer.render_html`이 폭 인자를 받는다. 데이터 모델 변경은 없다.
+
 기준선 `v18` (2026-10-11): [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) 재승인으로 `student_daily_record.comment`가 추가되고(마이그레이션 1건) 일일 기록 입출력에 `comment`가 더해졌으며(하위 호환), 메시지 렌더러가 공통 → 개별 순서로 바뀌고 강사 첨언·학생 코멘트가 본문·리포트 카드·알림톡 변수(`teacher_note`·`student_comment`)에 들어갔다. 리포트 카드의 요약 우선 레이아웃(ADR-011)은 그대로다.
 
 기준선 `v11` (2026-09-24): [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) 승인으로 `class_minutes` 기본값이 240으로 바뀌었다(구조·계약 변경 없음).
@@ -564,6 +566,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-10-11 | 학생 통계 API 회차 단위로 대체, 반 통계 점수 분포 삭제 | [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md) | approved 유지, 기준선 v18 → v19 | Claude / 사용자 |
 | 2026-10-11 | DES-07 테스트명 공통 구획·테스트 점수 개별 구획, DES-08 상세에 오늘의 테스트, `test_name` 100자 상한 | [DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md) | approved 유지, 기준선 v19 → v20 | Claude / 사용자 |
 | 2026-10-11 | DES-05 상세 기록 있는 세션·학생별 이력·수업일 달력, REST `GET /daily/calendar`·`GET /daily/history`, DES-24 월 달력 | [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md) | approved 유지, 기준선 v20 → v21 | Claude / 사용자 |
+| 2026-10-11 | DES-08 상세 학생별 정보 카드 템플릿, REST `GET /daily/history-image`, `render_html` 폭 인자 | [DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md) | approved 유지, 기준선 v21 → v22 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |

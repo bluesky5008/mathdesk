@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v21`
+> 기준선: `v22`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (30/37)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (30/38)
+   ├─ [▶] TASK-91 학생별 정보 이미지 저장 (DCR-021) ...... in-progress
    ├─ [✓] TASK-90 학생별 정보 탭·수업일 달력 (DCR-020) 2026-10-11 17:05
    ├─ [✓] TASK-89 테스트명 입력·문자/리포트 공통 (DCR-019) 2026-10-11 16:35
    ├─ [✓] TASK-88 성적 통계 회차별 추이 (DCR-018) ... 2026-10-11 16:10
@@ -298,6 +299,8 @@ flowchart TD
     T87 -. depends .-> T89
     C3 --> T90["TASK-90 일일 입력 학생별 정보 탭과 수업일 달력 (DCR-020)"]:::done
     T89 -. depends .-> T90
+    C3 --> T91["TASK-91 학생별 정보 이미지 저장 (DCR-021)"]:::active
+    T90 -. depends .-> T91
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
     C3 --> T75["TASK-75 OMR 방향 자동 판별"]:::done
     C3 --> T76["TASK-76 OMR 판정 기준: 조명 보정"]:::done
@@ -1097,6 +1100,18 @@ flowchart TD
 ### 사이클 3 — 운영 이관 (2026-09-24 계획)
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
+
+### TASK-91: 학생별 정보 이미지 저장
+
+- 상태: in-progress (2026-10-11 시작)
+- 상위: 없음
+- 목표: `GET /daily/history-image`가 학생별 정보 카드 PNG(머리말·요약 2개·6열 표, 폭 960×2)를 기존 Chromium 렌더러로 돌려준다. `report.render_history_html` 템플릿 신설, `ReportRenderer.render_html`에 폭 인자(기본 760). [학생별 정보] 탭 학생 선택 옆에 [이미지 복사]·[이미지 저장](`copyImage`·`downloadImage` 재사용, 파일명 `학생별정보-<학생명>-<날짜>.png`).
+- 관련 요구사항과 설계: [DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md)(기준선 `v22`, 승인 2026-10-11) — [FR-45 상세](./requirements.md#fr-45-상세), [AC-47](./requirements.md#인수-조건), [DES-08 상세](./design.md#des-08-상세), [ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md)
+- 변경 대상: `apps/api/src/mathdesk/report.py`(템플릿·CSS·폭 인자), `daily.py`(이력 조립 함수 분리, 엔드포인트), `tests/test_history_image.py`(신설); 웹 `api.ts`(`dailyHistoryImageUrl`), `pages/StudentDailyPage.tsx`(버튼 2개), `StudentDailyPage.test.tsx`
+- 의존성: TASK-90(학생별 정보 탭·`GET /daily/history`)
+- 위험: 긴 코멘트로 이미지가 길어질 수 있다(20행 상한). 마이그레이션 없음 — 롤백은 코드 되돌리기
+- 검증 방법: 선행 테스트 — API(`image/png`·폭 960×2, 비로그인 401·담당 외 403, 템플릿에 학원명·학생명·반명·행 값·요약·빈 행 안내·이스케이프·브랜드 색만 덮고 `data-theme` 없음, 기존 `render_html` 기본 폭 불변). 웹(버튼 2개·비활성, 저장 시 `downloadImage(url, 파일명)`, 복사 시 `copyImage(url)`). API·웹 전체, `npm run build`
+- 완료 조건: 테스트 운영 배포 후 고1 인A 오인성 PNG를 받아 눈으로 확인
 
 ### TASK-90: 일일 입력 학생별 정보 탭과 수업일 달력
 
