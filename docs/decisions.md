@@ -55,6 +55,7 @@
 | DCR-016 | dcr | 반 바로 삭제 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md) | DCR-006 반 선행 조건·확인 절차 변경 |
 | DCR-017 | dcr | 학생별 코멘트와 문자 공통·개별 구조 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) | FR-14·FR-18 상세·AC-14 변경, FR-44·AC-43 신설 |
 | DCR-018 | dcr | 성적 통계 회차별 추이 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md) | FR-24·FR-25·AC-19 개정 |
+| DCR-019 | dcr | 테스트명 입력과 문자·리포트 공통 구획 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md) | FR-13 상세·AC-44 신설, FR-18 상세·AC-14 변경 |
 
 ## 번호 발행 규칙
 

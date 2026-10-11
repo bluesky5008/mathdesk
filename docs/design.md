@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v19`
+> 기준선: `v20`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -104,7 +104,7 @@
 | DES-04 | 마스터 데이터 서비스 | 캠퍼스·사용자·학생·보호자·반·시간표·수강 등록·상담일지 CRUD와 무결성 규칙 |
 | DES-05 | 일일 기록 서비스 | 수업 세션(반 단위)과 학생 일일 기록의 부분 갱신, 출결 확정·해제, 재검사 대상 판정. [상세](#des-05-상세) |
 | DES-06 | 집계 서비스 | 대시보드 KPI와 통계 조회를 SQL 집계로 계산. 저장 집계 테이블을 두지 않는다 |
-| DES-07 | 메시지 렌더러 | 세션·학생 기록·등급 문구·템플릿을 병합해 본문 문자열 생성. 반 공통 구획(진도·과제·영상·선생님 코멘트=`class_session.teacher_note`) 다음에 학생 개별 구획(출결·과제피드백·테스트·개별 코멘트=`student_daily_record.comment`)을 둔다([DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md)). 순수 함수로 두어 단위 테스트 대상으로 삼는다 |
+| DES-07 | 메시지 렌더러 | 세션·학생 기록·등급 문구·템플릿을 병합해 본문 문자열 생성. 반 공통 구획(진도·오늘의 테스트=`class_session.test_name`·과제·영상·선생님 코멘트=`class_session.teacher_note`) 다음에 학생 개별 구획(출결·과제피드백·테스트 점수·개별 코멘트=`student_daily_record.comment`)을 둔다([DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md), [DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md)). 오늘의 테스트는 테스트명이 있을 때, 테스트 점수는 그 학생의 점수가 있을 때 나온다. 순수 함수로 두어 단위 테스트 대상으로 삼는다 |
 | DES-08 | 리포트 이미지 렌더러 | 렌더된 본문을 카드형 HTML로 구성해 헤드리스 Chromium으로 이미지 변환. 디자인 토큰을 인라인하고 브라우저 인스턴스를 warm 유지. 상세는 [DES-08 상세](#des-08-상세) |
 | DES-09 | MessagingAdapter | `send(channel, recipients, body|template_id, vars)` 단일 인터페이스. 알리고 구현, 테스트 모드 구현, 알림톡→SMS 폴백 |
 | DES-10 | StorageAdapter | `put/get/delete/signed_url`. Phase A는 로컬 파일시스템, Phase B는 오브젝트 스토리지 |
@@ -184,6 +184,7 @@
 - 렌더 실패는 카드 생성 실패로만 처리한다. 카드는 첨부이므로 문자 본문 발송은 계속 가능해야 한다.
 - 시각 회귀는 기준 이미지 비교로 고정하고 **컨테이너에서 검증한다**(폰트 가용성 차이 전례).
 - 브랜드(학원명·로고·시그니처 색)는 `integration_setting`에서 읽는다(FR-40). 로고 미설정 시 학원명 텍스트로 대체한다.
+- **요약과 상세:** 요약 타일은 출결·과제·테스트(점수·반평균). 상세는 개별 코멘트 → 수업 진도 → 오늘의 테스트(테스트명) → 오늘의 과제 → 수업 영상 → 선생님 코멘트([DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md), [DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md)).
 - **카드는 웹 테마(FR-41)를 따르지 않는다.** 템플릿은 `data-theme`를 지정하지 않아 `:root` 라이트 팔레트를 쓰고 `--md-color-brand`만 학원 시그니처 색으로 덮어쓴다. 학부모가 받는 자산이 사용자 개인 취향에 좌우되면 안 된다([ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md)).
 
 #### DES-24 상세
@@ -233,7 +234,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | `class` | `id`, `campus_id`, `name`, `grade`, `teacher_id`, `is_active` | |
 | `class_schedule` | `id`, `class_id`, `weekday`, `start_time`, `end_time` | `end_time`은 선택(NULL 허용) — 시작 시각만 입력·표시한다(FR-07, [DCR-007](./work/20260922-mathdesk-baseline/DCR-007-시작-시각만-쓰는-반-시간표.md)). 같은 반에서 요일·시작 시각 중복 불가 |
 | `enrollment` | `id`, `class_id`, `student_id`, `start_date`, `end_date` | 기간 이력 보존 |
-| `class_session` | `id`, `class_id`, `session_date`, `homework`, `video_url`, `teacher_note`, `test_name`, `test_max_score`, `attendance_confirmed_at`, `attendance_confirmed_by` | `(class_id, session_date)` 유일 |
+| `class_session` | `id`, `class_id`, `session_date`, `homework`, `video_url`, `teacher_note`, `test_name`, `test_max_score`, `attendance_confirmed_at`, `attendance_confirmed_by` | `(class_id, session_date)` 유일. `test_name`은 100자 이내, 일일 입력 "오늘 진도" 카드에서 입력. `test_max_score`는 화면 입력이 없는 예비 열([DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md)) |
 | `class_session_progress` | `session_id`, `period`, `content` | 교시 1~4 |
 | `student_daily_record` | `id`, `session_id`, `student_id`, `attendance_status`, `attendance_reason`, `homework_grade`, `recheck_result`, `test_score_num`, `test_score_text`, `comment` | `(session_id, student_id)` 유일. `comment`는 학생별 코멘트(500자 이내, NULL 허용 — [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md)) |
 | `grade_comment` | `campus_id`, `grade`, `comment_text` | 등급→문구(FR-19) |
@@ -512,6 +513,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v19` (2026-10-11): [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md) 재승인으로 `GET /stats/students/{id}`가 주 단위(`weeks`)에서 테스트 회차 단위(`rounds`=10·20, `total`)로 대체되고 일일 테스트와 OMR 시험을 함께 회차로 센다. `GET /stats/classes/{id}`에서 `test.distribution`이 빠졌다. 데이터 모델 변경은 없다.
 
+기준선 `v20` (2026-10-11): [DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md) 재승인으로 메시지 렌더러(DES-07)의 테스트명이 반 공통 `■ 오늘의 테스트`로 옮겨지고 학생 개별이 `■ 테스트 점수`로 바뀌었으며, 리포트 카드(DES-08) 상세에 오늘의 테스트가 더해졌다. `PATCH /daily/{session_id}/notes`의 `test_name`에 100자 상한이 생겼다. 데이터 모델 변경은 없고 `test_max_score`는 예비 열로 남는다.
+
 기준선 `v18` (2026-10-11): [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) 재승인으로 `student_daily_record.comment`가 추가되고(마이그레이션 1건) 일일 기록 입출력에 `comment`가 더해졌으며(하위 호환), 메시지 렌더러가 공통 → 개별 순서로 바뀌고 강사 첨언·학생 코멘트가 본문·리포트 카드·알림톡 변수(`teacher_note`·`student_comment`)에 들어갔다. 리포트 카드의 요약 우선 레이아웃(ADR-011)은 그대로다.
 
 기준선 `v11` (2026-09-24): [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) 승인으로 `class_minutes` 기본값이 240으로 바뀌었다(구조·계약 변경 없음).
@@ -553,6 +556,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-10-11 | 반 `DELETE` 선행 조건·본문 제거, 반 즉시 삭제, 감사 로그 활성 여부 | [DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md) | approved 유지, 기준선 v16 → v17 | Claude / 사용자 |
 | 2026-10-11 | `student_daily_record.comment`, 일일 기록 입출력 `comment`, 메시지 공통→개별 순서, 첨언·코멘트를 본문·카드·알림톡 변수에 | [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) | approved 유지, 기준선 v17 → v18 | Claude / 사용자 |
 | 2026-10-11 | 학생 통계 API 회차 단위로 대체, 반 통계 점수 분포 삭제 | [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md) | approved 유지, 기준선 v18 → v19 | Claude / 사용자 |
+| 2026-10-11 | DES-07 테스트명 공통 구획·테스트 점수 개별 구획, DES-08 상세에 오늘의 테스트, `test_name` 100자 상한 | [DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md) | approved 유지, 기준선 v19 → v20 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |
