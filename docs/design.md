@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v22`
+> 기준선: `v24`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -28,6 +28,7 @@
 | input | decision | [ADR-012: 테마 팔레트와 적용 방식](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md) | document | DES-24 |
 | input | decision | [ADR-004: 문서 입력 정규화 파이프라인](./work/20260922-mathdesk-baseline/ADR-004-문서-입력-정규화-파이프라인.md) | document | DES-11, DES-12 |
 | input | decision | [ADR-005: 메시징 어댑터 단일화](./work/20260922-mathdesk-baseline/ADR-005-메시징-어댑터-단일화.md) | document | DES-09 |
+| input | decision | [ADR-013: 운영 배포처 — 클라이언트별 AWS Lightsail 단일 서버](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | document | DES-25 |
 | input | decision | [ADR-006: OMR 양식 고정과 템플릿 판독](./work/20260922-mathdesk-baseline/ADR-006-OMR-양식-고정과-템플릿-판독.md) | document | DES-15, DES-16, DES-17 |
 | input | decision | [ADR-007: 인증·권한 모델](./work/20260922-mathdesk-baseline/ADR-007-인증-권한-모델.md) | document | DES-03 |
 | input | decision | [ADR-008: 테스트 운영 노출 구성](./work/20260922-mathdesk-baseline/ADR-008-테스트-운영-노출-구성.md) | document | DES-03, DES-23 |
@@ -106,7 +107,7 @@
 | DES-06 | 집계 서비스 | 대시보드 KPI와 통계 조회를 SQL 집계로 계산. 저장 집계 테이블을 두지 않는다 |
 | DES-07 | 메시지 렌더러 | 세션·학생 기록·등급 문구·템플릿을 병합해 본문 문자열 생성. 반 공통 구획(진도·오늘의 테스트=`class_session.test_name`·과제·영상·선생님 코멘트=`class_session.teacher_note`) 다음에 학생 개별 구획(출결·과제피드백·테스트 점수·개별 코멘트=`student_daily_record.comment`)을 둔다([DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md), [DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md)). 오늘의 테스트는 테스트명이 있을 때, 테스트 점수는 그 학생의 점수가 있을 때 나온다. 순수 함수로 두어 단위 테스트 대상으로 삼는다 |
 | DES-08 | 리포트 이미지 렌더러 | 렌더된 본문을 카드형 HTML로 구성해 헤드리스 Chromium으로 이미지 변환. 디자인 토큰을 인라인하고 브라우저 인스턴스를 warm 유지. 상세는 [DES-08 상세](#des-08-상세) |
-| DES-09 | MessagingAdapter | `send(channel, recipients, body|template_id, vars)` 단일 인터페이스. 알리고 구현, 테스트 모드 구현, 알림톡→SMS 폴백 |
+| DES-09 | MessagingAdapter | `send(channel, recipients, body|template_id, vars)` 단일 인터페이스. 알리고 구현, 테스트 모드 구현, 알림톡→SMS 폴백. 학생 1명 발송 함수(`_send_one`)를 단건 엔드포인트와 반 단위 일괄 작업(`message_batch`, DES-18)이 공유한다([DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md)) |
 | DES-10 | StorageAdapter | `put/get/delete/signed_url`. Phase A는 로컬 파일시스템, Phase B는 오브젝트 스토리지 |
 | DES-11 | DocumentIngest | `.hwp`·`.hwpx`·`.pdf`·이미지를 `{pages, blocks, page_images}`로 정규화 |
 | DES-12 | QuestionSegmenter | 정규화 결과에서 문항 번호 기준으로 문항 단위 블록·이미지를 분리 |
@@ -115,12 +116,13 @@
 | DES-15 | OmrReader | 템플릿 JSON 기반 판독기. 정합 → R채널 드롭아웃 → 버블 농도 → 필드 판정·플래그 |
 | DES-16 | OMR 검수 서비스 | 스캔 페이지·판독값·플래그 관리, 학생 매칭, 교정값 반영과 라벨 교정 기록 저장 |
 | DES-17 | 채점 엔진 | 문형별 정답표 대조, 학생 점수·문항별 정답률·오답 유형 통계 계산 |
-| DES-18 | TaskRunner | 업로드 후 오래 걸리는 작업(시험지 분석, OMR 판독)을 백그라운드로 실행하고 진행 상태를 폴링으로 제공 |
+| DES-18 | TaskRunner | 오래 걸리는 작업(시험지 분석, OMR 판독, 반 단위 일괄 발송 `message_batch`)을 백그라운드로 실행하고 진행 상태를 폴링으로 제공. `message_batch`는 학생마다 커밋·진행률 갱신, 재개 시 로그가 있는 학생은 건너뜀([DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md)) |
 | DES-19 | 발송·감사 로그 | 발송 로그 스냅샷, LLM 호출 로그, 권한 거부·확정 이벤트 감사 기록 |
 | DES-20 | 설정·시크릿 관리 | 연동 설정 저장(민감값 암호화), 환경변수 우선순위, 연결 상태 점검 |
 | DES-21 | 스키마 마이그레이션 | Alembic 리비전과 시드 데이터 스크립트 |
 | DES-22 | 내보내기 | 통계·시험 결과 엑셀 생성, 난이도 분석표·리포트 이미지 파일 생성 |
 | DES-24 | 디자인 시스템 | 디자인 토큰 단일 소스(`tokens.css`), 테마 팔레트 5벌, 공통 컴포넌트(버튼·폼·표·카드·대화상자·월 달력), 표 기반 입력 컴포넌트. 웹과 리포트 카드가 같은 토큰 파일의 스케일을 공유하고 색은 각자의 팔레트를 따른다. 상세는 [DES-24 상세](#des-24-상세) |
+| DES-25 | 운영 서빙(클라이언트별 서버) | 클라이언트 명의 AWS 계정의 Lightsail 단일 서버에 `compose.prod.yaml`(postgres·app·cloudflared 토큰 터널)로 기동. 호스트 포트 없음, 방화벽 SSH만, 서버에서 이미지 빌드, `.env` 한 벌, 자동 일일 백업(14일)+스냅샷(7개), 테스트 운영은 스테이징. 상세는 [DES-25 상세](#des-25-상세)([ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)) |
 | DES-23 | 테스트 운영 서빙 | 웹 정적 빌드를 API가 SPA fallback으로 서빙하고, `Secure` 쿠키와 노출 표면 축소를 설정으로 제어한다. 외부 경로는 cloudflared 터널 하나다 |
 
 #### DES-03 상세
@@ -159,6 +161,20 @@
 - **기록이 있는 세션:** `class_session`에 `student_daily_record`가 1건 이상 있거나, `class_session_progress`가 있거나, `homework`·`video_url`·`teacher_note`·`test_name` 중 하나가 NULL이 아니거나, `attendance_confirmed_at`이 있으면 기록이 있는 세션이다. `GET /daily`가 조회 시 세션을 만들므로, 수업일 달력(FR-46)과 학생별 이력(FR-45)은 이 정의로 빈 세션을 뺀다. 두 조회 REST(`GET /daily/calendar`, `GET /daily/history`)가 헬퍼 하나를 공유한다([DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md)).
 - **학생별 이력:** `GET /daily/history`는 `to`까지 기록이 있는 세션 중 그 학생이 배정되어 있던 날만 최신 순으로 `limit`(1~50, 기본 20)개 돌려준다. 행마다 출결·사유, 재검사 판정(`GET /daily`와 같은 규칙으로 날짜마다 계산), 과제 등급, 테스트명, 점수, 그 세션의 반 평균(`summary.test_average`와 같은 식), 코멘트를 담는다. 그 학생의 기록 행이 없는 날도 세션이 기록이 있으면 빈 값으로 들어간다. 배정 이력이 없는 학생·담당 외 반은 403.
 - **수업일 달력:** `GET /daily/calendar?class_id=&month=YYYY-MM`은 그 달의 기록이 있는 세션 날짜만 준다. 시간표 요일은 화면이 `GET /classes`의 `schedules`로 안다.
+
+#### DES-25 상세
+
+운영 배포처는 [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) 결정 1~6을 따른다. 요소별 책임은 다음과 같다([DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)).
+
+| 요소 | 내용 |
+|---|---|
+| `compose.prod.yaml` | `postgres`(볼륨 `pgdata`), `app`(테스트 운영과 같은 Dockerfile, 정적 빌드 서빙, 볼륨 `files`), `cloudflared`(`tunnel --no-autoupdate run`, `TUNNEL_TOKEN`). 호스트 포트 없음, 시드 없음, `restart: unless-stopped` |
+| `.env`(서버, 600) | `POSTGRES_PASSWORD`, `MATHDESK_INITIAL_ADMIN_*`, `MATHDESK_COOKIE_SECURE=true`, `CLOUDFLARE_TUNNEL_TOKEN`, `MATHDESK_MESSAGING_MODE`·`ALIGO_*`, `MATHDESK_LLM_*`·LLM 키. 서버당 한 벌 |
+| 서버 | Lightsail 서울 2GB·2vCPU, Ubuntu LTS, Docker, 스왑 2GB, 고정 IP(알리고 발송 서버 IP), 자동 보안 업데이트, 자동 스냅샷 7개. 방화벽 SSH만 |
+| 배포 | 스테이징(맥미니 테스트 운영) 확인 → 같은 커밋으로 `git pull` → `ops/backup.sh`(운영 프로필) → `docker compose -f compose.prod.yaml up -d --build` → `/api/health`·로그인 스모크 |
+| 백업 | `ops/backup.sh` 운영 프로필을 cron(매일 04:00)으로 → `/var/backups/mathdesk/<일시>/`, 14일 지난 폴더 삭제, 결과 로그. 확인 절차는 운영 안정화(TASK-60) |
+| 복원·롤백 | `ops/restore.sh` 운영 프로필. 앱은 이전 커밋 재빌드, 스키마는 `alembic downgrade` 또는 백업 복원, 서버 전체는 스냅샷 복원(복원 뒤 고정 IP 재부착) |
+| 접근 | 클라이언트가 발급한 IAM 사용자(Lightsail 정책, MFA) + SSH 키. 인계 시 키 교체·IAM 비활성화로 회수 |
 
 #### DES-14 상세
 
@@ -281,7 +297,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | 주간 시간표 | `GET /timetable`(역할 스코프: 강사는 담당 반, 원장은 전체. `{class_minutes, slots[{class_id, class_name, grade, teacher, weekday, start_time, end_time}], unscheduled[]}`, `end_time`=시작+수업 길이 계산값), `PUT /settings/class-minutes`(원장, 30~480분, `integration_setting.class_minutes`, 기본 240 — [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md)) — [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) |
 | 일일 기록 | `GET /daily?class_id=&date=`, `PUT /daily/{session_id}/notes`, `PUT /daily/{session_id}/records`, `PUT /daily/{session_id}/records/{student_id}/recheck`, `POST /daily/{session_id}/attendance/confirm`, `POST /daily/{session_id}/attendance/unlock`, `GET /daily/calendar?class_id=&month=YYYY-MM`(`{recorded_dates[]}`), `GET /daily/history?class_id=&student_id=&to=&limit=`(`{student, klass, rows[{date, attendance_status, attendance_reason, recheck, homework_grade, test_name, test_score_num, class_average, comment}]}`, 조회 전용, [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md)), `GET /daily/history-image?class_id=&student_id=&to=&limit=`(`image/png`, 매개변수·권한은 `history`와 같음, [DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md)) |
 | 대시보드·통계 | `GET /dashboard?class_id=&date=`, `GET /stats/students/{id}?to=&class_id=&rounds=`(`rounds`는 10·20, 기본 10, 그 밖은 422 → `total`(종료일까지 그 반의 전체 회차 수)과 `rounds[]`(최근 N회, 오래된 순: `date`·`source`(`daily`·`exam`)·`name`·`score`·`class_average`·`homework_grade`·`attendance_status`) — [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md)), `GET /stats/classes/{id}`(점수 분포 없음 — [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md)), `GET /stats/export` |
-| 메시지 | `GET /messages/preview?session_id=&student_id=`, `POST /messages/send`, `GET /messages/logs`, `GET /messages/balance`, `GET/PUT /messages/templates`, `GET/PUT /messages/grade-comments` |
+| 메시지 | `GET /messages/preview?session_id=&student_id=`, `POST /messages/send`, `GET /messages/logs`, `GET /messages/balance`, `GET/PUT /messages/templates`, `GET/PUT /messages/grade-comments`, `POST /messages/send-batch`(`{session_id, recipients[], template_code?, student_ids?, include_already_sent?}` → `{task_id, planned[], skipped[]}`, 대상 0·500 초과 422), `GET /messages/send-batch/preview?session_id=&recipients=`(같은 `planned`·`skipped`), 작업 상태는 `GET /tasks/{task_id}`(`result: {sent, failed, test, skipped, students[]}`) — [DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) |
 | 시험지 | `POST /exams/uploads`, `POST /exams`, `GET /exams`, `GET/PATCH /exams/{id}`, `GET/PATCH /exams/{id}/questions`, `POST /exams/{id}/analyze`, `GET /tasks/{task_id}` |
 | OMR | `POST /exams/{id}/omr/uploads`, `GET /exams/{id}/omr/scans`, `PATCH /exams/{id}/omr/scans/{scan_id}`, `POST /exams/{id}/omr/apply` |
 | 시험 결과 | `GET /exams/{id}/results`, `GET /exams/{id}/question-stats` |
@@ -358,7 +374,8 @@ class OmrReader(Protocol):
 2. 발송 요청은 수신자 목록·채널을 서버가 결정(본문 길이·첨부 유무)한 뒤 `MessagingAdapter.send`를 호출한다.
 3. 테스트 모드면 외부 호출 없이 `status=test`로 로그만 남긴다.
 4. 알림톡 실패 시 설정에 따라 SMS·LMS로 재시도하고 `fallback_sent`로 기록한다. 두 시도 모두 로그에 남는다.
-5. 부분 실패(수신자 일부 실패)는 수신자 단위로 상태를 분리 기록하고 화면에 실패 건만 재시도 버튼을 제공한다.
+5. 부분 실패(수신자 일부 실패)는 수신자 단위로 상태를 분리 기록하고 화면에 실패 건만 재시도 버튼을 제공한다([다시 보내기], [DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md)).
+6. 반 단위 일괄 발송은 `POST /messages/send-batch`가 대상·제외(연락처 없음, 같은 세션에 `test` 아닌 로그 있음)를 계산해 `message_batch` 작업을 등록하고, 작업이 학생마다 `_send_one`을 호출해 로그를 남기며 진행률을 갱신한다. 화면은 `GET /tasks/{id}`를 폴링해 학생별 결과와 [실패만 다시 보내기]를 보인다. 재시작 시 로그가 있는 학생은 건너뛴다([DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md)).
 
 ### 시험지 분석
 
@@ -384,13 +401,13 @@ class OmrReader(Protocol):
 | 인증 | Argon2id 해시, 서버 세션, 로그인 실패 지연(계정 유무와 무관한 동일 검증 비용)과 시도 제한(기본 연속 10회 실패 → 3분 잠금, 설정값). 쿠키의 `Secure`는 `MATHDESK_COOKIE_SECURE`로 제어하며 HTTPS 노출 구성에서 `true` |
 | 권한 | 라우터 의존성으로 `CurrentScope` 주입, 리포지토리 기반 클래스가 `campus_id` 필터를 강제, 권한 거부는 감사 로그 기록 |
 | 개인정보 | 외부 전송 화이트리스트(문항 텍스트·이미지). OMR 원본과 학생 식별 정보는 로컬 처리. 업로드 파일은 캠퍼스 스코프 키로 저장 |
-| 비밀 정보 | 환경변수 우선, DB 저장 시 대칭키 암호화. 응답과 로그에서 마스킹 |
+| 비밀 정보 | 환경변수 우선, DB 저장 시 대칭키 암호화. 응답과 로그에서 마스킹. 운영 비밀값은 서버 `.env` 한 벌(권한 600)에만 두고 저장소·메신저에 두지 않는다(DCR-022) |
 | 성능 | 대시보드·통계는 인덱스(`class_session(class_id, session_date)`, `student_daily_record(session_id)`, `enrollment(class_id, student_id, start_date)`) 기반 집계 쿼리. 무거운 작업은 백그라운드로 분리 |
 | 자원 | OMR 판독은 페이지 단위 스트리밍 처리로 메모리 상한을 유지, 업로드 20MB·30쪽 제한 |
 | 관측성 | 구조화 JSON 로그(요청 ID 포함), `message_log`·`llm_call_log`·`audit_log` 도메인 기록 |
 | 캐시 | `/api` 응답에는 `Cache-Control: no-store, private`를 붙인다. CDN이 인증된 응답을 엣지에 보관하면 URL만으로 열람할 수 있다. API 경로에 정적 파일 확장자를 쓰지 않는다 |
-| 가용성 | Phase A 단일 노드. 백그라운드 작업은 재시작 시 `queued` 상태부터 재개 가능하게 상태를 DB에 둔다 |
-| 노출 표면 | 테스트 운영에서 postgres·API 호스트 포트를 게시하지 않고 터널만 외부 경로로 둔다. 개발용 기본 비밀번호를 쓰지 않으며 합성 데이터만 보관한다(NFR-17) |
+| 가용성 | Phase A·B 모두 단일 노드. 운영은 스냅샷·백업으로 사람이 복구한다(복구 시간 목표 없음, ADR-013). 백그라운드 작업은 재시작 시 `queued` 상태부터 재개 가능하게 상태를 DB에 둔다 |
+| 노출 표면 | 테스트 운영·운영 모두 postgres·API 호스트 포트를 게시하지 않고 터널만 외부 경로로 둔다. 개발용 기본 비밀번호를 쓰지 않는다(NFR-17). 테스트 운영은 합성 데이터만, 운영은 실제 데이터를 클라이언트 계정 안에서만 보관한다(NFR-20, DES-25) |
 | 유지보수성 | 어댑터 경계 5개, 모듈별 패키지 분리(`auth`, `masterdata`, `daily`, `stats`, `messaging`, `exams`, `omr`) |
 
 ## 마이그레이션과 롤백
@@ -398,7 +415,7 @@ class OmrReader(Protocol):
 - 신규 시스템이므로 이관할 기존 데이터가 없다. 초기 데이터는 학생·반 등록 화면 또는 시드 스크립트로 투입한다.
 - 스키마는 Alembic 리비전으로만 변경하며 빈 DB에서 `alembic upgrade head`로 전체 재현이 가능해야 한다(NFR-09).
 - 각 리비전은 `downgrade`를 제공한다. 파괴적 변경(컬럼 삭제)은 두 단계(사용 중단 → 삭제)로 나눈다.
-- Phase A→B 전환: DB는 `pg_dump`/`pg_restore`, 파일은 `StorageAdapter` 구현 교체와 일괄 복사, 설정은 환경변수 교체로 수행한다. 애플리케이션 이미지는 동일하다.
+- Phase A→B 전환: 테스트 운영 데이터(합성)는 옮기지 않고 운영 DB는 빈 상태 + 초기 원장 계정으로 시작한다(`alembic upgrade head`). 설정은 `.env` 한 벌로 교체하고 애플리케이션 이미지는 동일하다(DCR-022). 이후 서버 간 이동이 필요하면 `pg_dump`/`pg_restore`와 파일 볼륨 복사로 수행한다.
 - 롤백: 애플리케이션은 이전 이미지 태그로 되돌리고, 스키마는 해당 리비전으로 `downgrade` 후 복원한다.
 - 테스트 운영(Phase A′) 기동: 테스트 운영 compose로 빌드·기동 → `cloudflared tunnel create mathdesk` → DNS 라우트 → launchd 등록. 기존 `homewiki` 터널 설정은 수정하지 않는다.
 - 테스트 운영 롤백: launchd 서비스 해제 → DNS 레코드 삭제 → 컨테이너 중지. 배포처를 옮길 때도 이 3개만 제거하면 된다.
@@ -485,6 +502,8 @@ ADR로 분리하지 않은 설계 판단
 | [NFR-04](./requirements.md#nfr-04-상세) | [DES-13](#컴포넌트와-책임), [DES-14](#컴포넌트와-책임), [DES-15](#컴포넌트와-책임) | [AC-27](./requirements.md#인수-조건) |
 | [NFR-08~NFR-11](./requirements.md#비기능-요구사항) | [DES-10](#컴포넌트와-책임), [DES-19](#컴포넌트와-책임), [DES-21](#컴포넌트와-책임) | — |
 | [NFR-06](./requirements.md#비기능-요구사항), [NFR-17](./requirements.md#비기능-요구사항) | [DES-03](#des-03-상세), [DES-23](#컴포넌트와-책임) | [AC-28, AC-29](./requirements.md#인수-조건) |
+| [NFR-08, NFR-11, NFR-17, NFR-20](./requirements.md#비기능-요구사항) | [DES-25](#des-25-상세) | [AC-48](./requirements.md#인수-조건) |
+| [FR-47](./requirements.md#fr-47-상세) | [DES-09](#컴포넌트와-책임), [DES-18](#컴포넌트와-책임) | [AC-49](./requirements.md#인수-조건) |
 
 작업(`TASK-NN`)과 검증(`VER-NN`) 연결은 승인 후 wf-implement 스킬 계획 수립 시점에 추가한다.
 
@@ -522,6 +541,10 @@ ADR로 분리하지 않은 설계 판단
 기준선 `v21` (2026-10-11): [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md) 재승인으로 DES-05 상세에 "기록이 있는 세션" 정의와 조회 REST 2건(`GET /daily/calendar`, `GET /daily/history`)이 더해지고, DES-24 공통 컴포넌트에 월 달력이 더해졌다. 웹 라우트 `/daily`는 [반별 정보]·`/daily/students` [학생별 정보]의 중첩 라우트가 되며 반·날짜·학생 선택은 주소 쿼리가 정본이다. 데이터 모델 변경은 없다.
 
 기준선 `v22` (2026-10-11): [DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md) 재승인으로 DES-08 상세에 학생별 정보 카드 템플릿(폭 960)과 `GET /daily/history-image`가 더해지고 `ReportRenderer.render_html`이 폭 인자를 받는다. 데이터 모델 변경은 없다.
+
+기준선 `v23` (2026-10-11): [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md) 재승인으로 DES-25(운영 서빙, 클라이언트별 Lightsail 단일 서버)와 상세가 신설되고 보안 속성(비밀 정보·가용성·노출 표면)·전환 절차가 운영 기준으로 갱신되었으며 [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md)이 `approved`로 전이되었다.
+
+기준선 `v24` (2026-10-11): [DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) 재승인으로 DES-09·DES-18에 반 단위 일괄 발송(`message_batch`)이 더해지고 REST `POST /messages/send-batch`·`GET /messages/send-batch/preview`가 신설되었으며 메시지 발송 흐름 5·6이 갱신되었다. 데이터 모델 변경은 없다.
 
 기준선 `v18` (2026-10-11): [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) 재승인으로 `student_daily_record.comment`가 추가되고(마이그레이션 1건) 일일 기록 입출력에 `comment`가 더해졌으며(하위 호환), 메시지 렌더러가 공통 → 개별 순서로 바뀌고 강사 첨언·학생 코멘트가 본문·리포트 카드·알림톡 변수(`teacher_note`·`student_comment`)에 들어갔다. 리포트 카드의 요약 우선 레이아웃(ADR-011)은 그대로다.
 
@@ -567,6 +590,8 @@ ADR로 분리하지 않은 설계 판단
 | 2026-10-11 | DES-07 테스트명 공통 구획·테스트 점수 개별 구획, DES-08 상세에 오늘의 테스트, `test_name` 100자 상한 | [DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md) | approved 유지, 기준선 v19 → v20 | Claude / 사용자 |
 | 2026-10-11 | DES-05 상세 기록 있는 세션·학생별 이력·수업일 달력, REST `GET /daily/calendar`·`GET /daily/history`, DES-24 월 달력 | [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md) | approved 유지, 기준선 v20 → v21 | Claude / 사용자 |
 | 2026-10-11 | DES-08 상세 학생별 정보 카드 템플릿, REST `GET /daily/history-image`, `render_html` 폭 인자 | [DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md) | approved 유지, 기준선 v21 → v22 | Claude / 사용자 |
+| 2026-10-11 | DES-25 운영 서빙 신설, 보안 속성·전환 절차 운영 기준 갱신 | [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md), [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | approved 유지, 기준선 v22 → v23 | Claude / 사용자 |
+| 2026-10-11 | DES-09·DES-18 일괄 발송, REST 2건, 발송 흐름 5·6 | [DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) | approved 유지, 기준선 v23 → v24 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |

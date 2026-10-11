@@ -2,8 +2,8 @@
 
 > 문서 유형: `adr`
 > 작업 ID: `20260922-mathdesk-baseline`
-> 상태: `awaiting-approval`
-> 기준선: `v22` (DCR-022 승인 시 `v23`)
+> 상태: `approved`
+> 기준선: `v23`
 > 작성일: `2026-10-11`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](../../requirements.md), [DESIGN-mathdesk: 설계](../../design.md), [ADR-001: 기술 스택과 실행 형태](./ADR-001-기술-스택과-실행-형태.md), [ADR-008: 테스트 운영 노출 구성](./ADR-008-테스트-운영-노출-구성.md), [DCR-022](./DCR-022-운영-배포처-클라이언트별-Lightsail.md), [결정 등록부](../../decisions.md)
@@ -72,3 +72,4 @@
 | 날짜 | 변경 | 근거 | 상태 또는 기준선 | 작성자·승인자 |
 |---|---|---|---|---|
 | 2026-10-11 | 최초 작성 — 클라이언트별 Lightsail 단일 서버 결정, 대안 5개 비교 | 사용자 확인(클라이언트 2명 분리 운영, AWS 계정 2개, 서버당 설정 한 벌), 작업 기록의 AWS 조사 | → awaiting-approval | Claude / 승인자 미정 |
+| 2026-10-11 | 사용자 승인(DCR-022 재승인과 함께) — 기준선 `v23` | 대화형 재승인 응답 `승인` | awaiting-approval → approved | Claude / 사용자 |
