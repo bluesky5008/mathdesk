@@ -370,6 +370,19 @@ async def student_history(
         # 담당 반의 학생이 아니면 이름조차 돌려주지 않는다.
         raise HTTPException(status.HTTP_403_FORBIDDEN, "접근 권한이 없습니다.")
 
+    timeline = await student_rounds(session, student_id, klass, anchor)
+    return StudentHistoryOut(
+        student={"id": student.id, "name": student.name},
+        klass={"id": klass.id, "name": klass.name} if klass else None,
+        total=len(timeline),
+        rounds=timeline[-rounds:],
+    )
+
+
+async def student_rounds(
+    session: AsyncSession, student_id: int, klass: Klass | None, anchor: date
+) -> list["StudentRound"]:
+    """한 학생의 테스트 회차(날짜순). 포털(DES-26)도 같은 계산을 쓴다."""
     timeline: list[tuple[date, int, StudentRound]] = []
     if klass is not None:
         # 회차마다 {학생: 점수}. 점수가 하나도 없는 수업은 회차가 아니다.
@@ -420,12 +433,7 @@ async def student_history(
 
     # 날짜순, 같은 날은 일일 테스트(0) → OMR 시험(등록순)
     timeline.sort(key=lambda item: item[:2])
-    return StudentHistoryOut(
-        student={"id": student.id, "name": student.name},
-        klass={"id": klass.id, "name": klass.name} if klass else None,
-        total=len(timeline),
-        rounds=[item[2] for item in timeline[-rounds:]],
-    )
+    return [item[2] for item in timeline]
 
 
 async def _period_stats(

@@ -318,21 +318,22 @@ async def _build_response(
     )
 
 
-def _recorded_sessions(class_id: int):
-    """기록이 있는 세션(DES-05 상세). `GET /daily`는 조회만 해도 세션을 만들므로
-    학생 기록·진도·메모·출결 확정 중 하나라도 있어야 수업으로 센다."""
-    return select(ClassSession).where(
-        ClassSession.class_id == class_id,
-        or_(
-            exists().where(StudentDailyRecord.session_id == ClassSession.id),
-            exists().where(ClassSessionProgress.session_id == ClassSession.id),
-            ClassSession.homework.is_not(None),
-            ClassSession.video_url.is_not(None),
-            ClassSession.teacher_note.is_not(None),
-            ClassSession.test_name.is_not(None),
-            ClassSession.attendance_confirmed_at.is_not(None),
-        ),
+def has_records():
+    """기록이 있는 세션의 조건(DES-05 상세). `GET /daily`는 조회만 해도 세션을 만들므로
+    학생 기록·진도·메모·출결 확정 중 하나라도 있어야 수업으로 센다. 포털(DES-26)도 쓴다."""
+    return or_(
+        exists().where(StudentDailyRecord.session_id == ClassSession.id),
+        exists().where(ClassSessionProgress.session_id == ClassSession.id),
+        ClassSession.homework.is_not(None),
+        ClassSession.video_url.is_not(None),
+        ClassSession.teacher_note.is_not(None),
+        ClassSession.test_name.is_not(None),
+        ClassSession.attendance_confirmed_at.is_not(None),
     )
+
+
+def _recorded_sessions(class_id: int):
+    return select(ClassSession).where(ClassSession.class_id == class_id, has_records())
 
 
 async def _record_for(
