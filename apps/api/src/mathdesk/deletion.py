@@ -34,6 +34,7 @@ from .models import (
     StudentDailyRecord,
 )
 from .models.daily import ClassSession, ClassSessionProgress
+from .portal_accounts import count_orphan_accounts, remove_student_links
 from .scope import CurrentScope, Scope, ScopedRepository
 
 Db = Annotated[AsyncSession, Depends(get_session)]
@@ -43,7 +44,7 @@ router = APIRouter(prefix="/api", tags=["masterdata"])
 # 학생을 지울 때 함께 지우는 테이블(과 그 테이블을 가리키는 하위 테이블)
 STUDENT_CASCADE = {
     "guardian", "enrollment", "student_daily_record", "exam_attempt", "exam_answer",
-    "omr_scan", "message_log", "consult_log",
+    "omr_scan", "message_log", "consult_log", "app_user_student",
 }
 # 반을 지울 때 함께 지우는 테이블
 CLASS_CASCADE = {
@@ -91,6 +92,8 @@ async def _student_counts(session: AsyncSession, student_id: int) -> dict[str, i
         "omr_scans": await _count(session, OmrScan, OmrScan.matched_student_id == student_id),
         "messages": await _count(session, MessageLog, MessageLog.student_id == student_id),
         "consults": await _count(session, ConsultLog, ConsultLog.student_id == student_id),
+        # 이 학생에게만 연결된 포털 계정(FR-05 상세, DCR-024) — 형제가 남은 학부모 계정은 세지 않는다
+        "portal_accounts": await count_orphan_accounts(session, student_id),
     }
 
 
@@ -115,6 +118,7 @@ async def delete_student(student_id: int, scope: CurrentScope, session: Db) -> R
             delete(LabelCorrection).where(LabelCorrection.source_ref.like(f"omr_scan:{scan_id}:%"))
         )
     await session.execute(delete(OmrScan).where(OmrScan.id.in_(scan_ids)))
+    await remove_student_links(session, student.id)  # 보호자 삭제 전에(외래키)
     await session.execute(delete(ExamAnswer).where(ExamAnswer.attempt_id.in_(_attempts(student.id))))
     for model in (ExamAttempt, StudentDailyRecord, MessageLog, ConsultLog, Guardian, Enrollment):
         await session.execute(delete(model).where(model.student_id == student.id))

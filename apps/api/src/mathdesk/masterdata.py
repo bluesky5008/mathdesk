@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
 from .models import AppUser, AppUserCampus, AuditLog, ClassSchedule, Enrollment, Guardian, Klass, School, Student
+from .portal_accounts import portal_summary, sync_portal_access
 from .scope import CurrentScope, Scope, ScopedRepository
 
 Db = Annotated[AsyncSession, Depends(get_session)]
@@ -63,6 +64,8 @@ class StudentOut(BaseModel):
     omr_number: str | None
     guardian_phone: str | None = None
     score_note: str | None = None
+    # 포털 계정 상태 요약(FR-48 상세): {"student": state, "guardian": state}
+    portal: dict[str, str] | None = None
 
 
 class ScheduleIn(BaseModel):
@@ -226,8 +229,13 @@ async def list_students(
     if status_filter:
         statement = statement.where(Student.status == status_filter)
     rows = (await session.execute(statement)).all()
-    phones = await _guardian_phones(session, [student.id for student, _ in rows])
-    return [_student_out(student, phones.get(student.id), school) for student, school in rows]
+    student_ids = [student.id for student, _ in rows]
+    phones = await _guardian_phones(session, student_ids)
+    portal = await portal_summary(session, student_ids)
+    return [
+        _student_out(student, phones.get(student.id), school).model_copy(update={"portal": portal[student.id]})
+        for student, school in rows
+    ]
 
 
 @router.post("/students", status_code=status.HTTP_201_CREATED)
@@ -262,10 +270,14 @@ async def update_student(
             del fields[optional]
     if "school_id" in fields:
         await _school_name(session, scope, payload.school_id)
+    status_before = student.status
     for field, value in fields.items():
         setattr(student, field, value)
     if "guardian_phone" in payload.model_fields_set:
         await _sync_guardian(session, student_id, payload.guardian_phone)
+    if student.status != status_before:
+        # 퇴원이면 이 학생만 연결된 포털 계정을 비활성화하고, 복귀하면 되살린다(FR-48 상세)
+        await sync_portal_access(session, scope, student_id)
     await session.commit()
     phones = await _guardian_phones(session, [student_id])
     return _student_out(student, phones.get(student_id), await _school_name(session, scope, student.school_id))
