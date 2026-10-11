@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v20`
+> 기준선: `v21`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (29/36)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (29/37)
+   ├─ [▶] TASK-90 학생별 정보 탭·수업일 달력 (DCR-020) in-progress
    ├─ [✓] TASK-89 테스트명 입력·문자/리포트 공통 (DCR-019) 2026-10-11 16:35
    ├─ [✓] TASK-88 성적 통계 회차별 추이 (DCR-018) ... 2026-10-11 16:10
    ├─ [✓] TASK-87 학생별 코멘트·문자 공통/개별 (DCR-017) 2026-10-11 15:40
@@ -295,6 +296,8 @@ flowchart TD
     C3 --> T88["TASK-88 성적 통계 회차별 추이 (DCR-018)"]:::done
     C3 --> T89["TASK-89 테스트명 입력과 문자·리포트 공통 구획 (DCR-019)"]:::done
     T87 -. depends .-> T89
+    C3 --> T90["TASK-90 일일 입력 학생별 정보 탭과 수업일 달력 (DCR-020)"]:::active
+    T89 -. depends .-> T90
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
     C3 --> T75["TASK-75 OMR 방향 자동 판별"]:::done
     C3 --> T76["TASK-76 OMR 판정 기준: 조명 보정"]:::done
@@ -1094,6 +1097,18 @@ flowchart TD
 ### 사이클 3 — 운영 이관 (2026-09-24 계획)
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
+
+### TASK-90: 일일 입력 학생별 정보 탭과 수업일 달력
+
+- 상태: in-progress (2026-10-11 시작)
+- 상위: 없음
+- 목표: `/daily`를 [반별 정보](기존)·`/daily/students` [학생별 정보] 중첩 라우트로 나누고 반·날짜·학생 선택을 주소 쿼리 정본으로 공유한다. [학생별 정보]는 학생 선택 → `GET /daily/history`(최근 20회, 최신 순) 읽기 전용 표(날짜 링크·출결·재검사·등급·테스트명+점수/반평균·코멘트)와 요약 2개. 머리말 날짜 칸은 저장소 소유 월 달력 팝오버(`MonthCalendar`·`DatePickerButton`)로, 수업일(시간표 요일 ∪ `GET /daily/calendar` 기록일) 굵게, 기록일 점. API는 "기록이 있는 세션" 헬퍼를 공유하는 조회 REST 2건.
+- 관련 요구사항과 설계: [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md)(기준선 `v21`, 승인 2026-10-11) — [FR-45 상세](./requirements.md#fr-45-상세)·[FR-46 상세](./requirements.md#fr-46-상세), [AC-45·AC-46](./requirements.md#인수-조건), [DES-05 상세](./design.md#des-05-상세)·[DES-24 상세](./design.md#des-24-상세)
+- 변경 대상: `apps/api/src/mathdesk/daily.py`(기록 있는 세션 헬퍼, `GET /daily/calendar`, `GET /daily/history`), `tests/test_daily.py`; 웹 `api.ts`(타입·함수 2개), `App.tsx`(중첩 라우트), `pages/DailyPage.tsx`(머리말·탭 레이아웃 분리, 쿼리 정본화, 미저장 경고 컨텍스트), 새 `pages/StudentDailyPage.tsx`, 새 `components/ui/month-calendar.tsx`, 웹 테스트(`DailyPage.test.tsx` 날짜 단언 수정, `StudentDailyPage.test.tsx`·`month-calendar.test.tsx` 신설)
+- 의존성: TASK-89(테스트명 칸)
+- 위험: 날짜 키보드 직접 입력 소멸(달력에서 선택). 마이그레이션 없음 — 롤백은 코드 되돌리기
+- 검증 방법: 선행 테스트 — API(`calendar`: 기록일만·조회만 한 날 제외·메모만/확정만 세션 포함·`month` 형식 422·담당 외 403; `history`: 세션 기준 행(학생 기록 없는 날도 행)·배정 전후 제외·`to` 이후 제외·최신 순·`limit` 절단·날짜별 재검사 판정·`class_average`·배정 없는 학생 403). 웹(탭 두 개·초기 탭, 탭 전환 시 쿼리 유지, 학생 표 열·값·빈 행·날짜 링크, 달력 굵은 날·점·선택 콜백, 반 변경 시 요일, 미저장 경고). API·웹 전체, `npm run build`
+- 완료 조건: 테스트 운영 배포 후 고1 인A로 달력(굵은 날·점)과 학생별 표 확인
 
 ### TASK-89: 테스트명 입력과 문자·리포트 공통 구획
 

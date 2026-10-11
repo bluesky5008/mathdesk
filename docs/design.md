@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v20`
+> 기준선: `v21`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -120,7 +120,7 @@
 | DES-20 | 설정·시크릿 관리 | 연동 설정 저장(민감값 암호화), 환경변수 우선순위, 연결 상태 점검 |
 | DES-21 | 스키마 마이그레이션 | Alembic 리비전과 시드 데이터 스크립트 |
 | DES-22 | 내보내기 | 통계·시험 결과 엑셀 생성, 난이도 분석표·리포트 이미지 파일 생성 |
-| DES-24 | 디자인 시스템 | 디자인 토큰 단일 소스(`tokens.css`), 테마 팔레트 5벌, 공통 컴포넌트(버튼·폼·표·카드·대화상자), 표 기반 입력 컴포넌트. 웹과 리포트 카드가 같은 토큰 파일의 스케일을 공유하고 색은 각자의 팔레트를 따른다. 상세는 [DES-24 상세](#des-24-상세) |
+| DES-24 | 디자인 시스템 | 디자인 토큰 단일 소스(`tokens.css`), 테마 팔레트 5벌, 공통 컴포넌트(버튼·폼·표·카드·대화상자·월 달력), 표 기반 입력 컴포넌트. 웹과 리포트 카드가 같은 토큰 파일의 스케일을 공유하고 색은 각자의 팔레트를 따른다. 상세는 [DES-24 상세](#des-24-상세) |
 | DES-23 | 테스트 운영 서빙 | 웹 정적 빌드를 API가 SPA fallback으로 서빙하고, `Secure` 쿠키와 노출 표면 축소를 설정으로 제어한다. 외부 경로는 cloudflared 터널 하나다 |
 
 #### DES-03 상세
@@ -156,6 +156,9 @@
 - 저장 단위별 API를 분리해 서로의 필드를 건드리지 않는다(FR-14).
 - 재검사 대상 판정은 저장값이 아니라 조회 시 계산한다: 같은 반에서 해당 학생의 직전 세션 과제 등급이 기준 등급 이하이면 대상이다. 판정 근거(직전 등급·직전 수업일)를 함께 반환한다.
 - 출결 확정은 세션 단위 상태(`attendance_confirmed_at`, `attendance_confirmed_by`)로 관리하며 확정 상태에서 학생 출결 필드 변경 요청은 409로 거부한다.
+- **기록이 있는 세션:** `class_session`에 `student_daily_record`가 1건 이상 있거나, `class_session_progress`가 있거나, `homework`·`video_url`·`teacher_note`·`test_name` 중 하나가 NULL이 아니거나, `attendance_confirmed_at`이 있으면 기록이 있는 세션이다. `GET /daily`가 조회 시 세션을 만들므로, 수업일 달력(FR-46)과 학생별 이력(FR-45)은 이 정의로 빈 세션을 뺀다. 두 조회 REST(`GET /daily/calendar`, `GET /daily/history`)가 헬퍼 하나를 공유한다([DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md)).
+- **학생별 이력:** `GET /daily/history`는 `to`까지 기록이 있는 세션 중 그 학생이 배정되어 있던 날만 최신 순으로 `limit`(1~50, 기본 20)개 돌려준다. 행마다 출결·사유, 재검사 판정(`GET /daily`와 같은 규칙으로 날짜마다 계산), 과제 등급, 테스트명, 점수, 그 세션의 반 평균(`summary.test_average`와 같은 식), 코멘트를 담는다. 그 학생의 기록 행이 없는 날도 세션이 기록이 있으면 빈 값으로 들어간다. 배정 이력이 없는 학생·담당 외 반은 403.
+- **수업일 달력:** `GET /daily/calendar?class_id=&month=YYYY-MM`은 그 달의 기록이 있는 세션 날짜만 준다. 시간표 요일은 화면이 `GET /classes`의 `schedules`로 안다.
 
 #### DES-14 상세
 
@@ -197,7 +200,7 @@
 - **상태색:** `success`·`warning`·`danger`는 출결 구분 등 의미 전달이 목적이므로 색조 테마에서 재정의하지 않는다. 다크 팔레트에서만 대비 확보를 위해 밝기를 올린다.
 - **테마 저장:** 사용자 개인 설정이므로 `localStorage`(키 `mathdesk-theme`)에 둔다. 서버·스키마 변경이 없다. 첫 페인트 전에 적용해 화면이 번쩍이지 않게 한다.
 - **테마 선택 UI:** 앱 셸 헤더가 소유한다. 모든 화면에서 같은 위치에 있어야 한다.
-- **공통 컴포넌트:** shadcn/ui 패턴으로 소스를 저장소에 둔다. 라이브러리 의존이 아니라 코드 소유다.
+- **공통 컴포넌트:** shadcn/ui 패턴으로 소스를 저장소에 둔다. 라이브러리 의존이 아니라 코드 소유다. 월 달력(`MonthCalendar`·`DatePickerButton`)도 외부 달력 라이브러리 없이 직접 만든다 — 브라우저 기본 날짜 입력은 특정 날짜를 굵게 표시할 수 없다. 입력은 선택 날짜·보이는 달·굵게 표시할 날짜 판정·점을 찍을 날짜·선택 콜백이고, 날짜 버튼은 `aria-pressed`로 선택을, `aria-label`로 날짜와 `수업일`·`기록 있음`을 알린다. 요일은 `(getDay()+6)%7`로 `class_schedule.weekday`(0=월)에 맞춘다([DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md)).
 - **표 기반 입력:** NFR-13의 키보드 이동·즉시 저장 동작은 이 컴포넌트가 소유하며 외부 라이브러리 동작에 맞추지 않는다.
 - **의미 구조 보존:** 재작성 시 역할과 레이블을 유지해 기존 테스트가 그대로 통과해야 한다. 통과하지 않으면 마크업이 잘못된 것으로 본다.
 - **대상 환경:** 최소 390px까지 지원하되 화면 부류별 목표가 다르다([NFR-14 상세](./requirements.md#nfr-14-상세)). 조회·발송 화면(대시보드·알림문자·목록)은 휴대폰에서 완전히 사용 가능해야 하고, 밀집 입력 화면(일일 입력·등록 폼)은 데스크톱을 전제로 한다.
@@ -276,7 +279,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | 학교 | `GET/POST /schools`, `PATCH/DELETE /schools/{id}` — 원장 전용(강사 403), 캠퍼스 스코프. `GET`은 `[{id, name, student_count}]` 이름순(학생 수는 집계 한 번). `POST`·`PATCH`는 `{name}` 공백 제거 후 1~100자(422), 같은 캠퍼스 중복 409, 다른 캠퍼스·없는 id 403(공통 규칙). `DELETE`는 한 트랜잭션에서 그 학교 학생의 `school_id`를 NULL로 바꾸고 지우며 감사 로그 `school.delete`(이름, 학생 수)를 남긴다([DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) |
 | 반·수강 | `GET/POST /classes`, `PATCH/DELETE /classes/{id}`(강사의 `PATCH`는 담당 반만, 본문의 `teacher_id`·`is_active`가 현재 값과 같아야 하며 아니면 403·무변경, 감사 로그 `class.update` — [DCR-011](./work/20260922-mathdesk-baseline/DCR-011-강사의-담당-반-수정.md)), `GET /classes/{id}/deletion-preview`(계약만 유지), 반 `DELETE`는 본문 없음·활성 반도 204([DCR-016](./work/20260922-mathdesk-baseline/DCR-016-반-바로-삭제.md)), `GET/POST/DELETE /classes/{id}/enrollments` |
 | 주간 시간표 | `GET /timetable`(역할 스코프: 강사는 담당 반, 원장은 전체. `{class_minutes, slots[{class_id, class_name, grade, teacher, weekday, start_time, end_time}], unscheduled[]}`, `end_time`=시작+수업 길이 계산값), `PUT /settings/class-minutes`(원장, 30~480분, `integration_setting.class_minutes`, 기본 240 — [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md)) — [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) |
-| 일일 기록 | `GET /daily?class_id=&date=`, `PUT /daily/{session_id}/notes`, `PUT /daily/{session_id}/records`, `PUT /daily/{session_id}/records/{student_id}/recheck`, `POST /daily/{session_id}/attendance/confirm`, `POST /daily/{session_id}/attendance/unlock` |
+| 일일 기록 | `GET /daily?class_id=&date=`, `PUT /daily/{session_id}/notes`, `PUT /daily/{session_id}/records`, `PUT /daily/{session_id}/records/{student_id}/recheck`, `POST /daily/{session_id}/attendance/confirm`, `POST /daily/{session_id}/attendance/unlock`, `GET /daily/calendar?class_id=&month=YYYY-MM`(`{recorded_dates[]}`), `GET /daily/history?class_id=&student_id=&to=&limit=`(`{student, klass, rows[{date, attendance_status, attendance_reason, recheck, homework_grade, test_name, test_score_num, class_average, comment}]}`, 조회 전용, [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md)) |
 | 대시보드·통계 | `GET /dashboard?class_id=&date=`, `GET /stats/students/{id}?to=&class_id=&rounds=`(`rounds`는 10·20, 기본 10, 그 밖은 422 → `total`(종료일까지 그 반의 전체 회차 수)과 `rounds[]`(최근 N회, 오래된 순: `date`·`source`(`daily`·`exam`)·`name`·`score`·`class_average`·`homework_grade`·`attendance_status`) — [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md)), `GET /stats/classes/{id}`(점수 분포 없음 — [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md)), `GET /stats/export` |
 | 메시지 | `GET /messages/preview?session_id=&student_id=`, `POST /messages/send`, `GET /messages/logs`, `GET /messages/balance`, `GET/PUT /messages/templates`, `GET/PUT /messages/grade-comments` |
 | 시험지 | `POST /exams/uploads`, `POST /exams`, `GET /exams`, `GET/PATCH /exams/{id}`, `GET/PATCH /exams/{id}/questions`, `POST /exams/{id}/analyze`, `GET /tasks/{task_id}` |
@@ -472,6 +475,7 @@ ADR로 분리하지 않은 설계 판단
 | [FR-04](./requirements.md#기능-요구사항) | [DES-20](#컴포넌트와-책임) | [AC-23](./requirements.md#인수-조건) |
 | [FR-05~FR-08, FR-39](./requirements.md#기능-요구사항) | [DES-04](#컴포넌트와-책임) | [AC-04, AC-05, AC-36, AC-37](./requirements.md#인수-조건) |
 | [FR-09~FR-14](./requirements.md#fr-09-상세) | [DES-05](#des-05-상세) | [AC-06~AC-12](./requirements.md#인수-조건) |
+| [FR-45, FR-46](./requirements.md#fr-45-상세) | [DES-05 상세](#des-05-상세), [DES-24](#des-24-상세) | [AC-45, AC-46](./requirements.md#인수-조건) |
 | [FR-15~FR-17, FR-24~FR-26](./requirements.md#fr-15-상세) | [DES-06](#컴포넌트와-책임), [DES-22](#컴포넌트와-책임) | [AC-07, AC-13, AC-19, AC-20](./requirements.md#인수-조건) |
 | [FR-18~FR-22](./requirements.md#fr-18-상세) | [DES-07](#컴포넌트와-책임), [DES-08](#컴포넌트와-책임) | [AC-14~AC-16](./requirements.md#인수-조건) |
 | [FR-23, FR-37, FR-38](./requirements.md#fr-23-상세) | [DES-09](#컴포넌트와-책임), [DES-19](#컴포넌트와-책임) | [AC-17, AC-18, AC-26](./requirements.md#인수-조건) |
@@ -515,6 +519,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v20` (2026-10-11): [DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md) 재승인으로 메시지 렌더러(DES-07)의 테스트명이 반 공통 `■ 오늘의 테스트`로 옮겨지고 학생 개별이 `■ 테스트 점수`로 바뀌었으며, 리포트 카드(DES-08) 상세에 오늘의 테스트가 더해졌다. `PATCH /daily/{session_id}/notes`의 `test_name`에 100자 상한이 생겼다. 데이터 모델 변경은 없고 `test_max_score`는 예비 열로 남는다.
 
+기준선 `v21` (2026-10-11): [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md) 재승인으로 DES-05 상세에 "기록이 있는 세션" 정의와 조회 REST 2건(`GET /daily/calendar`, `GET /daily/history`)이 더해지고, DES-24 공통 컴포넌트에 월 달력이 더해졌다. 웹 라우트 `/daily`는 [반별 정보]·`/daily/students` [학생별 정보]의 중첩 라우트가 되며 반·날짜·학생 선택은 주소 쿼리가 정본이다. 데이터 모델 변경은 없다.
+
 기준선 `v18` (2026-10-11): [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) 재승인으로 `student_daily_record.comment`가 추가되고(마이그레이션 1건) 일일 기록 입출력에 `comment`가 더해졌으며(하위 호환), 메시지 렌더러가 공통 → 개별 순서로 바뀌고 강사 첨언·학생 코멘트가 본문·리포트 카드·알림톡 변수(`teacher_note`·`student_comment`)에 들어갔다. 리포트 카드의 요약 우선 레이아웃(ADR-011)은 그대로다.
 
 기준선 `v11` (2026-09-24): [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) 승인으로 `class_minutes` 기본값이 240으로 바뀌었다(구조·계약 변경 없음).
@@ -557,6 +563,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-10-11 | `student_daily_record.comment`, 일일 기록 입출력 `comment`, 메시지 공통→개별 순서, 첨언·코멘트를 본문·카드·알림톡 변수에 | [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) | approved 유지, 기준선 v17 → v18 | Claude / 사용자 |
 | 2026-10-11 | 학생 통계 API 회차 단위로 대체, 반 통계 점수 분포 삭제 | [DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md) | approved 유지, 기준선 v18 → v19 | Claude / 사용자 |
 | 2026-10-11 | DES-07 테스트명 공통 구획·테스트 점수 개별 구획, DES-08 상세에 오늘의 테스트, `test_name` 100자 상한 | [DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md) | approved 유지, 기준선 v19 → v20 | Claude / 사용자 |
+| 2026-10-11 | DES-05 상세 기록 있는 세션·학생별 이력·수업일 달력, REST `GET /daily/calendar`·`GET /daily/history`, DES-24 월 달력 | [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md) | approved 유지, 기준선 v20 → v21 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |

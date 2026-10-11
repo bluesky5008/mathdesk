@@ -11,7 +11,7 @@
 ## 요약
 
 - 목적: 저장소 전역의 ADR·DCR을 한곳에서 조망하고 다음 일련번호를 발행할 기준을 제공한다.
-- 현재 결론 또는 상태: ADR 12건과 DCR 5건이 모두 `approved`다. 유효 기준선은 `v6`이며 마지막 발행 번호는 ADR-012, DCR-005.
+- 현재 결론 또는 상태: ADR 12건과 DCR 20건이 모두 `approved`다. 유효 기준선은 `v21`이며 마지막 발행 번호는 ADR-012, DCR-020.
 - 다음 행동: 없음. 새 ADR·DCR이 생기면 이 등록부를 같은 변경에서 갱신한다.
 
 ## 문서 연결
@@ -56,11 +56,12 @@
 | DCR-017 | dcr | 학생별 코멘트와 문자 공통·개별 구조 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) | FR-14·FR-18 상세·AC-14 변경, FR-44·AC-43 신설 |
 | DCR-018 | dcr | 성적 통계 회차별 추이 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-018](./work/20260922-mathdesk-baseline/DCR-018-성적-통계-회차별-추이.md) | FR-24·FR-25·AC-19 개정 |
 | DCR-019 | dcr | 테스트명 입력과 문자·리포트 공통 구획 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-019](./work/20260922-mathdesk-baseline/DCR-019-테스트명-입력과-문자-리포트-공통-구획.md) | FR-13 상세·AC-44 신설, FR-18 상세·AC-14 변경 |
+| DCR-020 | dcr | 일일 입력의 학생별 정보 탭과 수업일 달력 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md) | FR-45·FR-46·AC-45·AC-46 신설, DES-05 상세·REST·DES-24 추가 |
 
 ## 번호 발행 규칙
 
 - ADR·DCR 번호는 저장소 전역 일련번호다. 새 번호는 이 등록부의 마지막 번호 다음 번호로 발행한다.
-- 다음 ADR 번호: `ADR-013`. 다음 DCR 번호: `DCR-006`.
+- 다음 ADR 번호: `ADR-013`. 다음 DCR 번호: `DCR-021`.
 - 개별 ADR·DCR 파일이 정본이며 이 등록부는 목록이다. 불일치하면 파일에 맞춰 등록부를 수정한다.
 
 ## 아웃라인 결정 항목과의 대응
