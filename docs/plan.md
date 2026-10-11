@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v24`
+> 기준선: `v25`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (33/39)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (34/40)
+   ├─ [✓] TASK-93 학생·학부모 포털 (DCR-024) ............ 2026-10-11 22:09
    ├─ [✓] TASK-92 반 단위 일괄 발송 (DCR-023) ........... 2026-10-11 19:55
    ├─ [✓] TASK-91 학생별 정보 이미지 저장 (DCR-021) ...... 2026-10-11 17:40
    ├─ [✓] TASK-90 학생별 정보 탭·수업일 달력 (DCR-020) 2026-10-11 17:05
@@ -303,6 +304,7 @@ flowchart TD
     C3 --> T91["TASK-91 학생별 정보 이미지 저장 (DCR-021)"]:::done
     T90 -. depends .-> T91
     C3 --> T92["TASK-92 반 단위 일괄 발송 (DCR-023)"]:::done
+    C3 --> T93["TASK-93 학생·학부모 포털 (DCR-024)"]:::done
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
     C3 --> T75["TASK-75 OMR 방향 자동 판별"]:::done
     C3 --> T76["TASK-76 OMR 판정 기준: 조명 보정"]:::done
@@ -1102,6 +1104,18 @@ flowchart TD
 ### 사이클 3 — 운영 이관 (2026-09-24 계획)
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
+
+### TASK-93: 학생·학부모 포털
+
+- 상태: completed (2026-10-11 22:09)
+- 상위: 없음
+- 목표: [DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md)(기준선 `v25`, 승인 2026-10-11)·[ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md) 구현. 하위 단계 — (a) 마이그레이션·권한: 역할 `student`·`guardian`, `app_user.issued_at`, `app_user_student`, `current_scope` 기본 거부, `current_portal_scope`, 로그인 발급 만료 (b) 발급: `GET/POST /students/{id}/portal-accounts`, `…/reissue`, 목록 `portal` 요약, 학생 상태 변경·삭제 연동(고아 계정 삭제) (c) 포털 REST 8건(`/api/portal/*`) (d) 웹: 학생 관리 포털 열·[발급]/[재발급], `PortalApp`(홈·기록·추이·시험·상담·문자, 모바일 우선) (e) 테스트 운영 배포·휴대폰 확인.
+- 관련 요구사항과 설계: [FR-48 상세](./requirements.md#fr-48-상세), [FR-49 상세](./requirements.md#fr-49-상세), FR-02·FR-03 상세·FR-05 상세·FR-39·NFR-07, [AC-50~52](./requirements.md#인수-조건), [DES-03 상세](./design.md#des-03-상세), [DES-04 상세](./design.md#des-04-상세--학생반-삭제-dcr-006-dcr-012), [DES-26 상세](./design.md#des-26-상세--학생학부모-포털-dcr-024-adr-014)
+- 변경 대상: `models/masterdata.py`(역할 값, `issued_at`, `AppUserStudent`)·마이그레이션 1건, `scope.py`(역할 분기·`current_portal_scope`), `auth.py`(만료 검사), `portal_accounts.py`(신설: 발급·재발급·상태·연동 헬퍼), `masterdata.py`(목록 요약·상태 변경 연동), `deletion.py`(상수·고아 계정), `portal.py`(신설: 포털 REST), `main.py`; 테스트 `test_portal_accounts.py`·`test_portal.py`(신설), `test_scope.py`(양방향 403), `test_deletion.py`, `test_migrations.py`; 웹 `api.ts`, `App.tsx`, `pages/StudentsPage.tsx`, `portal/`(신설: 셸·페이지), 테스트
+- 의존성: 없음
+- 위험: 초기 비밀번호 추측 가능(7일 만료·재발급으로 완화). 열거형은 VARCHAR+CHECK라 마이그레이션은 제약 재생성
+- 검증 방법: 선행 테스트 — API: AC-50 ①~⑧, AC-51 ①~⑥, AC-52 ①~④, 엔드포인트 목록 양방향 403, 삭제 외래키 테스트, 마이그레이션 왕복. 웹: 셸 분기, 발급 버튼 상태·호출 본문, 기록 목록 렌더. API·웹 전체, `npm run build`
+- 완료 조건: 테스트 운영 배포 후 학생·학부모 계정 발급 → 휴대폰 로그인·비밀번호 변경·기록 조회 확인
 
 ### TASK-92: 반 단위 일괄 발송
 
