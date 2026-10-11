@@ -7,12 +7,14 @@ import { ForcedPasswordChange } from './PasswordChange'
 import { AppShell } from './components/AppShell'
 import { ManageTabs } from './components/ManageTabs'
 import { ClassesPage } from './pages/ClassesPage'
+import { DailyLayout } from './pages/DailyLayout'
 import { DailyPage } from './pages/DailyPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ExamsPage } from './pages/ExamsPage'
 import { MessagesPage } from './pages/MessagesPage'
 import { SchoolsPage } from './pages/SchoolsPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { StudentDailyPage } from './pages/StudentDailyPage'
 import { StudentsPage } from './pages/StudentsPage'
 import { TimetablePage } from './pages/TimetablePage'
 
@@ -72,7 +74,10 @@ export function App() {
     <AppShell userName={user.display_name} userRole={user.role} onLogout={signOut}>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/daily" element={<DailyPage />} />
+        <Route path="/daily" element={<DailyLayout />}>
+          <Route index element={<DailyPage />} />
+          <Route path="students" element={<StudentDailyPage />} />
+        </Route>
         <Route
           path="/stats"
           element={

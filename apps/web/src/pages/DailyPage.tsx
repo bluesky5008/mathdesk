@@ -1,15 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
 
 import { AttendanceCell, AttendanceLockBanner } from '../components/AttendanceButtons'
-import { PageHeader } from '../components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Field } from '../components/ui/field'
 import { Input } from '../components/ui/input'
 import { KeyboardGrid } from '../components/ui/keyboard-grid'
-import { Select } from '../components/ui/select'
 import { Stat } from '../components/ui/stat'
 import { Textarea } from '../components/ui/textarea'
 import {
@@ -21,9 +18,7 @@ import {
   TableRow,
 } from '../components/ui/table'
 import { Toggle } from '../components/ui/toggle'
-import { today } from '../lib/date'
 import {
-  fetchClasses,
   fetchDaily,
   saveDailyNotes,
   saveDailyRecords,
@@ -33,6 +28,7 @@ import {
   type NotesPatch,
   type RecordPatch,
 } from '../api'
+import { EmptyRosterNotice, useDailySelection } from './DailyLayout'
 
 const GRADES = ['A+', 'A', 'B', 'C', 'D', 'F']
 const PERIODS = [1, 2, 3, 4]
@@ -51,14 +47,10 @@ function describeRecheck(record: DailyRecord): string {
   return `직전 ${record.recheck.prev_grade} · ${record.recheck.prev_date.slice(5).replace('-', '/')}`
 }
 
+/** [반별 정보] 탭 — 반·날짜 선택은 DailyLayout의 머리말이 소유한다(FR-45) */
 export function DailyPage() {
   const queryClient = useQueryClient()
-  const classes = useQuery({ queryKey: ['classes'], queryFn: () => fetchClasses() })
-  // 대시보드 링크는 반·날짜를 주소로 넘긴다
-  const [params] = useSearchParams()
-  const [classId, setClassId] = useState<number | null>(Number(params.get('class')) || null)
-  const [date, setDate] = useState(params.get('date') || today())
-  const activeClassId = classId ?? classes.data?.[0]?.id ?? null
+  const { classId: activeClassId, date, guard } = useDailySelection()
 
   const daily = useQuery({
     queryKey: ['daily', activeClassId, date],
@@ -76,8 +68,10 @@ export function DailyPage() {
     setNotes(EMPTY_NOTES)
   }, [activeClassId, date])
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['daily', activeClassId, date] })
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['daily-calendar', activeClassId] })
+    return queryClient.invalidateQueries({ queryKey: ['daily', activeClassId, date] })
+  }
 
   const saveRecords = useMutation({
     mutationFn: () => saveDailyRecords(session!.id, Object.values(drafts)),
@@ -105,6 +99,14 @@ export function DailyPage() {
 
   const dirty = Object.keys(drafts).length > 0 || Object.keys(notes).length > 0
 
+  // 반·날짜·탭을 바꾸기 전에 머리말이 묻는다(FR-14 상세)
+  useEffect(() => {
+    guard.current = () => !dirty || window.confirm('저장하지 않은 입력이 있습니다. 이동할까요?')
+    return () => {
+      guard.current = null
+    }
+  }, [dirty, guard])
+
   function patch(studentId: number, change: Omit<RecordPatch, 'student_id'>) {
     setDrafts((current) => ({
       ...current,
@@ -117,43 +119,11 @@ export function DailyPage() {
     return draft && field in draft ? draft[field] : (record[field as keyof DailyRecord] as never)
   }
 
-  function change(next: { classId?: number; date?: string }) {
-    if (dirty && !window.confirm('저장하지 않은 입력이 있습니다. 이동할까요?')) {
-      return
-    }
-    if (next.classId !== undefined) setClassId(next.classId)
-    if (next.date !== undefined) setDate(next.date)
-  }
-
   const locked = Boolean(session?.attendance_confirmed_at)
   const [nudge, setNudge] = useState(0)
 
   return (
-    <section>
-      <PageHeader title="일일 수업 & 성적 입력">
-        <Field label="반" htmlFor="daily-class">
-          <Select
-            id="daily-class"
-            value={activeClassId ?? ''}
-            onChange={(event) => change({ classId: Number(event.target.value) })}
-          >
-            {classes.data?.map((klass) => (
-              <option key={klass.id} value={klass.id}>
-                {klass.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="날짜" htmlFor="daily-date">
-          <Input
-            id="daily-date"
-            type="date"
-            className="w-40"
-            value={date}
-            onChange={(event) => change({ date: event.target.value })}
-          />
-        </Field>
-      </PageHeader>
+    <>
 
       {daily.data && (
         <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -286,15 +256,7 @@ export function DailyPage() {
               </TableBody>
             </Table>
           </KeyboardGrid>
-          {daily.data?.records.length === 0 && (
-            <p className="px-5 py-6 text-sm text-muted-fg">
-              이 날짜에 이 반에 배정된 학생이 없습니다.{' '}
-              <Link to="/students/classes" className="font-medium text-brand underline">
-                학생/반 관리 → 반
-              </Link>{' '}
-              탭의 [명단]에서 배정하세요.
-            </p>
-          )}
+          {daily.data?.records.length === 0 && <EmptyRosterNotice />}
         </CardContent>
       </Card>
 
@@ -383,6 +345,6 @@ export function DailyPage() {
           </div>
         </CardContent>
       </Card>
-    </section>
+    </>
   )
 }

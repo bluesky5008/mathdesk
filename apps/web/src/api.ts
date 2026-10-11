@@ -336,6 +336,43 @@ export function setAttendanceConfirmed(sessionId: number, confirmed: boolean): P
   })
 }
 
+/** 그 달의 기록이 있는 수업 날짜(FR-46). 시간표 요일은 `fetchClasses`의 `schedules`로 안다 */
+export type DailyCalendar = { recorded_dates: string[] }
+
+export function fetchDailyCalendar(classId: number, month: string): Promise<DailyCalendar> {
+  return request<DailyCalendar>(`/daily/calendar?class_id=${classId}&month=${month}`)
+}
+
+export type DailyHistoryRow = {
+  date: string
+  attendance_status: string
+  attendance_reason: string | null
+  recheck: Recheck
+  homework_grade: string | null
+  test_name: string | null
+  test_score_num: string | number | null
+  class_average: number | null
+  comment: string | null
+}
+
+/** 한 학생의 날짜별 기록(FR-45) — `to`까지 기록이 있는 수업 최근 `limit`회, 최신 순 */
+export type DailyHistory = {
+  student: { id: number; name: string }
+  klass: { id: number; name: string }
+  rows: DailyHistoryRow[]
+}
+
+export function fetchDailyHistory(
+  classId: number,
+  studentId: number,
+  to: string,
+  limit = 20,
+): Promise<DailyHistory> {
+  return request<DailyHistory>(
+    `/daily/history?class_id=${classId}&student_id=${studentId}&to=${to}&limit=${limit}`,
+  )
+}
+
 export type Dashboard = {
   campus: { enrolled_students: number; active_classes: number }
   attendance: {

@@ -3,10 +3,11 @@ import re
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Annotated
+from fastapi import Query
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import or_, select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
@@ -123,6 +124,28 @@ class DailyOut(BaseModel):
     session: SessionOut
     records: list[RecordOut]
     summary: SummaryOut
+
+
+class CalendarOut(BaseModel):
+    recorded_dates: list[date]
+
+
+class HistoryRow(BaseModel):
+    date: date
+    attendance_status: str
+    attendance_reason: str | None
+    recheck: RecheckOut
+    homework_grade: str | None
+    test_name: str | None
+    test_score_num: Decimal | None
+    class_average: float | None
+    comment: str | None
+
+
+class HistoryOut(BaseModel):
+    student: dict[str, str | int]
+    klass: dict[str, str | int]
+    rows: list[HistoryRow]
 
 
 def _forbidden() -> HTTPException:
@@ -294,6 +317,23 @@ async def _build_response(
     )
 
 
+def _recorded_sessions(class_id: int):
+    """기록이 있는 세션(DES-05 상세). `GET /daily`는 조회만 해도 세션을 만들므로
+    학생 기록·진도·메모·출결 확정 중 하나라도 있어야 수업으로 센다."""
+    return select(ClassSession).where(
+        ClassSession.class_id == class_id,
+        or_(
+            exists().where(StudentDailyRecord.session_id == ClassSession.id),
+            exists().where(ClassSessionProgress.session_id == ClassSession.id),
+            ClassSession.homework.is_not(None),
+            ClassSession.video_url.is_not(None),
+            ClassSession.teacher_note.is_not(None),
+            ClassSession.test_name.is_not(None),
+            ClassSession.attendance_confirmed_at.is_not(None),
+        ),
+    )
+
+
 async def _record_for(
     session: AsyncSession, session_id: int, student_id: int
 ) -> StudentDailyRecord:
@@ -419,3 +459,121 @@ async def unlock_attendance(
     session_id: int, scope: CurrentScope, session: Db
 ) -> DailyOut:
     return await _set_confirmation(session, scope, session_id, confirmed=False)
+
+
+@router.get("/calendar")
+async def read_calendar(
+    class_id: int,
+    month: Annotated[str, Query(pattern=r"^\d{4}-\d{2}$")],
+    scope: CurrentScope,
+    session: Db,
+) -> CalendarOut:
+    """그 달의 기록이 있는 수업 날짜(FR-46). 시간표 요일은 화면이 `GET /classes`로 안다."""
+    await _visible_class(session, scope, class_id)
+    try:
+        first = date.fromisoformat(f"{month}-01")
+    except ValueError as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "월 형식은 YYYY-MM입니다.") from error
+    following = date(first.year + first.month // 12, first.month % 12 + 1, 1)
+    dates = await session.scalars(
+        _recorded_sessions(class_id)
+        .with_only_columns(ClassSession.session_date)
+        .where(ClassSession.session_date >= first, ClassSession.session_date < following)
+        .order_by(ClassSession.session_date)
+    )
+    return CalendarOut(recorded_dates=list(dates))
+
+
+@router.get("/history")
+async def read_history(
+    class_id: int,
+    student_id: int,
+    scope: CurrentScope,
+    session: Db,
+    to: date | None = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> HistoryOut:
+    """한 학생의 날짜별 기록(FR-45). 그 학생이 배정되어 있던, 기록이 있는 수업만 최신 순."""
+    klass = await _visible_class(session, scope, class_id)
+    student = await session.get(Student, student_id)
+    enrolled = await session.scalar(
+        select(Enrollment.id).where(
+            Enrollment.class_id == class_id, Enrollment.student_id == student_id
+        )
+    )
+    if student is None or enrolled is None:
+        raise _forbidden()
+    anchor = to or date.today()
+
+    sessions = list(
+        await session.scalars(
+            _recorded_sessions(class_id)
+            .join(
+                Enrollment,
+                (Enrollment.class_id == ClassSession.class_id)
+                & (Enrollment.student_id == student_id)
+                & (Enrollment.start_date <= ClassSession.session_date)
+                & or_(
+                    Enrollment.end_date.is_(None),
+                    Enrollment.end_date >= ClassSession.session_date,
+                ),
+            )
+            .where(ClassSession.session_date <= anchor)
+            .order_by(ClassSession.session_date.desc())
+            .limit(limit)
+        )
+    )
+    session_ids = [row.id for row in sessions]
+    scores: dict[int, list[float]] = {}
+    mine: dict[int, StudentDailyRecord] = {}
+    for record in await session.scalars(
+        select(StudentDailyRecord).where(StudentDailyRecord.session_id.in_(session_ids))
+    ):
+        if record.test_score_num is not None:
+            scores.setdefault(record.session_id, []).append(float(record.test_score_num))
+        if record.student_id == student_id:
+            mine[record.session_id] = record
+    # 재검사 판정은 저장값이 아니라 날짜마다 직전 등급으로 계산한다(DES-05 상세)
+    graded = list(
+        await session.execute(
+            select(ClassSession.session_date, StudentDailyRecord.homework_grade)
+            .join(ClassSession, ClassSession.id == StudentDailyRecord.session_id)
+            .where(
+                ClassSession.class_id == class_id,
+                StudentDailyRecord.student_id == student_id,
+                StudentDailyRecord.homework_grade.is_not(None),
+            )
+            .order_by(ClassSession.session_date.desc())
+        )
+    )
+
+    rows = []
+    for row in sessions:
+        record = mine.get(row.id)
+        prev_grade, prev_date = next(
+            ((grade, on) for on, grade in graded if on < row.session_date), (None, None)
+        )
+        averages = scores.get(row.id)
+        rows.append(
+            HistoryRow(
+                date=row.session_date,
+                attendance_status=record.attendance_status if record else "unchecked",
+                attendance_reason=record.attendance_reason if record else None,
+                recheck=RecheckOut(
+                    target=_is_recheck_target(prev_grade),
+                    prev_grade=prev_grade,
+                    prev_date=prev_date,
+                    result=record.recheck_result if record else None,
+                ),
+                homework_grade=record.homework_grade if record else None,
+                test_name=row.test_name,
+                test_score_num=record.test_score_num if record else None,
+                class_average=round(sum(averages) / len(averages), 1) if averages else None,
+                comment=record.comment if record else None,
+            )
+        )
+    return HistoryOut(
+        student={"id": student.id, "name": student.name},
+        klass={"id": klass.id, "name": klass.name},
+        rows=rows,
+    )

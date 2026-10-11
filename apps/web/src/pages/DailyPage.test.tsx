@@ -1,13 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import type { Daily } from '../api'
+import { DailyLayout } from './DailyLayout'
 import { DailyPage } from './DailyPage'
+import { StudentDailyPage } from './StudentDailyPage'
 
-const classes = [{ id: 1, name: '고2 윤B', grade: '고2', teacher_id: 1, is_active: true, schedules: [] }]
+// 시간표는 월요일(weekday 0) — 달력에서 월요일이 수업일로 굵어진다(AC-46)
+const classes = [
+  { id: 1, name: '고2 윤B', grade: '고2', teacher_id: 1, is_active: true, schedules: [{ weekday: 0, start_time: '16:00' }] },
+]
 
 function makeRecord(id: number, name: string) {
   return {
@@ -49,6 +54,8 @@ beforeEach(() => {
     vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.body) calls.push({ url, body: JSON.parse(String(init.body)) })
       if (url.includes('/classes')) return Response.json(classes)
+      if (url.includes('/daily/calendar')) return Response.json({ recorded_dates: ['2026-09-19'] })
+      if (url.includes('/daily/history')) return Response.json({ student: { id: 1, name: '학생1' }, klass: { id: 1, name: '고2 윤B' }, rows: [] })
       return Response.json(daily)
     }),
   )
@@ -61,7 +68,12 @@ function renderPage(path = '/daily') {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
-        <DailyPage />
+        <Routes>
+          <Route path="/daily" element={<DailyLayout />}>
+            <Route index element={<DailyPage />} />
+            <Route path="students" element={<StudentDailyPage />} />
+          </Route>
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -72,7 +84,7 @@ it('opens the class and date given in the address', async () => {
   renderPage('/daily?class=1&date=2026-09-18')
 
   await screen.findByRole('row', { name: /학생1\b/ })
-  expect(screen.getByLabelText('날짜')).toHaveValue('2026-09-18')
+  expect(screen.getByLabelText('날짜')).toHaveTextContent('2026-09-18')
   expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/daily?class_id=1&date=2026-09-18', expect.anything())
 })
 
@@ -232,4 +244,58 @@ it('saves the test name from the progress card without a max-score field', async
   await userEvent.click(screen.getByRole('button', { name: '메모 저장' }))
 
   expect(calls.find((call) => call.url === '/api/daily/9/notes')?.body).toMatchObject({ test_name: '4차연합고사' })
+})
+
+// DCR-020 / AC-45 ①⑤: 반별·학생별 탭, 선택은 주소 쿼리로 공유
+it('opens on the class tab and carries class and date into the student tab link', async () => {
+  renderPage('/daily?class=1&date=2026-09-18')
+  await screen.findByRole('row', { name: /학생1\b/ })
+
+  expect(screen.getByRole('link', { name: '반별 정보' })).toHaveAttribute('aria-current', 'page')
+  expect(screen.getByRole('link', { name: '학생별 정보' })).toHaveAttribute(
+    'href',
+    '/daily/students?class=1&date=2026-09-18',
+  )
+  expect(screen.getByRole('button', { name: '표 저장' })).toBeInTheDocument()
+})
+
+it('asks before leaving the class tab with unsaved input', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(false)
+  renderPage('/daily?class=1&date=2026-09-18')
+  await userEvent.type(await screen.findByLabelText('오늘의 과제'), '기출')
+
+  await userEvent.click(screen.getByRole('link', { name: '학생별 정보' }))
+
+  expect(window.confirm).toHaveBeenCalled()
+  expect(screen.getByLabelText('오늘의 과제')).toHaveValue('기출')
+})
+
+// DCR-020 / AC-46: 달력에서 시간표 요일과 기록이 있는 날이 굵고, 기록이 있는 날은 점
+it('opens a month calendar that emphasizes timetable weekdays and recorded days', async () => {
+  renderPage('/daily?class=1&date=2026-09-18')
+  await screen.findByRole('row', { name: /학생1\b/ })
+
+  await userEvent.click(screen.getByLabelText('날짜'))
+
+  expect(await screen.findByRole('button', { name: '9월 19일 수업일 기록 있음' })).toHaveClass('font-bold')
+  expect(screen.getByRole('button', { name: '9월 14일 수업일' })).toHaveClass('font-bold')
+  expect(screen.getByRole('button', { name: '9월 15일' })).not.toHaveClass('font-bold')
+  expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/daily/calendar?class_id=1&month=2026-09', expect.anything())
+
+  await userEvent.click(screen.getByRole('button', { name: '9월 21일 수업일' }))
+
+  expect(screen.getByLabelText('날짜')).toHaveTextContent('2026-09-21')
+  expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/daily?class_id=1&date=2026-09-21', expect.anything())
+})
+
+it('keeps the date when the unsaved-input warning is declined', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(false)
+  renderPage('/daily?class=1&date=2026-09-18')
+  await userEvent.type(await screen.findByLabelText('오늘의 과제'), '기출')
+
+  await userEvent.click(screen.getByLabelText('날짜'))
+  await userEvent.click(await screen.findByRole('button', { name: '9월 21일 수업일' }))
+
+  expect(screen.getByLabelText('날짜')).toHaveTextContent('2026-09-18')
+  expect(vi.mocked(fetch)).not.toHaveBeenCalledWith('/api/daily?class_id=1&date=2026-09-21', expect.anything())
 })
