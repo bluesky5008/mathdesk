@@ -1,0 +1,425 @@
+<title>mathdesk 도메인 준비</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ink: #1d2530;
+    --muted: #5b6676;
+    --line: #d8dde4;
+    --ground: #f5f7f9;
+    --surface: #ffffff;
+    --accent: #1f6f78;
+    --accent-soft: #e3f0f1;
+    --both: #8a5a12;
+    --both-soft: #f6eedd;
+    --dev: #4a5568;
+    --dev-soft: #e9ecf1;
+    --warn: #9a3b2a;
+    --warn-soft: #f7e9e5;
+    --code-bg: #eef1f4;
+    --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e6eaf0;
+      --muted: #9aa4b2;
+      --line: #2c3440;
+      --ground: #12161c;
+      --surface: #1a2028;
+      --accent: #6cbcc4;
+      --accent-soft: #1b3033;
+      --both: #e2b46a;
+      --both-soft: #33291a;
+      --dev: #b4bfcf;
+      --dev-soft: #252c37;
+      --warn: #e59a88;
+      --warn-soft: #3a2420;
+      --code-bg: #10141a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e6eaf0;
+    --muted: #9aa4b2;
+    --line: #2c3440;
+    --ground: #12161c;
+    --surface: #1a2028;
+    --accent: #6cbcc4;
+    --accent-soft: #1b3033;
+    --both: #e2b46a;
+    --both-soft: #33291a;
+    --dev: #b4bfcf;
+    --dev-soft: #252c37;
+    --warn: #e59a88;
+    --warn-soft: #3a2420;
+    --code-bg: #10141a;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    padding-inline: 16px;
+    padding-block: 32px 64px;
+    word-break: keep-all;
+  }
+  .page { max-width: 780px; margin: 0 auto; display: grid; gap: 44px; }
+
+  header { display: grid; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+  .eyebrow { font-size: 13px; letter-spacing: 0.08em; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(26px, 5vw, 34px); line-height: 1.3; margin: 0; font-weight: 700; text-wrap: balance; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); font-size: 14px; }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  section { display: grid; gap: 16px; }
+  h2 { font-size: 21px; margin: 0; font-weight: 700; text-wrap: balance; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+  h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
+  h3 { font-size: 17px; margin: 0; font-weight: 600; text-wrap: balance; }
+  p { margin: 0; max-width: 68ch; }
+  .lead p + p { margin-top: 12px; }
+  strong { font-weight: 600; }
+  .muted { color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  /* 누가 하는 단계인지: 색과 글자 둘 다로 구분한다 */
+  .who { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; border-radius: 999px; padding: 1px 10px; white-space: nowrap; }
+  .who.client { background: var(--accent-soft); color: var(--accent); }
+  .who.both { background: var(--both-soft); color: var(--both); }
+  .who.dev { background: var(--dev-soft); color: var(--dev); }
+  .time { color: var(--muted); font-weight: 400; font-size: 14px; }
+
+  /* 한눈에 보기 */
+  ol.flow { list-style: none; margin: 0; padding: 0; display: grid; counter-reset: step; }
+  ol.flow li {
+    counter-increment: step; display: grid; grid-template-columns: 40px 1fr; gap: 2px 12px;
+    padding: 14px 0; border-top: 1px solid var(--line);
+  }
+  ol.flow li:last-child { border-bottom: 1px solid var(--line); }
+  ol.flow li::before {
+    content: counter(step); grid-row: span 2; width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 14px; font-weight: 600;
+    background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+  .flow-title { font-weight: 600; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+
+  .note { background: var(--accent-soft); border-radius: var(--radius); padding: 14px 16px; font-size: 15px; display: grid; gap: 6px; }
+  .note.warn { background: var(--warn-soft); }
+  .note.warn strong { color: var(--warn); }
+  .note.both { background: var(--both-soft); }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; background: var(--ground); white-space: nowrap; }
+  td.amount { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* 단계 카드: 보는 사람이 직접 체크하며 진행한다 */
+  .task { display: grid; gap: 12px; padding: 18px 18px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .task-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+  .task-list { display: grid; gap: 12px; }
+  ul.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  ul.check > li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; }
+  ul.check input { width: 18px; height: 18px; margin: 4px 0 0; accent-color: var(--accent); }
+  ul.check label { cursor: pointer; }
+  ul.check input:checked + label { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+  ul.check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .detail { display: grid; gap: 4px; margin-top: 4px; padding-left: 12px; border-left: 2px solid var(--line); color: var(--muted); font-size: 15px; }
+  .detail b { color: var(--ink); font-weight: 600; }
+  .progress { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .progress b { color: var(--accent); }
+
+  .ui { font-weight: 600; color: var(--ink); background: var(--ground); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .ui small { font-weight: 400; color: var(--muted); font-size: 12px; }
+  code { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 14px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; overflow-wrap: anywhere; }
+
+  /* 그리드 칸은 기본 min-width가 내용 폭이라 코드 블록이 페이지를 밀어낸다 */
+  .page > *, section > *, .task > *, .task-list > *, .dev-body > *, ul.check label { min-width: 0; }
+  ul.check label { display: block; }
+  .code { position: relative; display: grid; min-width: 0; max-width: 100%; }
+  pre { margin: 0; overflow-x: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.6; }
+  pre .c { color: var(--muted); }
+  .copy {
+    position: absolute; top: 6px; right: 6px; font: inherit; font-size: 12px; font-weight: 600;
+    color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; cursor: pointer;
+  }
+  .copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  details.dev-part { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  details.dev-part > summary { cursor: pointer; padding: 14px 18px; font-weight: 600; list-style-position: inside; }
+  details.dev-part > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dev-body { display: grid; gap: 16px; padding: 0 18px 18px; }
+
+  ul.facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  ul.facts li { padding-left: 14px; border-left: 3px solid var(--line); }
+  footer { border-top: 1px solid var(--line); padding-top: 20px; display: grid; gap: 6px; }
+  footer .sign { font-weight: 600; }
+
+  @media (max-width: 520px) {
+    body { font-size: 15px; }
+    th, td { padding: 9px 10px; }
+    .task { padding: 16px 14px 14px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    ul.check label { transition: color 0.15s; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">mathdesk · 정식 서버 준비</div>
+    <h1>인터넷 주소(도메인) 사기와 연결 순서</h1>
+    <div class="meta">
+      <span>작성일 <b>2026-10-11</b></span>
+      <span>받는 분 <b>핑수</b></span>
+      <span>보내는 사람 <b>용스</b></span>
+    </div>
+  </header>
+
+  <section class="lead">
+    <p>핑수님, 정식 서버의 인터넷 주소(예: <code>pingsumath.com</code>)를 사고, 그 주소로 들어오면 AWS 서버의 mathdesk가 열리도록 연결하는 순서입니다. 지난번 "정식 운영 준비 안내"의 ①(도메인 사기)과 ②(Cloudflare 가입)를 풀어 쓴 것입니다.</p>
+    <p><strong>주소와 Cloudflare 계정은 모두 핑수님 명의</strong>로 만듭니다. 저는 핑수님 Cloudflare 계정에 관리자로 초대받아 서버와 주소를 잇는 작업만 합니다. AWS 준비와는 따로 진행해도 되니, 편하실 때 먼저 하셔도 됩니다.</p>
+    <p class="meta">
+      <span><span class="who client">핑수님</span> 혼자 하시는 단계</span>
+      <span><span class="who dev">용스</span> 제가 하는 단계</span>
+    </p>
+  </section>
+
+  <section id="flow">
+    <h2><span class="n">1</span>한눈에 보기</h2>
+    <ol class="flow">
+      <li><div class="flow-title">주소 이름 정하기 <span class="who client">핑수님</span> <span class="time">편하실 때</span></div><p>짧고 받아 적기 쉬운 이름으로 정합니다.</p></li>
+      <li><div class="flow-title">Cloudflare 가입 <span class="who client">핑수님</span> <span class="time">10분</span></div><p>주소에 보안 연결(https)을 붙이고 서버와 이어 주는 무료 서비스입니다.</p></li>
+      <li><div class="flow-title">주소 사기 <span class="who client">핑수님</span> <span class="time">10~20분, 연결 확인까지 최대 하루</span></div><p><strong>.com이면 Cloudflare에서</strong>, <strong>.kr·한글 주소면 가비아에서</strong> 삽니다. 아래 표를 보고 하나를 고르세요.</p></li>
+      <li><div class="flow-title">용스를 관리자로 초대 <span class="who client">핑수님</span> <span class="time">5분</span></div><p>초대 메일 한 통이면 됩니다.</p></li>
+      <li><div class="flow-title">서버와 주소 잇기 <span class="who dev">용스</span> <span class="time">서버 설치하는 날</span></div><p>주소로 들어오면 서버가 열리도록 연결하고 확인합니다.</p></li>
+    </ol>
+  </section>
+
+  <section id="choose">
+    <h2><span class="n">2</span>어디서 살까요</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>A. Cloudflare에서 사기</th><th>B. 가비아에서 사기</th></tr></thead>
+        <tbody>
+          <tr><td>살 수 있는 주소</td><td><code>.com</code> <code>.net</code> 등<br><span class="muted">.kr, .co.kr, 한글 주소는 팔지 않습니다</span></td><td><code>.com</code> <code>.kr</code> <code>.co.kr</code> 한글.kr 등</td></tr>
+          <tr><td>1년 요금</td><td class="amount">약 10.5달러 (약 1.5만 원)<br><span class="muted">다음 해도 같은 값</span></td><td class="amount">.kr·.co.kr 첫해 약 1.65만 원<br>.com 첫해 약 1.98만 원<br><span class="muted">다음 해부터 정가(약 2.3만~2.6만 원)</span></td></tr>
+          <tr><td>결제</td><td>해외 결제 카드(달러)</td><td>국내 카드·계좌이체(원화)</td></tr>
+          <tr><td>화면</td><td>영어 위주</td><td>한국어</td></tr>
+          <tr><td>할 일</td><td><strong>사면 끝</strong>. 바로 Cloudflare에 연결됩니다</td><td>산 뒤 가비아에서 <strong>네임서버</strong>를 Cloudflare 값으로 바꾸는 단계가 하나 더 있습니다</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><span><strong>권하는 쪽: .com이면 A.</strong> 단계가 적고 매년 같은 값입니다. <code>.kr</code>이나 한글 주소를 원하시면 B로 하시면 됩니다. 둘 다 결과는 같습니다.</span></p>
+  </section>
+
+  <section id="client">
+    <h2><span class="n">3</span>핑수님께서 하실 일 <span class="progress" id="progress-client"></span></h2>
+
+    <p class="note warn"><span><strong>Cloudflare·가비아 비밀번호와 인증번호는 저에게도 보내지 말아 주세요.</strong> 저는 제 Cloudflare 계정으로 초대만 받으면 됩니다.</span></p>
+
+    <div class="task-list">
+      <div class="task">
+        <div class="task-head"><h3>① 주소 이름 정하기</h3><span class="who client">핑수님</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c-name-1"><label for="c-name-1">짧고, 말로 불러 줘도 받아 적기 쉬운 이름으로 2~3개 후보를 정합니다. 예: <code>pingsumath.com</code>, <code>pingsu.kr</code>
+            <span class="detail"><span>이 주소는 핑수님과 선생님들이 로그인할 때 쓰는 주소입니다. 학부모님께 보내는 문자에는 들어가지 않습니다.</span><span>영문 소문자, 숫자, 하이픈(-)만 쓸 수 있습니다. 하이픈은 말로 전하기 헷갈리니 되도록 피하세요.</span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>② Cloudflare 가입</h3><span class="who client">핑수님</span><span class="time">10분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c-cf-1"><label for="c-cf-1"><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com/sign-up</a>에서 이메일과 비밀번호로 가입합니다. 요금제를 물으면 <strong>무료(Free)</strong>를 고릅니다.</label></li>
+          <li><input type="checkbox" id="c-cf-2"><label for="c-cf-2">받은 메일의 <strong>이메일 인증 링크</strong>를 누릅니다. 인증하지 않으면 주소 구입과 저 초대가 안 됩니다.</label></li>
+          <li><input type="checkbox" id="c-cf-3"><label for="c-cf-3">오른쪽 위 사람 아이콘 → <span class="ui">My Profile</span> → <span class="ui">Authentication</span>에서 <strong>2단계 인증</strong>을 켭니다. AWS 때 설치한 인증 앱을 그대로 쓰시면 됩니다.</label></li>
+        </ul>
+      </div>
+
+      <div class="task" data-path="a">
+        <div class="task-head"><h3>③-A Cloudflare에서 .com 사기</h3><span class="who client">핑수님</span><span class="time">10분</span><span class="muted">A를 고르신 경우</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c-a-1"><label for="c-a-1">왼쪽 메뉴 <span class="ui">Domain Registration</span> → <span class="ui">Register Domains</span>로 갑니다. 바로 가기: <a href="https://dash.cloudflare.com/?to=/:account/registrar/register" target="_blank" rel="noopener">도메인 등록 화면</a></label></li>
+          <li><input type="checkbox" id="c-a-2"><label for="c-a-2">①에서 정한 이름을 검색하고, 살 수 있다고 나오면 <span class="ui">Purchase</span>를 누릅니다. 기간은 <strong>1년</strong>이면 충분합니다.</label></li>
+          <li><input type="checkbox" id="c-a-3"><label for="c-a-3">연락처(Contact)를 <strong>영문으로</strong> 넣습니다. 이름, 영문 주소(juso.go.kr에서 검색), 전화번호 <code>+82.1012345678</code> 형식.
+            <span class="detail"><span>한글을 넣으면 넘어가지 않습니다. 주소 소유자 정보라 실제 정보를 넣어 주세요. 공개 조회에서는 시·도와 국가 정도만 보이고 나머지는 가려집니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-a-4"><label for="c-a-4">카드를 넣고 <span class="ui">Complete purchase</span>를 누릅니다. 30초쯤 뒤 등록 완료 메일이 옵니다.</label></li>
+          <li><input type="checkbox" id="c-a-5"><label for="c-a-5"><strong>주소 소유자 확인 메일</strong>(ICANN 이메일 인증)이 따로 오면 꼭 링크를 눌러 주세요.
+            <span class="detail"><span>인증하지 않으면 주소가 정지되고 사이트가 열리지 않습니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-a-6"><label for="c-a-6">자동 갱신은 기본으로 켜져 있습니다. 그대로 두세요. 갱신을 놓치면 주소를 잃을 수 있습니다.</label></li>
+        </ul>
+        <p class="muted">A로 사셨다면 ③-B는 건너뛰고 ④로 가시면 됩니다. Cloudflare에서 산 주소는 따로 연결할 필요가 없습니다.</p>
+      </div>
+
+      <div class="task" data-path="b">
+        <div class="task-head"><h3>③-B 가비아에서 사고 Cloudflare에 연결하기</h3><span class="who client">핑수님</span><span class="time">20분, 연결 확인까지 최대 하루</span><span class="muted">B를 고르신 경우</span></div>
+        <p><strong>가비아에서 사기</strong></p>
+        <ul class="check">
+          <li><input type="checkbox" id="c-b-1"><label for="c-b-1"><a href="https://domain.gabia.com" target="_blank" rel="noopener">domain.gabia.com</a>에서 회원 가입(본인인증) 후 이름을 검색해 1년으로 결제합니다.
+            <span class="detail"><span>.kr과 .co.kr은 대한민국 주소가 있는 개인이면 사업자등록 없이 살 수 있습니다.</span><span>결제 화면에 함께 파는 부가 서비스(호스팅, 메일 등)는 필요 없습니다.</span></span></label></li>
+        </ul>
+        <p><strong>Cloudflare에 주소 추가</strong></p>
+        <ul class="check">
+          <li><input type="checkbox" id="c-b-2"><label for="c-b-2">Cloudflare 첫 화면 <span class="ui">Domains</span> → <span class="ui">Onboard a domain</span>에 산 주소(예: <code>pingsu.kr</code>, 앞에 www 없이)를 넣고 계속합니다.</label></li>
+          <li><input type="checkbox" id="c-b-3"><label for="c-b-3">기존 설정을 읽어 오는 화면은 그대로 넘어갑니다. 요금제는 <strong>Free</strong>를 고릅니다.</label></li>
+          <li><input type="checkbox" id="c-b-4"><label for="c-b-4">화면에 나온 <strong>네임서버 2개</strong>(예: <code>ada.ns.cloudflare.com</code>, <code>bob.ns.cloudflare.com</code>)를 적어 두거나 창을 열어 둡니다. 사람마다 값이 다르니 꼭 화면에 나온 값을 쓰세요.</label></li>
+        </ul>
+        <p><strong>가비아에서 네임서버 바꾸기</strong></p>
+        <ul class="check">
+          <li><input type="checkbox" id="c-b-5"><label for="c-b-5">가비아 로그인 → 오른쪽 위 <span class="ui">My가비아</span> → <span class="ui">서비스 관리</span> → <span class="ui">도메인 통합 관리툴</span>로 갑니다.</label></li>
+          <li><input type="checkbox" id="c-b-6"><label for="c-b-6"><span class="ui">도메인 정보 변경</span>에서 산 주소를 고르고 <span class="ui">네임서버</span>를 누릅니다.</label></li>
+          <li><input type="checkbox" id="c-b-7"><label for="c-b-7">들어 있던 값을 모두 지우고 Cloudflare 네임서버 두 개를 <strong>1차, 2차</strong> 칸에 그대로 넣습니다. 3차 이하는 비웁니다.</label></li>
+          <li><input type="checkbox" id="c-b-8"><label for="c-b-8">소유자 인증(이메일 또는 휴대폰)을 하고 적용합니다.
+            <span class="detail"><span>같은 관리툴에 <b>DNSSEC</b>이 켜져 있으면 먼저 꺼 주세요. 켜진 채로 바꾸면 주소가 열리지 않습니다. 따로 신청하지 않으셨다면 꺼져 있습니다.</span></span></label></li>
+        </ul>
+        <p><strong>연결 확인</strong></p>
+        <ul class="check">
+          <li><input type="checkbox" id="c-b-9"><label for="c-b-9">Cloudflare에서 주소 상태가 "Pending Nameserver Update"(네임서버 변경 대기)로 보이다가, 보통 몇 시간, 길면 하루 안에 <strong>Active</strong>로 바뀌고 메일이 옵니다.
+            <span class="detail"><span>28일 안에 Active가 되지 않으면 Cloudflare가 주소를 목록에서 지웁니다. 하루가 지나도 그대로면 저에게 알려 주세요.</span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>④ 용스를 관리자로 초대</h3><span class="who client">핑수님</span><span class="time">5분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c-inv-1"><label for="c-inv-1">왼쪽 메뉴 <span class="ui">Manage Account</span> → <span class="ui">Members</span> → <span class="ui">Invite</span>를 누릅니다.</label></li>
+          <li><input type="checkbox" id="c-inv-2"><label for="c-inv-2">이메일에 제 Cloudflare 이메일을 넣고, 범위(Scope)는 <strong>계정 전체</strong>, 역할(Role)은 <strong>Administrator</strong>를 고른 뒤 <span class="ui">Invite</span>를 누릅니다.
+            <span class="detail"><span><b>Super Administrator는 고르지 마세요.</b> Administrator는 주소와 연결 설정만 다룰 수 있고, 결제나 멤버 관리는 할 수 없습니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-inv-3"><label for="c-inv-3">초대했다고 저에게 알려 주세요. 제가 초대 메일에서 수락합니다.</label></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="dev">
+    <h2><span class="n">4</span>제가 하는 일 <span class="who dev">용스</span></h2>
+    <p>핑수님은 이 장을 읽지 않으셔도 됩니다. 서버를 설치하는 날(AWS 안내문의 D단계) 함께 합니다.</p>
+
+    <details class="dev-part" id="dev-steps">
+      <summary>서버와 주소 잇는 순서 펼치기 <span class="progress" id="progress-dev"></span></summary>
+      <div class="dev-body">
+        <p class="note"><span><strong>터널은 핑수님 계정 안에 만든다.</strong> 터널로 가는 CNAME은 같은 Cloudflare 계정의 DNS 레코드만 프록시하므로, 내 계정의 터널로는 이 주소를 받을 수 없다. 대시보드에서 만드는 원격 관리형 터널을 쓴다. 서버에는 토큰 하나만 두면 되고(계정 인증서 <code>cert.pem</code> 불필요), 내 기존 <code>cert.pem</code>과도 충돌하지 않는다. 멤버 권한을 회수해도 터널은 계속 돈다.</span></p>
+        <h3>A. 터널 만들기</h3>
+        <ul class="check">
+          <li><input type="checkbox" id="d-accept"><label for="d-accept">초대 메일 수락 → 대시보드 왼쪽 위 계정 전환에서 핑수님 계정 선택.</label></li>
+          <li><input type="checkbox" id="d-create"><label for="d-create"><span class="ui">Networking → Tunnels → Create Tunnel</span>, 종류 <code>Cloudflared</code>, 이름 <code>mathdesk-prod</code>. 설치 명령에 나오는 <strong>토큰</strong>만 복사한다(서버에서는 compose의 cloudflared 컨테이너가 쓰므로 설치 명령 자체는 실행하지 않는다).</label></li>
+          <li><input type="checkbox" id="d-route"><label for="d-route">터널 → <span class="ui">Routes → Add route → Published application</span>: Subdomain 비움(루트 주소), Domain 선택, Service <code>http://app:8000</code> → <span class="ui">Add route</span>. 루트가 선택되지 않으면 <code>app</code> 서브도메인을 쓴다. Free 플랜의 기본 인증서는 루트와 1단계 서브도메인까지 자동으로 덮는다.</label></li>
+        </ul>
+        <h3>B. 서버에 토큰 넣기</h3>
+        <div class="code">
+          <pre id="cmd-token"><span class="c"># 서버의 mathdesk/.env (chmod 600). 저장소·메신저로 옮기지 않는다</span>
+CLOUDFLARE_TUNNEL_TOKEN=&lt;대시보드에서 복사한 토큰&gt;
+
+<span class="c"># compose.prod.yaml의 cloudflared 서비스 (TASK-57에서 반영)</span>
+<span class="c">#   image: cloudflare/cloudflared:latest</span>
+<span class="c">#   command: tunnel --no-autoupdate run</span>
+<span class="c">#   environment:</span>
+<span class="c">#     TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}</span>
+
+docker compose -f compose.prod.yaml up -d</pre>
+          <button class="copy" type="button" data-copy="cmd-token">복사</button>
+        </div>
+        <h3>C. 확인</h3>
+        <ul class="check">
+          <li><input type="checkbox" id="d-healthy"><label for="d-healthy">대시보드 터널 상태 <strong>Healthy</strong>.</label></li>
+          <li><input type="checkbox" id="d-https"><label for="d-https"><code>https://&lt;주소&gt;/api/health</code> 200, 로그인 후 쿠키 <code>Secure</code>·<code>HttpOnly</code> 확인. 서버 방화벽에 HTTP·HTTPS 포트가 열려 있지 않은지 다시 확인(입구는 터널뿐).</label></li>
+          <li><input type="checkbox" id="d-tell"><label for="d-tell">핑수님께 주소와 Cloudflare 대시보드에서 터널 상태를 보는 위치를 알려 드리고, 작업 기록에 남긴다.</label></li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <section id="after">
+    <h2><span class="n">5</span>알아 두실 점</h2>
+    <ul class="facts">
+      <li><strong>매년 갱신:</strong> 주소는 1년마다 갱신됩니다. 자동 갱신을 켜 두시고, 등록한 카드가 바뀌면 Cloudflare(또는 가비아)에서 카드도 바꿔 주세요. 갱신을 놓쳐 주소가 만료되면 사이트가 열리지 않습니다.</li>
+      <li><strong>제 접근을 끊고 싶으실 때:</strong> Cloudflare <span class="ui">Manage Account → Members</span>에서 제 이름 → <span class="ui">Revoke</span>. 사이트는 계속 열립니다.</li>
+      <li><strong>Cloudflare 요금:</strong> 무료 플랜과 서버 연결(터널)은 무료입니다. 나가는 돈은 주소 1년 요금뿐입니다.</li>
+    </ul>
+  </section>
+
+  <section id="trouble">
+    <h2><span class="n">6</span>막힐 때</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>증상</th><th>해결</th></tr></thead>
+        <tbody>
+          <tr><td>원하는 이름이 이미 팔렸어요</td><td>①의 다른 후보를 검색하거나 끝을 바꿔 보세요(.com → .kr, 이름 뒤에 math 붙이기 등).</td></tr>
+          <tr><td>Cloudflare에서 .kr이 검색되지 않아요</td><td>Cloudflare는 .kr을 팔지 않습니다. .kr을 원하시면 B(가비아)로 하세요.</td></tr>
+          <tr><td>연락처 입력에서 넘어가지 않아요 (A)</td><td>한글이 섞여 있는지 보세요. 이름과 주소를 모두 영문으로 넣어야 합니다.</td></tr>
+          <tr><td>하루가 지나도 Pending이에요 (B)</td><td>가비아에 넣은 네임서버 두 개가 Cloudflare 화면의 값과 한 글자도 다르지 않은지, 예전 값이 3차 칸에 남아 있지 않은지, DNSSEC이 꺼져 있는지 확인해 주세요. 그래도 그대로면 화면을 같이 보겠습니다.</td></tr>
+          <tr><td>멤버 초대 버튼이 안 눌려요</td><td>Cloudflare 이메일 인증을 마치셨는지 확인해 주세요(②의 두 번째 항목).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p class="muted">이 안내는 2026년 10월 기준 Cloudflare 공식 문서(도메인 등록, 도메인 추가, 멤버 관리, 터널)와 가비아 고객센터 안내를 확인해 정리했습니다. 가비아 요금은 할인 행사에 따라 다를 수 있습니다. 화면 문구가 다르게 보이면 같은 뜻의 버튼을 눌러 주시거나 연락 주세요. 체크 표시는 이 브라우저에만 저장됩니다.</p>
+    <p class="sign">용스 드림</p>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var KEY = 'mathdesk-domain-checks';
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('ul.check input[type="checkbox"]'));
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+    function skipped(box) {
+      var card = box.closest('[data-path]');
+      if (!card) return false;
+      var picked = function (path) {
+        return boxes.some(function (b) { var c = b.closest('[data-path]'); return c && c.getAttribute('data-path') === path && b.checked; });
+      };
+      var chosen = picked('b') && !picked('a') ? 'b' : 'a';
+      return card.getAttribute('data-path') !== chosen;
+    }
+    function count(scope, el, label) {
+      var list = boxes.filter(function (b) { return b.closest(scope) && !skipped(b); });
+      var done = list.filter(function (b) { return b.checked; }).length;
+      document.getElementById(el).innerHTML = label + ' <b>' + done + '</b> / ' + list.length;
+    }
+    function render() {
+      count('#client', 'progress-client', '진행');
+      count('#dev', 'progress-dev', '진행');
+    }
+    boxes.forEach(function (box) {
+      box.checked = !!saved[box.id];
+      box.addEventListener('change', function () {
+        saved[box.id] = box.checked;
+        try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { /* 저장이 막혀도 화면은 동작한다 */ }
+        render();
+      });
+    });
+    render();
+
+    // 복사 버튼: 클립보드가 막힌 환경에서는 글을 선택해 둔다
+    Array.prototype.forEach.call(document.querySelectorAll('.copy'), function (button) {
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        var target = document.getElementById(button.getAttribute('data-copy'));
+        var text = target.innerText;
+        function selectText() {
+          var range = document.createRange();
+          range.selectNodeContents(target);
+          var selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          button.textContent = '선택됨';
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { button.textContent = '복사됨'; }, selectText);
+        } else {
+          selectText();
+        }
+        setTimeout(function () { button.textContent = '복사'; }, 1800);
+      });
+    });
+  })();
+</script>

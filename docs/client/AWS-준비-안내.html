@@ -182,7 +182,7 @@
   </header>
 
   <section class="lead">
-    <p>핑수님, 지난번 보내 드린 "정식 운영 준비 안내"의 "④ 서버(AWS) 계정 만들기"를 따라 하실 수 있게 순서대로 풀어 쓴 안내입니다.</p>
+    <p>핑수님, 지난번 보내 드린 "정식 운영 준비 안내"의 "④ 서버(AWS) 계정 만들기"를 따라 하실 수 있게 순서대로 풀어 쓴 안내입니다. 인터넷 주소(도메인)를 사고 연결하는 순서는 별도 안내문 "인터넷 주소(도메인) 사기와 연결 순서"에 있습니다.</p>
     <p><strong>AWS 계정은 핑수님 명의로 만들고 결제도 핑수님 카드로 됩니다.</strong> 저는 핑수님 계정 안에 <strong>서버만 다룰 수 있는 제 전용 사용자</strong>를 하나 받아서 그걸로 서버를 설치합니다. 나중에 제 접근을 끊고 싶으시면 그 사용자 하나만 지우시면 됩니다.</p>
     <p>각 단계 옆의 표시로 누가 하는지 구분했습니다.</p>
     <p class="meta">
@@ -355,6 +355,7 @@ sudo usermod -aG docker ubuntu   <span class="c"># 다시 로그인하면 sudo �
         <h3>D. mathdesk 설치</h3>
         <ul class="check">
           <li><input type="checkbox" id="d-clone"><label for="d-clone">저장소를 서버에서 받아 <strong>서버에서 직접 빌드</strong>한다. 서버가 x86이라 맥(arm64)에서 교차 빌드할 필요가 없다.</label></li>
+          <li><input type="checkbox" id="d-tunnel"><label for="d-tunnel">주소 연결은 별도 안내문 <strong>"인터넷 주소(도메인) 사기와 연결 순서"</strong> 4장을 따른다. 터널은 핑수님 Cloudflare 계정 안에 대시보드로 만들고, 서버에는 토큰만 둔다.</label></li>
         </ul>
         <div class="code">
           <pre id="cmd-app">git clone https://github.com/bluesky5008/mathdesk.git &amp;&amp; cd mathdesk
@@ -364,10 +365,8 @@ cp .env.example .env &amp;&amp; chmod 600 .env
 <span class="c">#   MATHDESK_INITIAL_ADMIN_*    초기 원장 계정. 이전 날 핑수님이 비밀번호를 바로 바꾼다</span>
 <span class="c">#   ALIGO_* / MATHDESK_MESSAGING_MODE=live, LLM 키   이전 날 같이 발급해 넣는다</span>
 
-<span class="c"># Cloudflare 터널: 핑수님 Cloudflare에 관리자로 초대받은 계정으로 승인</span>
-cloudflared tunnel login
-cloudflared tunnel create mathdesk-prod
-cloudflared tunnel route dns mathdesk-prod &lt;정식 도메인&gt;
+<span class="c">#   CLOUDFLARE_TUNNEL_TOKEN     핑수님 Cloudflare 계정에 만든 터널의 토큰</span>
+<span class="c">#                               (도메인 안내문 4장: Networking → Tunnels, 원격 관리형)</span>
 
 <span class="c"># 운영 구성 파일(TASK-57에서 준비)로 기동. 마이그레이션은 기동 시 자동 적용</span>
 docker compose -f compose.prod.yaml up -d --build</pre>
