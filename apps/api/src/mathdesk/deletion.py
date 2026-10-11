@@ -172,6 +172,10 @@ async def delete_class(class_id: int, scope: CurrentScope, session: Db) -> Respo
     sessions = _sessions(klass.id)
     await session.execute(delete(StudentDailyRecord).where(StudentDailyRecord.session_id.in_(sessions)))
     await session.execute(delete(ClassSessionProgress).where(ClassSessionProgress.session_id.in_(sessions)))
+    # 발송 로그는 학생 기록으로 남기고 수업 참조만 비운다(DCR-023 `message_log.session_id`)
+    await session.execute(
+        update(MessageLog).where(MessageLog.session_id.in_(sessions)).values(session_id=None)
+    )
     await session.execute(delete(ClassSession).where(ClassSession.class_id == klass.id))
     await session.execute(delete(ClassSchedule).where(ClassSchedule.class_id == klass.id))
     await session.execute(delete(Enrollment).where(Enrollment.class_id == klass.id))

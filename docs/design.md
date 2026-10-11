@@ -147,7 +147,7 @@
 - `GET …/deletion-preview`는 분류별 삭제 건수를 돌려준다(학생·반 모두 계약만 유지 — 화면은 쓰지 않는다). 학생·반 `DELETE`는 본문이 없다(와도 무시). 성공 시 `204`.
 - 한 트랜잭션에서 대상 행을 잠그고 연관 데이터 삭제 → 대상 삭제를 한다. 실패하면 전부 되돌린다.
 - 학생 삭제: `guardian`, `enrollment`, `student_daily_record`, `exam_answer`→`exam_attempt`, 매칭된 `omr_scan`과 그 `label_correction`(`source_ref=omr_scan:{id}:…`), `message_log`, `consult_log`. `stored_file`(OMR 원본 PDF)은 남긴다.
-- 반 삭제: `class_schedule`, `enrollment`, 그 반 `class_session`의 `student_daily_record`·`class_session_progress`와 세션. `exam.class_id`는 `NULL`로 바꾸고 시험·응시는 남긴다.
+- 반 삭제: `class_schedule`, `enrollment`, 그 반 `class_session`의 `student_daily_record`·`class_session_progress`와 세션. `exam.class_id`는 `NULL`로 바꾸고 시험·응시는 남긴다. `message_log`는 남기고 `session_id`만 `NULL`로 바꾼다([DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) 보정).
 - 감사 로그 `student.delete`·`class.delete`: 대상 ID와 분류별 건수, 학생은 삭제 당시 상태(`enrolled`·`paused`·`withdrawn`), 반은 삭제 당시 활성 여부(`is_active=true|false`). 이름·연락처는 쓰지 않는다.
 - 새 테이블이 `student`·`class`를 참조하게 되면 삭제 규칙에 함께 분류해야 한다(모델 외래키를 읽는 테스트가 누락을 잡는다).
 
@@ -258,7 +258,7 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | `student_daily_record` | `id`, `session_id`, `student_id`, `attendance_status`, `attendance_reason`, `homework_grade`, `recheck_result`, `test_score_num`, `test_score_text`, `comment` | `(session_id, student_id)` 유일. `comment`는 학생별 코멘트(500자 이내, NULL 허용 — [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md)) |
 | `grade_comment` | `campus_id`, `grade`, `comment_text` | 등급→문구(FR-19) |
 | `message_template` | `id`, `campus_id`, `kind`, `body`, `is_default` | |
-| `message_log` | `id`, `campus_id`, `student_id`, `recipient_type`, `recipient_phone`, `channel`, `status`, `body_snapshot`, `cost_unit`, `is_test`, `requested_at`, `result_code`, `error` | 스냅샷 불변(AC-18) |
+| `message_log` | `id`, `campus_id`, `student_id`, `session_id`, `recipient_type`, `recipient_phone`, `channel`, `status`, `body_snapshot`, `cost_unit`, `is_test`, `requested_at`, `result_code`, `error` | 스냅샷 불변(AC-18). `session_id`는 어느 수업의 발송인지(nullable, 이전 로그는 비어 있음) — 일괄 발송의 이미 보냄 판정·재개에 쓴다([DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) 보정) |
 | `consult_log` | `id`, `campus_id`, `student_id`, `consulted_on`, `content`, `follow_up`, `author_id` | |
 | `exam` | `id`, `campus_id`, `class_id`, `name`, `exam_date`, `source_file_id`, `question_count`, `max_score`, `status`, `answer_key_odd`, `answer_key_even` | 상태 `draft`·`confirmed` |
 | `exam_question` | `exam_id`, `no`, `unit`, `sub_type`, `difficulty`, `rationale`, `points`, `needs_review`, `confidence` | |
@@ -591,7 +591,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-10-11 | DES-05 상세 기록 있는 세션·학생별 이력·수업일 달력, REST `GET /daily/calendar`·`GET /daily/history`, DES-24 월 달력 | [DCR-020](./work/20260922-mathdesk-baseline/DCR-020-일일-입력-학생별-정보-탭과-수업일-달력.md) | approved 유지, 기준선 v20 → v21 | Claude / 사용자 |
 | 2026-10-11 | DES-08 상세 학생별 정보 카드 템플릿, REST `GET /daily/history-image`, `render_html` 폭 인자 | [DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md) | approved 유지, 기준선 v21 → v22 | Claude / 사용자 |
 | 2026-10-11 | DES-25 운영 서빙 신설, 보안 속성·전환 절차 운영 기준 갱신 | [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md), [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | approved 유지, 기준선 v22 → v23 | Claude / 사용자 |
-| 2026-10-11 | DES-09·DES-18 일괄 발송, REST 2건, 발송 흐름 5·6 | [DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) | approved 유지, 기준선 v23 → v24 | Claude / 사용자 |
+| 2026-10-11 | DES-09·DES-18 일괄 발송, REST 2건, 발송 흐름 5·6, `message_log.session_id`(보정) | [DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) | approved 유지, 기준선 v23 → v24 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |

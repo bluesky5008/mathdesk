@@ -36,6 +36,8 @@ class MessageLog(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     campus_id: Mapped[int] = mapped_column(ForeignKey("campus.id"), index=True)
     student_id: Mapped[int | None] = mapped_column(ForeignKey("student.id"), index=True)
+    # 어느 수업의 발송인지. 반 단위 일괄 발송의 중복 판정·재개에 쓴다(DCR-023). 이전 로그는 비어 있다
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("class_session.id"), index=True)
     recipient_type: Mapped[str] = mapped_column(
         enum_column("recipient_type", "student", "guardian")
     )
