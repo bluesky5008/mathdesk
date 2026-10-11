@@ -66,7 +66,7 @@ mathdesk에서 학부모에게 실제로 문자나 카카오 알림톡을 보내
 | 1 | 클라이언트 | [알리고](https://smartsms.aligo.in/)에 **개인 회원**으로 가입하고 충전한다 |
 | 2 | 클라이언트 | [발신번호] → [발신번호 관리] → [발신번호 추가하기]에서 본인 휴대폰을 등록한다. 명의는 "개인 회원 · 본인"으로 고른다. 승인까지 평일 기준 평균 1~3시간 |
 | 3 | 클라이언트 | 번호가 통신사 **번호도용 문자차단 서비스**에 가입되어 있으면 해지한다(해지 후 2~3일 뒤부터 발송 가능) |
-| 4 | 클라이언트 | 알리고에서 **API 키**를 발급받고 **발송 서버 IP**를 등록한다. 서버는 맥미니이므로 그 인터넷의 공인 IP를 등록한다(개발 담당이 IP를 알려 준다) |
+| 4 | 클라이언트 | 알리고 PC 화면 왼쪽 메뉴 [문자API] → [신청/인증](`https://smartsms.aligo.in/admin/api/auth.html`, 로그인 필요)에서 [API KEY 발급신청]으로 **API 키**를 받고(심사 없음, 개인 회원 가능, 사업자 인증 불필요) 같은 화면에서 **발송 서버 IP**를 등록한다. 모바일 화면(홈·내정보·결제정보)에는 이 메뉴가 없다(2026-10-11 확인). 서버는 맥미니이므로 그 인터넷의 공인 IP를 등록한다(개발 담당이 IP를 알려 준다) |
 | 5 | 개발 | 아래 [서버 설정](#3-서버-설정-개발)을 넣고 재배포한 뒤, 본인 번호로 시험 발송한다 |
 
 클라이언트가 개발 담당에게 넘길 값: **알리고 아이디, API 키, 등록한 발신번호.**
@@ -170,4 +170,4 @@ curl -s https://mathdesk.yongs-wiki.com/api/health
 - 카카오 비즈니스 가이드 — [알림톡](https://kakaobusiness.gitbook.io/main/ad/infotalk)(비즈니스 채널 전환·홈 공개·고객센터 정보 조건), [채널 만들기](https://kakaobusiness.gitbook.io/main/channel/start)(비즈니스 인증 신청 경로와 서류), [알림톡 심사 가이드](https://kakaobusiness.gitbook.io/main/ad/infotalk/audit)(반려 사유·심사 기간)
 - 비즈고 — [일반 채널 vs 비즈니스 채널](https://blog.bizgo.io/howto/kakaotalk-business-channel-vs-general-channel/)(2026-02-17), [비즈니스 채널 만들기 2026](https://blog.bizgo.io/howto/create-kakaotalk-business-channel-guide-2026/)(2026-02-10)
 - 알리고 — [발신번호 구비서류](https://smartsms.aligo.in/qna/help_list_detail.html?type=f&seq=101)(2022-10-26, 개인 회원은 본인 번호만·본인인증), [발신번호 추가](https://smartsms.aligo.in/qna/help_list_detail.html?seq=148&type=f)(2023-07-11), 요금 FAQ seq 146(2023-04-10)·155(2023-08-18), [알림톡 API](https://smartsms.aligo.in/alimapi.html), [사업자 인증 안내](https://smartsms.aligo.in/shop/popup_biz_auth.html)
-- 알리고 발송 서버 IP 등록 필요는 제3자 연동 매뉴얼에서만 확인했다. 등록 화면에서 직접 확인한다.
+- 알리고 API 키·발송 서버 IP 등록 위치: [문자API 소개](https://smartsms.aligo.in/smsapi.html)("별도의 신청절차 없이 회원가입만 하면 바로 연동", [지금바로 서버 연동하기] → `/admin/api/auth.html`), [API SPEC](https://smartsms.aligo.in/admin/api/spec.html)의 메뉴 구조(문자API → 신청/인증·API SPEC·예제 다운로드), 제3자 연동 안내([더망고](https://manual.themango.co.kr/aligo_api): 신청 버튼으로 즉시 발급, IP 등록, 발신번호 추가). 2026-10-11 확인.
