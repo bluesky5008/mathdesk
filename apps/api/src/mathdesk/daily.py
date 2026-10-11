@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,6 +58,12 @@ class RecordIn(BaseModel):
     homework_grade: str | None = Field(default=None, pattern=GRADE_PATTERN)
     test_score_num: Decimal | None = None
     test_score_text: str | None = None
+    comment: str | None = Field(default=None, max_length=500)
+
+    @field_validator("comment")
+    @classmethod
+    def blank_comment_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
 
 
 class RecordsIn(BaseModel):
@@ -97,6 +103,7 @@ class RecordOut(BaseModel):
     recheck: RecheckOut
     test_score_num: Decimal | None
     test_score_text: str | None
+    comment: str | None
 
 
 class SummaryOut(BaseModel):
@@ -245,6 +252,7 @@ async def _build_response(
                 ),
                 test_score_num=record.test_score_num if record else None,
                 test_score_text=record.test_score_text if record else None,
+                comment=record.comment if record else None,
             )
         )
 

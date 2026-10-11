@@ -111,3 +111,68 @@ def test_teacher_cannot_touch_daily_records_of_another_class(api, klass):
         "/api/daily", params={"class_id": klass["class_id"], "date": DATE}
     ).status_code == 403
     assert api.put(f"/api/daily/{session_id}/notes", json={"homework": "x"}).status_code == 403
+
+
+# ── DCR-017 / AC-43: 학생별 코멘트 ─────────────────────────────────────
+
+
+def _comments(api, klass):
+    return [record["comment"] for record in _daily(api, klass)["records"]]
+
+
+def test_each_student_keeps_their_own_comment(api, klass):
+    session_id = _daily(api, klass)["session"]["id"]
+    first, second, _ = klass["student_ids"]
+
+    saved = api.put(
+        f"/api/daily/{session_id}/records",
+        json={"records": [
+            {"student_id": first, "comment": "풀이 과정이 깔끔해졌어요."},
+            {"student_id": second, "comment": "계산 실수를 줄여 봅시다."},
+        ]},
+    )
+
+    assert saved.status_code == 200
+    assert _comments(api, klass) == ["풀이 과정이 깔끔해졌어요.", "계산 실수를 줄여 봅시다.", None]
+
+
+def test_a_comment_is_kept_when_other_fields_are_saved_and_cleared_when_emptied(api, klass):
+    session_id = _daily(api, klass)["session"]["id"]
+    first = klass["student_ids"][0]
+    url = f"/api/daily/{session_id}/records"
+    api.put(url, json={"records": [{"student_id": first, "comment": "좋아요"}]})
+
+    api.put(url, json={"records": [{"student_id": first, "homework_grade": "A"}]})
+    assert _comments(api, klass)[0] == "좋아요"
+
+    api.put(url, json={"records": [{"student_id": first, "comment": "  "}]})
+    assert _comments(api, klass)[0] is None  # 공백뿐이면 빈 구획이 문자에 나가지 않게 비운다
+
+    api.put(url, json={"records": [{"student_id": first, "comment": " 잘했어요 "}]})
+    assert _comments(api, klass)[0] == "잘했어요"
+
+
+def test_a_comment_longer_than_500_characters_is_rejected(api, klass):
+    session_id = _daily(api, klass)["session"]["id"]
+    first = klass["student_ids"][0]
+
+    response = api.put(
+        f"/api/daily/{session_id}/records",
+        json={"records": [{"student_id": first, "comment": "가" * 501}]},
+    )
+
+    assert response.status_code == 422
+    assert _comments(api, klass)[0] is None
+
+
+def test_a_comment_can_be_saved_after_attendance_is_confirmed(api, klass):
+    session_id = _daily(api, klass)["session"]["id"]
+    api.post(f"/api/daily/{session_id}/attendance/confirm")
+
+    response = api.put(
+        f"/api/daily/{session_id}/records",
+        json={"records": [{"student_id": klass["student_ids"][0], "comment": "확정 뒤 코멘트"}]},
+    )
+
+    assert response.status_code == 200
+    assert _comments(api, klass)[0] == "확정 뒤 코멘트"

@@ -177,3 +177,26 @@ def test_preview_shows_the_filled_template_when_one_is_chosen(api, prepared):
 
     assert filled == RENDERED
     assert plain != RENDERED
+
+
+def test_comments_can_be_used_as_template_variables(api, prepared):
+    """DCR-017: 선생님 코멘트(공통)·개별 코멘트를 알림톡 변수로 쓴다."""
+    api.put(f"/api/daily/{prepared['session_id']}/notes", json={"teacher_note": "보충 있음"})
+    api.put(
+        f"/api/daily/{prepared['session_id']}/records",
+        json={"records": [{"student_id": prepared["student_id"], "comment": "잘했어요"}]},
+    )
+    template = {
+        "code": "TPL_COMMENT",
+        "body": "공통: #{공통}\n개별: #{개별}",
+        "variables": {"공통": "teacher_note", "개별": "student_comment"},
+    }
+    assert _save(api, [template]).status_code == 200
+
+    filled = api.get(
+        "/api/messages/preview",
+        params={"session_id": prepared["session_id"], "student_id": prepared["student_id"],
+                "template_code": "TPL_COMMENT"},
+    ).json()["body"]
+
+    assert filled == "공통: 보충 있음\n개별: 잘했어요"

@@ -57,6 +57,8 @@ class MessageContext(BaseModel):
     class_average: float | None = None
     homework: str | None = None
     video_url: str | None = None
+    teacher_note: str | None = None  # 반 공통 선생님 코멘트(강사 첨언)
+    student_comment: str | None = None  # 학생별 코멘트
 
 
 def render_daily_message(context: MessageContext) -> str:
@@ -67,13 +69,23 @@ def render_daily_message(context: MessageContext) -> str:
         f"{day.month}월 {day.day}일({WEEKDAYS[day.weekday()]}) 수업 내용 및 과제피드백 안내드립니다."
     ]
 
-    attendance = ATTENDANCE_LABEL.get(context.attendance or "")
-    if attendance:
-        blocks.append(f"■ 출결: {attendance}")
-
+    # 반 공통 구획 다음에 학생 개별 구획을 둔다(FR-18, DCR-017)
     lines = [f"[{period}교시] {content}" for period, content in context.progress if content]
     if lines:
         blocks.append("■ 수업진도\n" + "\n".join(lines))
+
+    if context.homework:
+        blocks.append(f"■ 오늘의 과제\n{context.homework}")
+
+    if context.video_url:
+        blocks.append(f"■ 수업 영상 링크\n{context.video_url}")
+
+    if context.teacher_note:
+        blocks.append(f"■ 선생님 코멘트\n{context.teacher_note}")
+
+    attendance = ATTENDANCE_LABEL.get(context.attendance or "")
+    if attendance:
+        blocks.append(f"■ 출결: {attendance}")
 
     if context.homework_grade:
         feedback = f"■ 과제피드백: {context.homework_grade}"
@@ -87,11 +99,8 @@ def render_daily_message(context: MessageContext) -> str:
             test += f"\n   반평균: {context.class_average}점"
         blocks.append(test)
 
-    if context.homework:
-        blocks.append(f"■ 오늘의 과제\n{context.homework}")
-
-    if context.video_url:
-        blocks.append(f"■ 수업 영상 링크\n{context.video_url}")
+    if context.student_comment:
+        blocks.append(f"■ 개별 코멘트\n{context.student_comment}")
 
     return "\n\n".join(blocks)
 
@@ -113,6 +122,8 @@ ALIMTALK_FIELDS: dict[str, tuple[str, object]] = {
     "class_average": ("반 평균", lambda c: c.class_average),
     "homework": ("오늘의 과제", lambda c: c.homework),
     "video_url": ("수업 영상 링크", lambda c: c.video_url),
+    "teacher_note": ("선생님 코멘트", lambda c: c.teacher_note),
+    "student_comment": ("개별 코멘트", lambda c: c.student_comment),
     "daily_message": ("일일 피드백 전체", render_daily_message),
 }
 VARIABLE = re.compile(r"#\{([^}]+)\}")
@@ -316,6 +327,8 @@ async def _context(
         class_average=round(sum(scores) / len(scores), 1) if scores else None,
         homework=row.homework,
         video_url=row.video_url,
+        teacher_note=row.teacher_note,
+        student_comment=record.comment if record else None,
     )
     return context
 

@@ -18,6 +18,14 @@ FULL = MessageContext(
     class_average=71.6,
     homework="1. 학교 기출 3개년 풀어오기",
     video_url="https://youtu.be/F3jgRW6-kEs",
+    teacher_note="다음 주 중간고사 대비로 토요일 보충이 있습니다.",
+    student_comment="풀이 과정이 깔끔해졌어요.",
+)
+
+# DCR-017: 반 공통 구획이 위, 학생 개별 구획이 아래
+ORDER = (
+    "■ 수업진도", "■ 오늘의 과제", "■ 수업 영상 링크", "■ 선생님 코멘트",
+    "■ 출결", "■ 과제피드백", "■ 테스트", "■ 개별 코멘트",
 )
 
 
@@ -27,8 +35,25 @@ def test_full_message_contains_every_section():
     assert body.startswith("**고주연학생 학습피드백**")
     assert "전병훈 수학학원 홍성윤T입니다." in body
     assert "9월 19일(토) 수업 내용 및 과제피드백 안내드립니다." in body
-    for section in ("■ 출결", "■ 수업진도", "■ 과제피드백", "■ 테스트", "■ 오늘의 과제", "■ 수업 영상 링크"):
+    for section in ORDER:
         assert section in body
+
+
+def test_common_sections_come_first_then_the_student_sections():
+    body = render_daily_message(FULL)
+
+    positions = [body.index(section) for section in ORDER]
+    assert positions == sorted(positions)
+    assert "■ 선생님 코멘트\n다음 주 중간고사 대비로 토요일 보충이 있습니다." in body
+    assert body.endswith("■ 개별 코멘트\n풀이 과정이 깔끔해졌어요.")
+
+
+@pytest.mark.parametrize("empty", [None, ""])
+def test_comment_sections_without_text_are_omitted(empty):
+    body = render_daily_message(FULL.model_copy(update={"teacher_note": empty, "student_comment": empty}))
+
+    assert "■ 선생님 코멘트" not in body
+    assert "■ 개별 코멘트" not in body
 
 
 def test_sections_without_data_are_omitted():

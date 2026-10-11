@@ -181,42 +181,9 @@ def _details(context: MessageContext) -> list[tuple[str, str]]:
         details.append(("오늘의 과제", context.homework))
     if context.video_url:
         details.append(("수업 영상", context.video_url))
+    if context.teacher_note:
+        details.append(("선생님 코멘트", context.teacher_note))
     return details
-
-
-def _sections(context: MessageContext) -> list[tuple[str, str]]:
-    """본문과 같은 순서·같은 내용을 쓴다. 문자와 카드가 갈라지면 AC-16이 깨진다."""
-    sections: list[tuple[str, str]] = []
-
-    attendance = ATTENDANCE_LABEL.get(context.attendance or "")
-    if attendance:
-        sections.append(("출결", attendance))
-
-    progress = "\n".join(
-        f"[{period}교시] {content}" for period, content in context.progress if content
-    )
-    if progress:
-        sections.append(("수업진도", progress))
-
-    if context.homework_grade:
-        feedback = context.homework_grade
-        if context.grade_comment:
-            feedback += f"\n{context.grade_comment}"
-        sections.append(("과제피드백", feedback))
-
-    if context.test_name and context.test_score is not None:
-        test = f"{context.test_name}\n학생점수: {context.test_score}점"
-        if context.class_average is not None:
-            test += f"\n반평균: {context.class_average}점"
-        sections.append(("테스트", test))
-
-    if context.homework:
-        sections.append(("오늘의 과제", context.homework))
-
-    if context.video_url:
-        sections.append(("수업 영상 링크", context.video_url))
-
-    return sections
 
 
 def render_report_html(
@@ -259,7 +226,9 @@ def render_report_html(
 
     rows = "".join(
         f'<div class="row"><h2>{escape(head)}</h2><p>{escape(text)}</p></div>'
-        for head, text in _details(context)
+        # 개별 코멘트는 요약 바로 아래, 반 공통 상세 앞에 둔다(DCR-017)
+        for head, text in ([("개별 코멘트", context.student_comment)] if context.student_comment else [])
+        + _details(context)
     )
 
     css = CARD_CSS % {"width": CARD_WIDTH, "facts": max(len(facts), 1)}

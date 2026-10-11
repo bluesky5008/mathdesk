@@ -57,6 +57,16 @@ def test_card_shows_the_message_content(context):
         assert expected in html
 
 
+def test_card_shows_the_teacher_note_and_the_student_comment(context):
+    """DCR-017 / AC-43 ⑥: 카드에도 선생님 코멘트와 개별 코멘트가 보인다."""
+    html = render_report_html(
+        context.model_copy(update={"teacher_note": "토요일 보충", "student_comment": "풀이가 깔끔해요"})
+    )
+
+    for expected in ("선생님 코멘트", "토요일 보충", "개별 코멘트", "풀이가 깔끔해요"):
+        assert expected in html
+
+
 def test_brand_colour_overrides_only_the_brand_token(context):
     """FR-40 시그니처 색은 --md-color-brand만 덮어쓴다."""
     html = render_report_html(context, brand_colour="#c2185b")

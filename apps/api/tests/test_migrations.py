@@ -59,3 +59,12 @@ def test_llm_call_log_records_provider_and_cache_tokens(
 ):
     alembic(empty_database, "upgrade", "head")
     assert column_names("llm_call_log") == LLM_CALL_LOG_COLUMNS
+
+
+def test_daily_record_has_a_comment_column(empty_database, column_names, alembic):
+    """DCR-017: 학생별 코멘트. 다운그레이드하면 열이 사라진다."""
+    alembic(empty_database, "upgrade", "head")
+    assert "comment" in column_names("student_daily_record")
+
+    alembic(empty_database, "downgrade", "-1")
+    assert "comment" not in column_names("student_daily_record")

@@ -50,6 +50,7 @@ beforeEach(() => {
         recheck: { target: false, prev_grade: null, prev_date: null, result: null },
         test_score_num: null,
         test_score_text: null,
+        comment: null,
       },
     ],
     summary: { enrolled: 13, attending: 4, test_average: null, test_count: 0 },

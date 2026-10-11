@@ -261,6 +261,7 @@ export type DailyRecord = {
   recheck: Recheck
   test_score_num: string | number | null
   test_score_text: string | null
+  comment: string | null
 }
 
 export type DailySession = {
@@ -288,6 +289,7 @@ export type RecordPatch = {
   attendance_reason?: string | null
   homework_grade?: string | null
   test_score_num?: number | null
+  comment?: string | null
 }
 
 export type NotesPatch = Partial<{

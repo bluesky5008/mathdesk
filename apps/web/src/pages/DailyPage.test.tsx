@@ -19,6 +19,7 @@ function makeRecord(id: number, name: string) {
     recheck: { target: false, prev_grade: null, prev_date: null, result: null },
     test_score_num: null,
     test_score_text: null,
+    comment: null as string | null,
   }
 }
 
@@ -121,7 +122,7 @@ it('marks confirmed attendance as locked with a banner and an unlock button', as
   renderPage()
 
   expect(await screen.findByText(/9\/18 출결이 확정되어 잠겨 있습니다/)).toHaveTextContent(
-    /\(\d+\/\d+ \d{2}:\d{2} 확정\)\. 과제·테스트는 그대로 입력할 수 있습니다/,
+    /\(\d+\/\d+ \d{2}:\d{2} 확정\)\. 과제·테스트·코멘트는 그대로 입력할 수 있습니다/,
   )
   expect(screen.getByRole('columnheader', { name: '출결 상태 🔒' })).toBeInTheDocument()
 
@@ -171,4 +172,53 @@ it('saves the recheck result immediately without the bulk save', async () => {
   await userEvent.click(row.getByRole('button', { name: '합격' }))
 
   expect(calls.map((call) => call.url)).toEqual(['/api/daily/9/records/1/recheck'])
+})
+
+// DCR-017: 표 맨 오른쪽 학생별 코멘트 — [표 저장]으로 저장, 문자 개별 구획에 붙는다
+it('saves a different comment for each student with the table', async () => {
+  daily.records[2].comment = '지난 코멘트'
+  renderPage()
+
+  expect(await screen.findByLabelText('학생3 코멘트')).toHaveValue('지난 코멘트')
+  expect(screen.getAllByRole('columnheader').at(-1)).toHaveTextContent('코멘트')
+
+  await userEvent.type(screen.getByLabelText('학생1 코멘트'), '잘했어요')
+  await userEvent.type(screen.getByLabelText('학생2 코멘트'), '지각 주의')
+  await userEvent.click(screen.getByRole('button', { name: '표 저장' }))
+
+  expect(calls).toEqual([
+    {
+      url: '/api/daily/9/records',
+      body: {
+        records: [
+          { student_id: 1, comment: '잘했어요' },
+          { student_id: 2, comment: '지각 주의' },
+        ],
+      },
+    },
+  ])
+})
+
+it('moves to the next student comment with Enter', async () => {
+  renderPage()
+
+  await userEvent.type(await screen.findByLabelText('학생1 코멘트'), '좋아요{Enter}')
+
+  expect(screen.getByLabelText('학생2 코멘트')).toHaveFocus()
+})
+
+it('keeps comments editable after attendance is confirmed', async () => {
+  daily.session.attendance_confirmed_at = '2026-09-18T15:08:00+00:00'
+  renderPage()
+
+  await userEvent.type(await screen.findByLabelText('학생1 코멘트'), '확정 뒤')
+
+  expect(screen.getByLabelText('학생1 코멘트')).toHaveValue('확정 뒤')
+})
+
+it('names the teacher note as the common comment that goes into messages', async () => {
+  renderPage()
+
+  expect(await screen.findByLabelText('선생님 코멘트 (문자 공통)')).toBeInTheDocument()
+  expect(screen.queryByLabelText('강사 첨언')).not.toBeInTheDocument()
 })

@@ -39,7 +39,8 @@ const PERIODS = [1, 2, 3, 4]
 const NOTE_FIELDS = [
   ['homework', '오늘의 과제'],
   ['video_url', '수업 영상 링크'],
-  ['teacher_note', '강사 첨언'],
+  // 강사 첨언은 문자에 반 공통 코멘트로 나간다(DCR-017)
+  ['teacher_note', '선생님 코멘트 (문자 공통)'],
 ] as const
 const EMPTY_NOTES: NotesPatch = {}
 
@@ -172,7 +173,7 @@ export function DailyPage() {
           unlocking={confirmation.isPending}
           onUnlock={() => confirmation.mutate(false)}
         >
-          과제·테스트는 그대로 입력할 수 있습니다.
+          과제·테스트·코멘트는 그대로 입력할 수 있습니다.
         </AttendanceLockBanner>
       )}
 
@@ -187,6 +188,7 @@ export function DailyPage() {
                   <TableHeaderCell>이전 과제 재검사</TableHeaderCell>
                   <TableHeaderCell>과제피드백</TableHeaderCell>
                   <TableHeaderCell className="w-24">테스트</TableHeaderCell>
+                  <TableHeaderCell>코멘트</TableHeaderCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -267,6 +269,16 @@ export function DailyPage() {
                               event.target.value === '' ? null : Number(event.target.value),
                           })
                         }
+                      />
+                    </TableCell>
+                    {/* 학생별 코멘트는 그 학생 문자의 개별 구획 끝에 붙는다(FR-44) */}
+                    <TableCell>
+                      <Input
+                        aria-label={`${record.name} 코멘트`}
+                        maxLength={500}
+                        className="h-7 min-w-64"
+                        value={String(valueOf(record, 'comment') ?? '')}
+                        onChange={(event) => patch(record.student_id, { comment: event.target.value })}
                       />
                     </TableCell>
                   </TableRow>

@@ -89,6 +89,30 @@ def test_recipients_can_include_the_student_and_the_guardian(api, prepared, bloc
     assert phones == {"010-3333-4444", "010-1111-2222"}
 
 
+@pytest.mark.parametrize(
+    ("chosen", "expected"),
+    [
+        (["student"], {("student", "010-3333-4444")}),
+        (["guardian"], {("guardian", "010-1111-2222")}),
+        (["student", "guardian"], {("student", "010-3333-4444"), ("guardian", "010-1111-2222")}),
+    ],
+)
+def test_each_recipient_kind_gets_the_same_body_at_its_own_number(
+    api, prepared, blocked_network, chosen, expected
+):
+    """DCR-017 / AC-43 ⑤: 학생은 학생 번호, 학부모는 그 학생의 학부모 번호, 둘 다면 양쪽."""
+    api.patch(
+        f"/api/students/{prepared['student_id']}",
+        json={"name": "김나윤", "phone": "010-3333-4444", "omr_number": "10000100"},
+    )
+
+    _send(api, prepared, recipients=chosen)
+
+    logs = api.get("/api/messages/logs").json()
+    assert {(log["recipient_type"], log["recipient_phone"]) for log in logs} == expected
+    assert len({log["body_snapshot"] for log in logs}) == 1
+
+
 def test_sending_without_a_reachable_recipient_fails(api, klass, blocked_network):
     session_id = api.get(
         "/api/daily", params={"class_id": klass["class_id"], "date": DATE}

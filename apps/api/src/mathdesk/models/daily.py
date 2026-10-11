@@ -63,3 +63,5 @@ class StudentDailyRecord(Base):
     )
     test_score_num: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     test_score_text: Mapped[str | None] = mapped_column(String(200))
+    # 학생별 코멘트. 문자 본문의 개별 구획 끝에 붙는다(FR-44, DCR-017)
+    comment: Mapped[str | None] = mapped_column(Text)
