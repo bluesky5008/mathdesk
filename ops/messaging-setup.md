@@ -2,7 +2,8 @@
 
 mathdesk에서 학부모에게 실제로 문자나 카카오 알림톡을 보내기 위해 준비할 서류와 절차를 정리한다. 지금 테스트 운영은 **테스트 모드**라 아무것도 밖으로 나가지 않고 발송 내역에만 남는다.
 
-- 조사일: 2026-09-24. 요금·심사 기간은 바뀔 수 있으니 신청 직전에 [출처](#출처)의 원문을 다시 확인한다.
+- 조사일: 2026-09-24, 후보 비교와 구현 검토 2026-10-11. 요금·심사 기간은 바뀔 수 있으니 신청 직전에 [출처](#출처)의 원문을 다시 확인한다.
+- 클라이언트용 가입 안내문: [`docs/client/문자-서비스-준비-안내.html`](../docs/client/문자-서비스-준비-안내.html)(2026-10-11)
 - 전제: 클라이언트는 원장이 아니고 **사업자등록증이 없다.**
 
 ## 한눈에 보기
@@ -16,6 +17,36 @@ mathdesk에서 학부모에게 실제로 문자나 카카오 알림톡을 보내
 | mathdesk 쪽 준비 | 서버 설정 4개 | 서버 설정 1개 추가 + 템플릿 등록 |
 
 **권장:** 문자로 시작한다. mathdesk의 일일 피드백은 대부분 90바이트를 넘어 LMS(25.9원)로 나간다. 알림톡은 소속 학원 명의를 쓸 수 있게 되면 그때 더한다. 코드는 두 경우를 모두 이미 지원한다.
+
+## 0. 발송 서비스 후보 비교 (2026-10-11)
+
+조건: ① 사업자등록증 없이 개인 가입 + 본인 번호 발신 ② 서버 연동 API ③ 비용 ④ 하루 한도(월 5,500건 가정, 160명 전원 발송일 160건).
+
+| 서비스 | 개인 가입 + API | SMS / LMS (VAT 별도) | 하루 한도 | 판단 |
+|---|---|---|---|---|
+| **알리고** | 가능(본인 휴대폰은 본인인증만) | 8.4 / 25.9원 | 개인 회원 500통(약관, 사전 승인으로 예외) | **채택** — 최저가, 코드가 이미 연결됨 |
+| 솔라피 | 가능(본인인증) | 18 / 45원 | 개인 계정 기본 50건, 최대 500건(그 이상은 사업자 인증) | 예비 — 한도가 처음부터 걸리고 어댑터 신규 구현 필요 |
+| 뿌리오 | 개인 가입은 되나 **API 연동은 기업 회원만** | 8.8~27.5 / 26.4~50원 | — | 제외 |
+| NHN Cloud | **개인 회원 SMS 불가**(2023-12-15 정책) | — | — | 제외 |
+| 가비아·문자나라 | 개인 회원 API 조건을 공개 자료에서 확인 못 함 | — | — | 보류(미확인) |
+| 카카오 알림톡 | 사업자등록번호 필요 | 6.5원 | — | 조건 갖춰지면 전환(코드 준비됨) |
+
+### 현재 구현 상태 검토 (2026-10-11)
+
+구현됨: `MessagingAdapter` 계약(ADR-005)·테스트 모드 기본값·`AligoMessaging` 문자(수신자별 `POST /send/`)와 알림톡(+`failover`)·본문 바이트 수로 SMS/LMS 선택·수신자별 `message_log`(본문 스냅샷·비용·결과 코드)·알림톡 거절 시 문자 대체·`GET /messages/balance`(`/remain/`)·환경변수 4개와 compose 배선·테스트(테스트 모드 외부 호출 0, 폴백 2건 로그, 알림톡 요청 형식).
+
+실발송 전 빈틈(우선순위 순):
+
+1. 잔액·모드 표시 화면 없음(FR-23 상세 "잔여 발송 가능량 표시·새로고침") — API만 있다.
+2. 전화번호 정규화 없음 — 학생·학부모 번호는 자유 입력 20자. 발송 직전 숫자만 남겨야 한다.
+3. 상태가 "접수"까지 — 알리고 `msg_id` 미저장, 전송 결과 조회(`/sms_list/`·`/sent_detail/`) 미구현.
+4. 실패 건 재시도 버튼 없음(설계 "메시지 발송" 흐름 5).
+5. MMS 첨부 미구현 — `choose_channel(has_attachment)` 인자만 있고 리포트 카드를 붙여 보내는 경로가 없다(FR-23 상세 "이미지 첨부 시 MMS").
+6. 학생 1명 단위 발송만 있다(`SendIn.student_id`). 반 일괄 발송은 요구사항에 없으나 운영 부담(160명 = 160회)이라 사용자 결정 필요.
+7. 설정은 환경변수 전용(재배포 필요). DES-20의 `GET/PUT /settings/integrations`는 미구현(후순위).
+8. `AligoMessaging.send`(문자) 요청 형식 테스트 없음(알림톡 요청 테스트만 있다). 실제 알리고 호출 0회(Q-02).
+9. 발송 서버 IP 등록이 필수다 — 테스트 운영(맥미니)은 유동 IP. 정식 서버 고정 IP 사용 권장.
+10. 정보성 문자라 광고 표기·080·야간 제한은 해당 없음. 수신 거부는 `guardian.is_notify_target`로 처리 가능.
 
 ## 1. 문자 발송 준비 (사업자등록 불필요)
 
@@ -132,7 +163,9 @@ curl -s https://mathdesk.yongs-wiki.com/api/health
 
 ## 출처
 
-모두 2026-09-24에 확인했다.
+모두 2026-09-24에 확인했다. 후보 비교(0장)는 2026-10-11에 확인했다.
+
+- 후보 비교(2026-10-11) — 알리고 [요금](https://smartsms.aligo.in/)(SMS 8.4·LMS 25.9·MMS 60원, 5년 유효·환불)·[이용약관](https://m.aligo.in/smsterms/?terms=1)(개인 회원 1일 500통 제한 가능), 솔라피 [가격 정책](https://solapi.com/pricing)·[일 발송 한도](https://solapi.com/guides/daily-limit)(개인 50~500건)·[발신번호 FAQ](https://solapi.com/guides/senderid-faq), 뿌리오 [API 연동 안내](https://www.ppurio.com/send-api/guide)(기업 회원만)·[발신번호 인증](https://www.ppurio.com/guide/sendCaller), NHN Cloud [SMS 서비스 정책](https://docs.nhncloud.com/ko/Notification/SMS/ko/service-policy/)(개인 회원 불가), 알리고 API 설정 항목(키·발송 서버 IP·발신번호)은 [연동 안내 예시](https://manual.themango.co.kr/aligo_api)
 
 - 카카오 비즈니스 가이드 — [알림톡](https://kakaobusiness.gitbook.io/main/ad/infotalk)(비즈니스 채널 전환·홈 공개·고객센터 정보 조건), [채널 만들기](https://kakaobusiness.gitbook.io/main/channel/start)(비즈니스 인증 신청 경로와 서류), [알림톡 심사 가이드](https://kakaobusiness.gitbook.io/main/ad/infotalk/audit)(반려 사유·심사 기간)
 - 비즈고 — [일반 채널 vs 비즈니스 채널](https://blog.bizgo.io/howto/kakaotalk-business-channel-vs-general-channel/)(2026-02-17), [비즈니스 채널 만들기 2026](https://blog.bizgo.io/howto/create-kakaotalk-business-channel-guide-2026/)(2026-02-10)
