@@ -1,0 +1,464 @@
+<title>mathdesk 문자 서비스 준비</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ink: #1d2530;
+    --muted: #5b6676;
+    --line: #d8dde4;
+    --ground: #f5f7f9;
+    --surface: #ffffff;
+    --accent: #1f6f78;
+    --accent-soft: #e3f0f1;
+    --both: #8a5a12;
+    --both-soft: #f6eedd;
+    --dev: #4a5568;
+    --dev-soft: #e9ecf1;
+    --warn: #9a3b2a;
+    --warn-soft: #f7e9e5;
+    --code-bg: #eef1f4;
+    --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e6eaf0;
+      --muted: #9aa4b2;
+      --line: #2c3440;
+      --ground: #12161c;
+      --surface: #1a2028;
+      --accent: #6cbcc4;
+      --accent-soft: #1b3033;
+      --both: #e2b46a;
+      --both-soft: #33291a;
+      --dev: #b4bfcf;
+      --dev-soft: #252c37;
+      --warn: #e59a88;
+      --warn-soft: #3a2420;
+      --code-bg: #10141a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e6eaf0;
+    --muted: #9aa4b2;
+    --line: #2c3440;
+    --ground: #12161c;
+    --surface: #1a2028;
+    --accent: #6cbcc4;
+    --accent-soft: #1b3033;
+    --both: #e2b46a;
+    --both-soft: #33291a;
+    --dev: #b4bfcf;
+    --dev-soft: #252c37;
+    --warn: #e59a88;
+    --warn-soft: #3a2420;
+    --code-bg: #10141a;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    padding-inline: 16px;
+    padding-block: 32px 64px;
+    word-break: keep-all;
+  }
+  .page { max-width: 780px; margin: 0 auto; display: grid; gap: 44px; }
+
+  header { display: grid; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+  .eyebrow { font-size: 13px; letter-spacing: 0.08em; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(26px, 5vw, 34px); line-height: 1.3; margin: 0; font-weight: 700; text-wrap: balance; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); font-size: 14px; }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  section { display: grid; gap: 16px; }
+  h2 { font-size: 21px; margin: 0; font-weight: 700; text-wrap: balance; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+  h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
+  h3 { font-size: 17px; margin: 0; font-weight: 600; text-wrap: balance; }
+  p { margin: 0; max-width: 68ch; }
+  .lead p + p { margin-top: 12px; }
+  strong { font-weight: 600; }
+  .muted { color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  .who { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; border-radius: 999px; padding: 1px 10px; white-space: nowrap; }
+  .who.client { background: var(--accent-soft); color: var(--accent); }
+  .who.both { background: var(--both-soft); color: var(--both); }
+  .who.dev { background: var(--dev-soft); color: var(--dev); }
+  .time { color: var(--muted); font-weight: 400; font-size: 14px; }
+
+  ol.flow { list-style: none; margin: 0; padding: 0; display: grid; counter-reset: step; }
+  ol.flow li {
+    counter-increment: step; display: grid; grid-template-columns: 40px 1fr; gap: 2px 12px;
+    padding: 14px 0; border-top: 1px solid var(--line);
+  }
+  ol.flow li:last-child { border-bottom: 1px solid var(--line); }
+  ol.flow li::before {
+    content: counter(step); grid-row: span 2; width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 14px; font-weight: 600;
+    background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+  .flow-title { font-weight: 600; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+
+  .note { background: var(--accent-soft); border-radius: var(--radius); padding: 14px 16px; font-size: 15px; display: grid; gap: 6px; }
+  .note.warn { background: var(--warn-soft); }
+  .note.warn strong { color: var(--warn); }
+  .note.both { background: var(--both-soft); }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; background: var(--ground); white-space: nowrap; }
+  td.amount { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+  td.pick { background: var(--accent-soft); }
+  .verdict { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 4px; padding: 0 6px; white-space: nowrap; }
+  .verdict.ok { background: var(--accent-soft); color: var(--accent); }
+  .verdict.no { background: var(--warn-soft); color: var(--warn); }
+  .verdict.hold { background: var(--dev-soft); color: var(--dev); }
+
+  .task { display: grid; gap: 12px; padding: 18px 18px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .task-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+  .task-list { display: grid; gap: 12px; }
+  ul.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  ul.check > li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; }
+  ul.check input { width: 18px; height: 18px; margin: 4px 0 0; accent-color: var(--accent); }
+  ul.check label { cursor: pointer; }
+  ul.check input:checked + label { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+  ul.check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .detail { display: grid; gap: 4px; margin-top: 4px; padding-left: 12px; border-left: 2px solid var(--line); color: var(--muted); font-size: 15px; }
+  .detail b { color: var(--ink); font-weight: 600; }
+  .progress { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .progress b { color: var(--accent); }
+
+  .ui { font-weight: 600; color: var(--ink); background: var(--ground); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  code { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 14px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; overflow-wrap: anywhere; }
+
+  .page > *, section > *, .task > *, .task-list > *, .dev-body > *, ul.check label { min-width: 0; }
+  ul.check label { display: block; }
+  .code { position: relative; display: grid; min-width: 0; max-width: 100%; }
+  pre { margin: 0; overflow-x: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.6; }
+  pre .c { color: var(--muted); }
+  .copy {
+    position: absolute; top: 6px; right: 6px; font: inherit; font-size: 12px; font-weight: 600;
+    color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; cursor: pointer;
+  }
+  .copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  details.dev-part { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  details.dev-part > summary { cursor: pointer; padding: 14px 18px; font-weight: 600; list-style-position: inside; }
+  details.dev-part > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dev-body { display: grid; gap: 16px; padding: 0 18px 18px; }
+
+  ul.facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  ul.facts li { padding-left: 14px; border-left: 3px solid var(--line); }
+  footer { border-top: 1px solid var(--line); padding-top: 20px; display: grid; gap: 6px; }
+  footer .sign { font-weight: 600; }
+
+  @media (max-width: 520px) {
+    body { font-size: 15px; }
+    th, td { padding: 9px 10px; }
+    .task { padding: 16px 14px 14px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    ul.check label { transition: color 0.15s; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">mathdesk · 정식 서버 준비</div>
+    <h1>학부모 문자 발송 서비스 가입 순서</h1>
+    <div class="meta">
+      <span>작성일 <b>2026-10-11</b></span>
+      <span>받는 분 <b>핑수</b></span>
+      <span>보내는 사람 <b>용스</b></span>
+    </div>
+  </header>
+
+  <section class="lead">
+    <p>핑수님, mathdesk가 학부모님께 수업 피드백 문자를 실제로 보내려면 <strong>문자 발송 서비스</strong>에 가입해 두어야 합니다. 지금 테스트 서버는 "보내기"를 눌러도 밖으로 나가지 않고 발송 내역에만 남는 상태입니다. 지난번 "정식 운영 준비 안내"의 "③ 문자 서비스 가입"을 어떤 서비스를 왜 고르는지부터 순서대로 풀어 쓴 안내입니다.</p>
+    <p><strong>가입과 충전은 모두 핑수님 명의</strong>로 합니다. 학부모님 휴대폰에는 <strong>핑수님 본인 번호</strong>가 보내는 사람으로 뜹니다. 저는 가입이 끝난 뒤 받은 값 세 가지를 서버에 넣고 시험 문자를 보내는 일만 합니다. 서버(AWS)·주소 준비와는 따로 진행해도 되고, 전체 소요는 <strong>약 1시간에 번호 승인 대기 1~3시간</strong>입니다.</p>
+    <p class="meta">
+      <span><span class="who client">핑수님</span> 혼자 하시는 단계</span>
+      <span><span class="who both">함께</span> 같이 보는 단계</span>
+      <span><span class="who dev">용스</span> 제가 하는 단계</span>
+    </p>
+  </section>
+
+  <section id="flow">
+    <h2><span class="n">1</span>한눈에 보기</h2>
+    <ol class="flow">
+      <li><div class="flow-title">준비물 확인 <span class="who client">핑수님</span> <span class="time">5분</span></div><p>본인 명의 휴대폰, 결제 수단, 통신사 부가서비스 하나만 확인하면 됩니다.</p></li>
+      <li><div class="flow-title">알리고 개인 회원 가입 <span class="who client">핑수님</span> <span class="time">10분</span></div><p>휴대폰 본인인증으로 가입합니다. 사업자등록증은 필요 없습니다.</p></li>
+      <li><div class="flow-title">첫 충전 <span class="who client">핑수님</span> <span class="time">5분</span></div><p>5만 원(부가세 포함 5.5만 원)부터 충전할 수 있고 5년 동안 쓸 수 있습니다.</p></li>
+      <li><div class="flow-title">발신번호 등록 <span class="who client">핑수님</span> <span class="time">5분, 승인 1~3시간</span></div><p>핑수님 휴대폰 번호를 본인인증으로 등록합니다. 서류는 없습니다.</p></li>
+      <li><div class="flow-title">API 키 발급과 서버 주소 등록 <span class="who both">함께</span> <span class="time">10분</span></div><p>mathdesk 서버가 알리고에 문자를 맡길 수 있게 열쇠를 만들고 서버 주소를 적어 둡니다.</p></li>
+      <li><div class="flow-title">시험 발송 <span class="who dev">용스</span> <span class="time">10분</span></div><p>핑수님 번호로 시험 문자를 보내 확인하면 끝입니다.</p></li>
+    </ol>
+  </section>
+
+  <section id="choose">
+    <h2><span class="n">2</span>어느 서비스를 쓸까요</h2>
+    <p>조건은 두 가지였습니다. <strong>사업자등록증 없이 개인이 가입해 본인 번호로 보낼 수 있을 것</strong>, 그리고 <strong>mathdesk 서버가 자동으로 보낼 수 있는 연결 창구(API)를 열어 줄 것</strong>. 국내에서 많이 쓰는 서비스 다섯 곳을 이 기준으로 확인했습니다.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>서비스</th><th>개인 가입 + 서버 연결</th><th>장문 1건 요금<br><span class="muted">부가세 별도</span></th><th>알아 둘 점</th><th>판단</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="pick"><strong>알리고</strong><br><span class="muted">smartsms.aligo.in</span></td>
+            <td class="pick">가능. 본인 휴대폰은 본인인증만으로 등록</td>
+            <td class="pick amount">25.9원<br><span class="muted">단문 8.4원</span></td>
+            <td class="pick">가장 저렴합니다. mathdesk가 처음부터 이 서비스에 맞춰 만들어져 있어 추가 개발 없이 바로 연결됩니다. 개인 회원은 하루 500건까지 보낼 수 있습니다(필요하면 사전 승인으로 늘릴 수 있음). 충전금은 5년간 유효하고 남으면 환불됩니다.</td>
+            <td class="pick"><span class="verdict ok">추천</span></td>
+          </tr>
+          <tr>
+            <td><strong>솔라피</strong><br><span class="muted">solapi.com</span></td>
+            <td>가능. 본인 휴대폰 본인인증</td>
+            <td class="amount">45원<br><span class="muted">단문 18원</span></td>
+            <td>요금이 알리고의 약 1.7배입니다. 개인 계정은 하루 <strong>50건</strong>부터 시작해 최대 500건까지만 늘릴 수 있어, 학생 160명 기준으로는 처음부터 한도에 걸립니다. mathdesk 쪽 연결 코드도 새로 만들어야 합니다.</td>
+            <td><span class="verdict hold">예비</span></td>
+          </tr>
+          <tr>
+            <td><strong>뿌리오</strong><br><span class="muted">ppurio.com</span></td>
+            <td>개인 가입은 되지만 <strong>서버 연결은 기업 회원만</strong></td>
+            <td class="amount">약 27~50원</td>
+            <td>사람이 사이트에서 직접 보내는 용도로는 쓸 수 있으나, mathdesk가 자동으로 보내려면 사업자등록이 필요합니다.</td>
+            <td><span class="verdict no">제외</span></td>
+          </tr>
+          <tr>
+            <td><strong>NHN Cloud</strong></td>
+            <td><strong>개인 회원은 문자 서비스 자체를 쓸 수 없음</strong>(2023-12부터)</td>
+            <td class="amount">—</td>
+            <td>기업용 클라우드 서비스입니다.</td>
+            <td><span class="verdict no">제외</span></td>
+          </tr>
+          <tr>
+            <td><strong>카카오 알림톡</strong></td>
+            <td><strong>사업자등록번호가 있는 채널만</strong> 가능</td>
+            <td class="amount">약 6.5원</td>
+            <td>건당 요금은 가장 쌉니다. 다만 학원 사업자등록증으로 원장님 협조 아래 "직원"으로 신청하거나, 핑수님이 직접 사업자등록을 해야 합니다. 그때가 되면 mathdesk는 추가 개발 없이 알림톡으로 바꿀 수 있게 이미 준비되어 있습니다.</td>
+            <td><span class="verdict hold">나중에</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><span><strong>결론: 알리고로 시작합니다.</strong> 개인 가입이 되고, 가장 싸고, 하루 한도가 넉넉하고, mathdesk가 이미 연결되어 있습니다. 가비아·문자나라 같은 다른 서비스는 개인 회원의 서버 연결 조건을 공개 자료에서 확인할 수 없어 후보에서 뺐습니다.</span></p>
+  </section>
+
+  <section id="cost">
+    <h2><span class="n">3</span>얼마나 드나요</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>항목</th><th>금액</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td>장문 문자 1건</td><td class="amount">28.5원 <span class="muted">(25.9원 + 부가세)</span></td><td>수업 피드백 문자는 길어서 거의 다 장문(LMS)으로 나갑니다. 단문(한글 45자 이내)은 9.2원입니다.</td></tr>
+          <tr><td>한 달 예상</td><td class="amount">약 15.8만 원</td><td>학생 160명에게 주 8회, 한 달 약 5,500건 기준(지난 안내문 2장과 같은 가정). 학생 수에 비례해 줄거나 늡니다.</td></tr>
+          <tr><td>첫 충전</td><td class="amount">5.5만 원부터</td><td>선불 충전식입니다. 위 발송량이면 열흘 안에 다 쓰므로 한 달에 20만 원쯤씩 충전하시길 권합니다. 남은 돈은 5년간 유효하고 환불도 됩니다.</td></tr>
+          <tr><td>월 기본료·가입비</td><td class="amount">없음</td><td>쓴 만큼만 차감됩니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">충전금이 떨어지면 문자가 나가지 않고 mathdesk 발송 내역에 실패로 남습니다. 알리고 사이트에서 잔액을 볼 수 있고, 정식 서버에서는 mathdesk 화면에도 잔액을 보이도록 보완할 예정입니다(아래 5장).</p>
+  </section>
+
+  <section id="client">
+    <h2><span class="n">4</span>핑수님께서 하실 일 <span class="progress" id="progress-client"></span></h2>
+
+    <p class="note warn"><span><strong>알리고 비밀번호는 저에게 보내지 말아 주세요.</strong> 제가 필요한 건 ⑤에서 만드는 <b>API 키</b>, <b>알리고 아이디</b>, <b>등록한 발신번호</b> 세 가지뿐입니다. API 키는 문자를 보낼 수 있는 열쇠이므로 카카오톡·문자에 남기지 말고, 통화로 불러 주시거나 만났을 때 보여 주세요.</span></p>
+
+    <div class="task-list">
+      <div class="task">
+        <div class="task-head"><h3>① 준비물 확인</h3><span class="who client">핑수님</span><span class="time">5분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c-prep-1"><label for="c-prep-1"><strong>핑수님 본인 명의 휴대폰</strong>이 있어야 합니다. 이 번호가 학부모님 폰에 "보낸 사람"으로 보입니다.
+            <span class="detail"><span>가족·학원 명의 번호는 개인 회원으로는 등록할 수 없습니다(사업자 인증 필요). 본인 명의인지 확실치 않으면 통신사 앱의 가입 정보에서 확인하세요.</span></span></label></li>
+          <li><input type="checkbox" id="c-prep-2"><label for="c-prep-2">결제 수단: 신용·체크카드 또는 계좌이체(무통장). 국내 카드면 됩니다.</label></li>
+          <li><input type="checkbox" id="c-prep-3"><label for="c-prep-3">통신사의 <strong>"번호도용 문자차단"</strong> 부가서비스가 켜져 있는지 확인하고, 켜져 있으면 해지합니다.
+            <span class="detail"><span>SKT·KT·LG U+ 모두 무료 부가서비스로 제공하며 통신사 앱이나 고객센터(114)에서 끌 수 있습니다. 켜져 있으면 핑수님 번호로 보내는 문자가 통신사에서 막힙니다. 해지 후 2~3일 뒤부터 발송됩니다.</span><span>한 번도 신청한 적이 없으면 보통 꺼져 있습니다.</span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>② 알리고 개인 회원 가입</h3><span class="who client">핑수님</span><span class="time">10분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c-join-1"><label for="c-join-1"><a href="https://smartsms.aligo.in/" target="_blank" rel="noopener">smartsms.aligo.in</a>에서 <span class="ui">회원가입</span>을 누르고 회원 유형은 <strong>개인 회원</strong>을 고릅니다.
+            <span class="detail"><span>사업자 회원을 고르면 사업자등록증을 올리라고 합니다. 개인 회원이면 되고, 나중에 필요하면 사업자 회원으로 바꿀 수 있습니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-join-2"><label for="c-join-2"><strong>휴대폰 본인인증</strong>을 합니다. ①의 본인 명의 휴대폰으로 인증해야 ④의 발신번호 등록이 서류 없이 끝납니다.</label></li>
+          <li><input type="checkbox" id="c-join-3"><label for="c-join-3">아이디와 비밀번호를 정합니다. <strong>아이디는 저에게 알려 주셔야 하는 값</strong>이니 적어 두세요(비밀번호는 아닙니다).</label></li>
+          <li><input type="checkbox" id="c-join-4"><label for="c-join-4">가입 뒤 로그인해서 2단계 인증이나 로그인 알림이 있으면 켭니다. 충전금이 들어 있는 계정이라 보호해 두는 게 좋습니다.</label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>③ 첫 충전</h3><span class="who client">핑수님</span><span class="time">5분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c-pay-1"><label for="c-pay-1">로그인 후 <span class="ui">충전하기</span>에서 <strong>5만 원</strong>(부가세 포함 5.5만 원)을 충전합니다. 시험 발송과 첫 주 발송에 충분합니다.
+            <span class="detail"><span>단가는 충전 금액과 관계없이 같습니다(100만 원 이상 충전해야 장문이 25원으로 조금 내려감). 처음부터 많이 넣을 이유가 없습니다.</span><span>세금계산서는 사업자가 아니라 받을 수 없고, 현금영수증은 결제 때 신청할 수 있습니다.</span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>④ 발신번호 등록</h3><span class="who client">핑수님</span><span class="time">5분, 승인 평일 1~3시간</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c-num-1"><label for="c-num-1">상단 메뉴 <span class="ui">발신번호</span> → <span class="ui">발신번호 관리</span> → <span class="ui">발신번호 추가하기</span>를 누릅니다.</label></li>
+          <li><input type="checkbox" id="c-num-2"><label for="c-num-2">명의는 <strong>본인(개인 회원)</strong>, 번호는 ②에서 인증한 <strong>본인 휴대폰 번호</strong>를 넣고 휴대폰 본인인증을 합니다. 서류 첨부 칸은 비워 둡니다.
+            <span class="detail"><span>법(전기통신사업법)으로 발신번호는 미리 등록된 번호만 쓸 수 있습니다. 본인 명의 휴대폰은 본인인증이 곧 증빙이라 서류가 없습니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-num-3"><label for="c-num-3">상태가 <strong>승인</strong>으로 바뀔 때까지 기다립니다. 평일 낮이면 보통 1~3시간, 주말·밤이면 다음 영업일입니다. 승인되면 번호를 적어 두세요. 저에게 알려 주실 두 번째 값입니다.</label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>⑤ API 키 발급과 서버 주소 등록</h3><span class="who both">함께</span><span class="time">10분</span></div>
+        <p>이 단계는 전화나 화면 공유로 <strong>같이</strong> 하는 게 가장 빠릅니다. 혼자 하셔도 됩니다.</p>
+        <ul class="check">
+          <li><input type="checkbox" id="c-api-1"><label for="c-api-1">상단 메뉴 <span class="ui">문자API</span>(또는 <span class="ui">API 연동</span>) → <span class="ui">API 인증 관리</span>(API Key 발급)로 갑니다.</label></li>
+          <li><input type="checkbox" id="c-api-2"><label for="c-api-2"><strong>API 키</strong>를 발급받습니다. 긴 영문·숫자 문자열입니다. 화면을 닫지 말고 저에게 알려 주시거나, 안전한 곳에 적어 두세요.
+            <span class="detail"><span>이 키와 아이디만 있으면 핑수님 충전금으로 문자를 보낼 수 있습니다. 메신저에 남기지 말아 주세요. 유출이 의심되면 같은 화면에서 재발급하면 이전 키는 바로 무효가 됩니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-api-3"><label for="c-api-3">같은 화면의 <strong>발송 서버 IP 등록</strong>에 제가 불러 드리는 <strong>서버 주소(IP)</strong>를 넣습니다. 알리고는 여기 적힌 서버에서 온 요청만 받습니다.
+            <span class="detail"><span>정식 서버(AWS)는 주소가 고정이라 한 번 넣으면 끝입니다. 정식 서버 이전 전에 테스트 서버에서 먼저 시험하고 싶으시면 그때 제가 테스트 서버 주소를 따로 알려 드립니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-api-4"><label for="c-api-4">저에게 세 가지를 전달합니다: <strong>알리고 아이디</strong>, <strong>API 키</strong>, <strong>승인된 발신번호</strong>.</label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>⑥ 시험 발송 확인</h3><span class="who dev">용스</span><span class="time">10분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c-test-1"><label for="c-test-1">제가 서버에 값을 넣고 <strong>핑수님 번호로</strong> 시험 문자 한 통을 보냅니다. 받으시면 "보낸 사람"이 핑수님 번호인지, 내용이 잘리지 않았는지 봐 주세요.</label></li>
+          <li><input type="checkbox" id="c-test-2"><label for="c-test-2">mathdesk <span class="ui">알림문자</span> 화면의 발송 내역에 "테스트"가 아니라 <strong>"접수"</strong>로 남는지 같이 확인합니다. 여기까지 되면 학부모 발송 준비가 끝난 것입니다.</label></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="dev">
+    <h2><span class="n">5</span>제가 하는 일 <span class="who dev">용스</span></h2>
+    <p>핑수님은 이 장을 읽지 않으셔도 됩니다. 현재 mathdesk의 문자 기능 상태와 실발송을 켜기 전에 제가 손볼 부분입니다.</p>
+
+    <details class="dev-part" id="dev-steps">
+      <summary>서버 설정과 실발송 전 보완 펼치기 <span class="progress" id="progress-dev"></span></summary>
+      <div class="dev-body">
+        <p class="note"><span><strong>현재 상태(2026-10-11 검토).</strong> 발송 어댑터(알리고 문자·알림톡·테스트 모드), 본문 길이에 따른 단문/장문 자동 선택, 수신자별 발송 로그(본문 스냅샷·비용), 알림톡 실패 시 문자 대체, 잔액 조회 API까지 구현되어 있고 테스트 모드가 기본값이다. 실발송은 환경변수 4개로 켠다. 실제 알리고 호출은 아직 한 번도 해 보지 않았다(Q-02).</span></p>
+        <h3>A. 서버 설정</h3>
+        <div class="code">
+          <pre id="cmd-env"><span class="c"># 서버의 mathdesk/.env (chmod 600). 저장소·메신저로 옮기지 않는다</span>
+MATHDESK_MESSAGING_MODE=live
+ALIGO_API_KEY=&lt;핑수님이 발급한 API 키&gt;
+ALIGO_USER_ID=&lt;알리고 아이디&gt;
+ALIGO_SENDER=010xxxxxxxx        <span class="c"># 승인된 발신번호, 숫자만</span>
+<span class="c"># ALIGO_SENDER_KEY=              # 알림톡을 쓸 때만</span>
+
+docker compose -f compose.testops.yaml up -d   <span class="c"># 정식 서버는 compose.prod.yaml</span>
+curl -s https://&lt;주소&gt;/api/health</pre>
+          <button class="copy" type="button" data-copy="cmd-env">복사</button>
+        </div>
+        <ul class="check">
+          <li><input type="checkbox" id="d-ip"><label for="d-ip">발송 서버 공인 IP를 확인해 알리고에 등록한다(<code>curl -s https://api.ipify.org</code>). 테스트 운영(맥미니)은 유동 IP라 바뀌면 다시 등록해야 한다. 정식 서버의 Lightsail 고정 IP를 쓰는 편이 안전하다.</label></li>
+          <li><input type="checkbox" id="d-balance"><label for="d-balance"><code>GET /api/messages/balance</code>가 <code>mode: live</code>와 SMS·LMS 잔여 건수를 돌려주는지 확인한다.</label></li>
+          <li><input type="checkbox" id="d-send"><label for="d-send">핑수님 번호를 수신자로 둔 시험 학생으로 1건 발송 → 수신 확인 → 발송 내역 <code>status=sent</code>, <code>is_test=false</code>.</label></li>
+          <li><input type="checkbox" id="d-back"><label for="d-back">되돌리기: <code>MATHDESK_MESSAGING_MODE</code>를 지우거나 <code>test</code>로 바꾸고 다시 올린다.</label></li>
+        </ul>
+        <h3>B. 실발송 전에 보완할 것 (검토에서 찾은 빈틈)</h3>
+        <ul class="facts">
+          <li><strong>잔액 표시 화면이 없다.</strong> API(<code>/messages/balance</code>)만 있고 알림문자 화면에 잔액·모드가 보이지 않는다(FR-23 상세). 충전 시점을 놓치면 발송이 조용히 실패하므로 먼저 넣는다.</li>
+          <li><strong>전화번호를 정리하지 않고 보낸다.</strong> 학생·학부모 번호는 자유 입력(20자)이라 하이픈·공백이 섞일 수 있다. 발송 직전에 숫자만 남기도록 정규화한다.</li>
+          <li><strong>발송 상태는 "접수"까지다.</strong> 알리고가 돌려주는 <code>msg_id</code>를 저장하지 않아 통신사 전달 실패를 나중에 알 수 없다. <code>msg_id</code> 저장과 전송 결과 조회를 더한다.</li>
+          <li><strong>실패 건 재시도 버튼이 없다</strong>(설계 흐름 5번). 로그에만 남는다.</li>
+          <li><strong>이미지 첨부(MMS)는 미구현.</strong> 리포트 카드는 복사·저장만 되고 문자에 붙여 보내지는 않는다. 당장은 장문 문자로 충분하면 보류.</li>
+          <li><strong>학생 한 명씩만 보낸다.</strong> 반 전체 일괄 발송이 없어 160명이면 160번 보내야 한다. 운영 전에 반 단위 일괄 발송이 필요한지 핑수님과 정한다.</li>
+          <li><strong>설정이 환경변수뿐이다.</strong> 발신번호·키를 바꾸려면 재배포가 필요하다. 설계(DES-20)의 설정 화면은 미구현이지만 바꿀 일이 드물어 후순위.</li>
+          <li><strong>실발송 문자 경로의 자동 테스트가 없다.</strong> 알림톡 요청 테스트만 있다. 알리고 문자 요청 형식(필수 5개 필드·<code>msg_type</code>)을 고정하는 테스트를 더한다.</li>
+          <li><strong>하루 한도.</strong> 알리고 약관상 개인 회원은 하루 500통까지 제한될 수 있다. 160명 전원에게 같은 날 보내도 160건이라 괜찮지만, 학생이 늘면 사전 승인을 받는다.</li>
+        </ul>
+        <p class="muted">상세 절차와 출처는 저장소의 <code>ops/messaging-setup.md</code>에 있다. 보완 항목은 사용자 결정 뒤 TASK로 등록한다.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="after">
+    <h2><span class="n">6</span>알아 두실 점</h2>
+    <ul class="facts">
+      <li><strong>보내는 내용은 "정보성" 문자입니다.</strong> 수업 내용·출결·과제·점수 안내는 광고가 아니라서 "(광고)" 표기나 080 수신거부 번호가 필요 없고 밤에도 보낼 수 있습니다. 다만 원생 모집·이벤트 같은 문구를 섞으면 광고 문자 규정(표기·야간 금지)이 적용되니 섞지 마세요.</li>
+      <li><strong>문자를 원치 않는 학부모님이 있으면</strong> mathdesk 학생 정보에서 학부모 연락처를 비우거나 알림 대상에서 빼면 그분께는 나가지 않습니다.</li>
+      <li><strong>답장은 핑수님 휴대폰으로 옵니다.</strong> 발신번호가 핑수님 번호라서 학부모님이 답장하면 핑수님 폰 문자함에 도착합니다.</li>
+      <li><strong>충전금 관리:</strong> 알리고 사이트 첫 화면에 잔액이 보입니다. 자동 충전은 없으니 한 달에 한 번 확인해 주세요. 정식 서버에서는 mathdesk 화면에도 보이게 할 예정입니다.</li>
+      <li><strong>나중에 알림톡으로 바꾸면</strong> 건당 요금이 1/4로 줄고 카카오톡으로 받습니다. 학원 사업자등록증(원장님 협조)이 있으면 1~2주 심사로 가능하고, mathdesk는 추가 개발 없이 전환됩니다. 조건이 되면 말씀해 주세요.</li>
+      <li><strong>제 접근을 끊고 싶으실 때:</strong> 알리고 API 인증 화면에서 키를 <strong>재발급</strong>하면 제가 가진 키는 바로 무효가 됩니다. 서버의 문자 발송도 그 순간 멈춥니다.</li>
+    </ul>
+  </section>
+
+  <section id="trouble">
+    <h2><span class="n">7</span>막힐 때</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>증상</th><th>해결</th></tr></thead>
+        <tbody>
+          <tr><td>발신번호 등록에서 서류를 내라고 해요</td><td>명의를 "본인"으로 골랐는지, ②에서 본인인증한 번호와 같은 번호인지 확인하세요. 다른 사람 명의 번호는 개인 회원으로 등록할 수 없습니다.</td></tr>
+          <tr><td>반나절이 지나도 발신번호가 "대기"예요</td><td>알리고 심사는 평일 10~17시에만 진행됩니다. 다음 영업일까지 기다리시고, 그래도 그대로면 알리고 고객센터(02-511-4560)에 문의하세요.</td></tr>
+          <tr><td>시험 문자가 안 와요</td><td>①의 번호도용 문자차단이 켜져 있거나 해지한 지 2~3일이 안 됐을 수 있습니다. 그다음은 제가 서버 주소 등록과 설정을 다시 봅니다.</td></tr>
+          <tr><td>"잔액 부족"으로 실패해요</td><td>알리고에서 충전하면 바로 다시 보낼 수 있습니다. 실패한 문자는 자동으로 다시 나가지 않으니 mathdesk에서 다시 보내 주세요.</td></tr>
+          <tr><td>API 키를 메신저로 보내 버렸어요</td><td>알리고 API 인증 화면에서 <strong>재발급</strong>하시고 새 키를 통화로 알려 주세요. 이전 키는 즉시 못 쓰게 됩니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p class="muted">이 안내는 2026년 10월 11일 기준 알리고(요금·발신번호 안내·이용약관), 솔라피(가격 정책·일 발송 한도·발신번호 FAQ), 뿌리오(API 연동 안내·발신번호 인증 안내), NHN Cloud(SMS 서비스 정책), 카카오 비즈니스 가이드를 확인해 정리했습니다. 요금과 심사 기간은 바뀔 수 있으니 결제 직전 화면의 금액을 믿어 주세요. 화면 문구가 다르게 보이면 같은 뜻의 메뉴를 누르시거나 연락 주세요. 체크 표시는 이 브라우저에만 저장됩니다.</p>
+    <p class="sign">용스 드림</p>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var KEY = 'mathdesk-sms-checks';
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('ul.check input[type="checkbox"]'));
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+    function count(scope, el, label) {
+      var list = boxes.filter(function (b) { return b.closest(scope); });
+      var done = list.filter(function (b) { return b.checked; }).length;
+      document.getElementById(el).innerHTML = label + ' <b>' + done + '</b> / ' + list.length;
+    }
+    function render() {
+      count('#client', 'progress-client', '진행');
+      count('#dev', 'progress-dev', '진행');
+    }
+    boxes.forEach(function (box) {
+      box.checked = !!saved[box.id];
+      box.addEventListener('change', function () {
+        saved[box.id] = box.checked;
+        try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { /* 저장이 막혀도 화면은 동작한다 */ }
+        render();
+      });
+    });
+    render();
+
+    Array.prototype.forEach.call(document.querySelectorAll('.copy'), function (button) {
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        var target = document.getElementById(button.getAttribute('data-copy'));
+        var text = target.innerText;
+        function selectText() {
+          var range = document.createRange();
+          range.selectNodeContents(target);
+          var selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          button.textContent = '선택됨';
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { button.textContent = '복사됨'; }, selectText);
+        } else {
+          selectText();
+        }
+        setTimeout(function () { button.textContent = '복사'; }, 1800);
+      });
+    });
+  })();
+</script>
