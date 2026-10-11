@@ -2,8 +2,8 @@
 
 > 문서 유형: `dcr`
 > 작업 ID: `20260922-mathdesk-baseline`
-> 상태: `awaiting-approval`
-> 기준선: `v22` (승인 시 `v23` 발행 예정)
+> 상태: `approved`
+> 기준선: `v23`
 > 작성일: `2026-10-11`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](../../requirements.md), [DESIGN-mathdesk: 설계](../../design.md), [PLAN-mathdesk: 구현 계획](../../plan.md), [ADR-013](./ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [결정 등록부](../../decisions.md)
@@ -13,7 +13,7 @@
 - 변경 분류: **범위·요구사항·설계 변경** — 범위 밖이던 "Phase B(Kubernetes) 실제 배포"를 **클라이언트별 AWS Lightsail 단일 서버 + `docker compose` + Cloudflare 터널 운영(Phase B)**으로 정의해 범위에 넣고(ADR-013), 노출 표면 요구(NFR-17)를 테스트 운영/운영으로 나누며, 운영 데이터 보호(NFR-20)와 자동 백업(NFR-11 보강)을 요구사항화한다. 설계에 운영 서빙 컴포넌트(DES-25)를 더한다. 데이터 모델·REST 변경은 없다. [TASK-56](../../plan.md#task-56-운영-배포처-dcr)의 산출물이다.
 - 변경 요지: ① 클라이언트(밤·핑수) 각자의 AWS 계정에 Lightsail 서버 1대씩, 같은 저장소·같은 `compose.prod.yaml`, `.env` 한 벌만 다름 ② 외부 경로는 클라이언트 Cloudflare 계정의 토큰 터널 하나, 호스트 포트 미게시, 방화벽 SSH만 ③ 백업은 클라이언트 계정 안에만(서버 내 일일 덤프 14일 + Lightsail 스냅샷 7개), 개발자 장비 복사 금지 ④ 테스트 운영(맥미니)은 스테이징으로 유지 ⑤ 이관 작업 TASK-57·59·60을 클라이언트 2명 기준으로 갱신.
 - 사용자 결정 필요(가정으로 두고 승인 요청): **가정 1** 두 서버는 구성이 완전히 같고 `.env`만 다르다. **가정 2** 백업은 각 클라이언트 AWS 계정 안에만 두고 개발자 쪽 복사본은 두지 않는다. 다르면 수정 요청으로 알려 달라.
-- 사용자 재승인 결과: **대기**
+- 사용자 재승인 결과: **승인 (2026-10-11)** — 기준선 `v22` → `v23` 발행, 가정 1·2 그대로 승인
 
 ## 문서 연결
 
@@ -24,7 +24,7 @@
 | input | decision | [ADR-013](./ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | document | 이 변경의 핵심 결정 |
 | input | decision | [ADR-008](./ADR-008-테스트-운영-노출-구성.md) | 단일 오리진·터널·시도 제한 | 운영에도 적용, 대체하지 않음 |
 | input | decision | [DCR-001](./DCR-001-테스트-운영-환경-노출.md) | Phase A′ 테스트 운영 | 유지(스테이징 역할) |
-| output | plan | [PLAN-mathdesk: 구현 계획](../../plan.md) | TASK-56 완료, TASK-57·59·60 갱신 | 승인 후 |
+| output | plan | [PLAN-mathdesk: 구현 계획](../../plan.md) | [TASK-56](../../plan.md#task-56-운영-배포처-dcr) 완료, [TASK-57](../../plan.md#task-57-운영-구성-준비)·[TASK-59](../../plan.md#task-59-운영-이관-실행과-검증)·[TASK-60](../../plan.md#task-60-운영-안정화) 2명 기준 갱신 | — |
 | output | related | [결정 등록부](../../decisions.md) | DCR-022, ADR-013 | 등록부 등재 |
 
 ## 변경 사유와 증거
@@ -130,15 +130,16 @@
 
 | 항목 | 내용 |
 |---|---|
-| 결과 | 대기 |
+| 결과 | 승인 |
 | 결정자 | `사용자` |
-| 결정 일시 | — |
-| 근거 | — |
-| 유효 기준선 | `v22` 유지(승인 시 `v23`) |
-| 후속 상태 변경 | 승인 시 [REQ-mathdesk](../../requirements.md)·[DESIGN-mathdesk](../../design.md) `v23` 발행, ADR-013 `approved`, TASK-56 완료·TASK-57·59·60 갱신 |
+| 결정 일시 | 2026-10-11 |
+| 근거 | 2026-10-11 대화형 재승인 응답 `승인`(가정 1·2 포함) |
+| 유효 기준선 | `v23` (효력 시작 2026-10-11) |
+| 후속 상태 변경 | [REQ-mathdesk](../../requirements.md)·[DESIGN-mathdesk](../../design.md) `v23` 발행, ADR-013 `approved`, TASK-56 완료·TASK-57·59·60 갱신 |
 
 ## 변경 이력
 
 | 날짜 | 변경 | 근거 | 상태 또는 기준선 | 작성자·승인자 |
 |---|---|---|---|---|
 | 2026-10-11 | 최초 작성 — Phase B를 클라이언트별 Lightsail 단일 서버로 범위에 포함, NFR-08·11·17 변경, NFR-20·AC-48·DES-25 신설, ADR-013 | 사용자 요청, 작업 기록(클라이언트 2명·AWS 계정·Lightsail 조사·터널 결정), 사용자 결정(서버당 설정 한 벌) | → awaiting-approval | Claude / 승인자 미정 |
+| 2026-10-11 | 사용자 재승인 — 기준선 `v23` 발행 | 대화형 재승인 응답 `승인` | awaiting-approval → approved, 기준선 v22 → v23 | Claude / 사용자 |
