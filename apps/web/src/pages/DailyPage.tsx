@@ -356,6 +356,15 @@ export function DailyPage() {
               />
             </Field>
           ))}
+          {/* 테스트명은 반 공통 값이라 표가 아니라 이 카드에서 저장한다(DCR-019). 만점 칸은 두지 않는다 */}
+          <Field label="테스트명" htmlFor="notes-test_name">
+            <Input
+              id="notes-test_name"
+              maxLength={100}
+              value={String(notes.test_name ?? session?.test_name ?? '')}
+              onChange={(event) => setNotes({ ...notes, test_name: event.target.value })}
+            />
+          </Field>
           {NOTE_FIELDS.map(([field, label]) => (
             <Field key={field} label={label} htmlFor={`notes-${field}`}>
               <Textarea

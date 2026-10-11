@@ -176,3 +176,22 @@ def test_a_comment_can_be_saved_after_attendance_is_confirmed(api, klass):
 
     assert response.status_code == 200
     assert _comments(api, klass)[0] == "확정 뒤 코멘트"
+
+
+def test_test_name_longer_than_100_characters_is_rejected(api, klass):
+    """DCR-019 / AC-44 ⑥: 테스트명은 문자·카드에 그대로 나가는 값이라 100자 상한."""
+    session_id = _daily(api, klass)["session"]["id"]
+
+    response = api.put(f"/api/daily/{session_id}/notes", json={"test_name": "가" * 101})
+
+    assert response.status_code == 422
+    assert api.put(f"/api/daily/{session_id}/notes", json={"test_name": "가" * 100}).status_code == 200
+
+
+def test_blank_test_name_is_stored_as_null(api, klass):
+    session_id = _daily(api, klass)["session"]["id"]
+    api.put(f"/api/daily/{session_id}/notes", json={"test_name": "4차연합고사"})
+
+    api.put(f"/api/daily/{session_id}/notes", json={"test_name": "  "})
+
+    assert _daily(api, klass)["session"]["test_name"] is None

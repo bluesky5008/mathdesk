@@ -222,3 +222,14 @@ it('names the teacher note as the common comment that goes into messages', async
   expect(await screen.findByLabelText('선생님 코멘트 (문자 공통)')).toBeInTheDocument()
   expect(screen.queryByLabelText('강사 첨언')).not.toBeInTheDocument()
 })
+
+it('saves the test name from the progress card without a max-score field', async () => {
+  // DCR-019 / AC-44 ①: 테스트명은 반 공통 값이라 "오늘 진도" 카드에서 [메모 저장]으로 저장한다
+  renderPage()
+  await userEvent.type(await screen.findByLabelText('테스트명'), '4차연합고사')
+  expect(screen.queryByLabelText('만점')).not.toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('button', { name: '메모 저장' }))
+
+  expect(calls.find((call) => call.url === '/api/daily/9/notes')?.body).toMatchObject({ test_name: '4차연합고사' })
+})

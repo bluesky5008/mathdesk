@@ -67,6 +67,22 @@ def test_card_shows_the_teacher_note_and_the_student_comment(context):
         assert expected in html
 
 
+def test_card_puts_the_test_name_in_the_details_after_the_progress(context):
+    """DCR-019 / AC-44 ④: 요약 타일에는 점수, 상세에는 테스트명(수업 진도 다음)."""
+    html = render_report_html(context)
+
+    assert "<h2>오늘의 테스트</h2><p>4차연합고사</p>" in html
+    assert html.index("수업 진도") < html.index("오늘의 테스트") < html.index("오늘의 과제")
+    assert '<div class="k">테스트</div><div class="v">78점</div>' in html
+
+
+def test_card_without_a_test_name_has_no_test_detail(context):
+    html = render_report_html(context.model_copy(update={"test_name": None}))
+
+    assert "오늘의 테스트" not in html
+    assert "78점" in html
+
+
 def test_brand_colour_overrides_only_the_brand_token(context):
     """FR-40 시그니처 색은 --md-color-brand만 덮어쓴다."""
     html = render_report_html(context, brand_colour="#c2185b")

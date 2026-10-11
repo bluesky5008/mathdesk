@@ -22,10 +22,10 @@ FULL = MessageContext(
     student_comment="풀이 과정이 깔끔해졌어요.",
 )
 
-# DCR-017: 반 공통 구획이 위, 학생 개별 구획이 아래
+# DCR-017: 반 공통 구획이 위, 학생 개별 구획이 아래. DCR-019: 테스트명은 공통, 점수는 개별
 ORDER = (
-    "■ 수업진도", "■ 오늘의 과제", "■ 수업 영상 링크", "■ 선생님 코멘트",
-    "■ 출결", "■ 과제피드백", "■ 테스트", "■ 개별 코멘트",
+    "■ 수업진도", "■ 오늘의 테스트", "■ 오늘의 과제", "■ 수업 영상 링크", "■ 선생님 코멘트",
+    "■ 출결", "■ 과제피드백", "■ 테스트 점수", "■ 개별 코멘트",
 )
 
 
@@ -61,7 +61,8 @@ def test_sections_without_data_are_omitted():
         FULL.model_copy(update={"test_name": None, "test_score": None, "video_url": None})
     )
 
-    assert "■ 테스트" not in body
+    assert "■ 오늘의 테스트" not in body
+    assert "■ 테스트 점수" not in body
     assert "■ 수업 영상 링크" not in body
     assert "■ 과제피드백" in body
 
@@ -81,12 +82,29 @@ def test_progress_lines_are_numbered_by_period():
     assert "[2교시] 학교프린트 변형문제 해설" in body
 
 
-def test_test_section_shows_score_and_class_average():
+def test_test_name_is_common_and_the_score_is_individual():
+    """DCR-019 / AC-14: 테스트명은 반 공통 구획, 점수·반평균은 학생 개별 구획."""
     body = render_daily_message(FULL)
 
-    assert "■ 테스트: 4차연합고사" in body
-    assert "학생점수: 78점" in body
+    assert "■ 오늘의 테스트\n4차연합고사" in body
+    assert "■ 테스트 점수: 78점" in body
     assert "반평균: 71.6점" in body
+    assert "■ 테스트: " not in body
+
+
+def test_score_without_a_test_name_still_renders_the_score_section():
+    """DCR-019 / AC-44 ③: 화면에서 이름 없이 점수만 넣은 수업도 점수가 나간다."""
+    body = render_daily_message(FULL.model_copy(update={"test_name": None}))
+
+    assert "■ 오늘의 테스트" not in body
+    assert "■ 테스트 점수: 78점" in body
+
+
+def test_test_name_without_a_score_renders_only_the_common_section():
+    body = render_daily_message(FULL.model_copy(update={"test_score": None, "class_average": None}))
+
+    assert "■ 오늘의 테스트\n4차연합고사" in body
+    assert "■ 테스트 점수" not in body
 
 
 def test_grade_without_a_configured_comment_still_renders_the_grade():

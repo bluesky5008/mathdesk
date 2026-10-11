@@ -177,6 +177,8 @@ def _details(context: MessageContext) -> list[tuple[str, str]]:
     )
     if progress:
         details.append(("수업 진도", progress))
+    if context.test_name:
+        details.append(("오늘의 테스트", context.test_name))
     if context.homework:
         details.append(("오늘의 과제", context.homework))
     if context.video_url:

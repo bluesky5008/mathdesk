@@ -35,7 +35,8 @@ def test_preview_merges_session_and_student_records(api, klass):
     assert "학습피드백" in body
     assert "[1교시] 2024 광문고 기출 시행" in body
     assert "■ 과제피드백: B" in body
-    assert "학생점수: 78점" in body
+    assert "■ 오늘의 테스트\n4차연합고사" in body
+    assert "■ 테스트 점수: 78점" in body
     assert "반평균: 75.0점" in body
 
 

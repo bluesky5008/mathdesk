@@ -45,8 +45,14 @@ class NotesIn(BaseModel):
     homework: str | None = None
     video_url: str | None = None
     teacher_note: str | None = None
-    test_name: str | None = None
+    # 문자·카드에 그대로 나가는 값이라 100자 상한(DCR-019)
+    test_name: str | None = Field(default=None, max_length=100)
     test_max_score: int | None = None
+
+    @field_validator("test_name")
+    @classmethod
+    def blank_test_name_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
 
 
 class RecordIn(BaseModel):

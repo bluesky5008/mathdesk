@@ -74,6 +74,10 @@ def render_daily_message(context: MessageContext) -> str:
     if lines:
         blocks.append("■ 수업진도\n" + "\n".join(lines))
 
+    # 테스트명은 반 공통, 점수는 학생 개별(DCR-019)
+    if context.test_name:
+        blocks.append(f"■ 오늘의 테스트\n{context.test_name}")
+
     if context.homework:
         blocks.append(f"■ 오늘의 과제\n{context.homework}")
 
@@ -93,8 +97,8 @@ def render_daily_message(context: MessageContext) -> str:
             feedback += f"\n{context.grade_comment}"
         blocks.append(feedback)
 
-    if context.test_name and context.test_score is not None:
-        test = f"■ 테스트: {context.test_name}\n   학생점수: {context.test_score}점"
+    if context.test_score is not None:
+        test = f"■ 테스트 점수: {context.test_score}점"
         if context.class_average is not None:
             test += f"\n   반평균: {context.class_average}점"
         blocks.append(test)
