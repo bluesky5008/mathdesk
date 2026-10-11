@@ -1,0 +1,467 @@
+<title>mathdesk AWS 준비</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ink: #1d2530;
+    --muted: #5b6676;
+    --line: #d8dde4;
+    --ground: #f5f7f9;
+    --surface: #ffffff;
+    --accent: #1f6f78;
+    --accent-soft: #e3f0f1;
+    --both: #8a5a12;
+    --both-soft: #f6eedd;
+    --dev: #4a5568;
+    --dev-soft: #e9ecf1;
+    --warn: #9a3b2a;
+    --warn-soft: #f7e9e5;
+    --code-bg: #eef1f4;
+    --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e6eaf0;
+      --muted: #9aa4b2;
+      --line: #2c3440;
+      --ground: #12161c;
+      --surface: #1a2028;
+      --accent: #6cbcc4;
+      --accent-soft: #1b3033;
+      --both: #e2b46a;
+      --both-soft: #33291a;
+      --dev: #b4bfcf;
+      --dev-soft: #252c37;
+      --warn: #e59a88;
+      --warn-soft: #3a2420;
+      --code-bg: #10141a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e6eaf0;
+    --muted: #9aa4b2;
+    --line: #2c3440;
+    --ground: #12161c;
+    --surface: #1a2028;
+    --accent: #6cbcc4;
+    --accent-soft: #1b3033;
+    --both: #e2b46a;
+    --both-soft: #33291a;
+    --dev: #b4bfcf;
+    --dev-soft: #252c37;
+    --warn: #e59a88;
+    --warn-soft: #3a2420;
+    --code-bg: #10141a;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    padding-inline: 16px;
+    padding-block: 32px 64px;
+    word-break: keep-all;
+  }
+  .page { max-width: 780px; margin: 0 auto; display: grid; gap: 44px; }
+
+  header { display: grid; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+  .eyebrow { font-size: 13px; letter-spacing: 0.08em; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(26px, 5vw, 34px); line-height: 1.3; margin: 0; font-weight: 700; text-wrap: balance; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); font-size: 14px; }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  section { display: grid; gap: 16px; }
+  h2 { font-size: 21px; margin: 0; font-weight: 700; text-wrap: balance; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+  h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
+  h3 { font-size: 17px; margin: 0; font-weight: 600; text-wrap: balance; }
+  p { margin: 0; max-width: 68ch; }
+  .lead p + p { margin-top: 12px; }
+  strong { font-weight: 600; }
+  .muted { color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  /* 누가 하는 단계인지: 색과 글자 둘 다로 구분한다 */
+  .who { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; border-radius: 999px; padding: 1px 10px; white-space: nowrap; }
+  .who.client { background: var(--accent-soft); color: var(--accent); }
+  .who.both { background: var(--both-soft); color: var(--both); }
+  .who.dev { background: var(--dev-soft); color: var(--dev); }
+  .time { color: var(--muted); font-weight: 400; font-size: 14px; }
+
+  /* 한눈에 보기 */
+  ol.flow { list-style: none; margin: 0; padding: 0; display: grid; counter-reset: step; }
+  ol.flow li {
+    counter-increment: step; display: grid; grid-template-columns: 40px 1fr; gap: 2px 12px;
+    padding: 14px 0; border-top: 1px solid var(--line);
+  }
+  ol.flow li:last-child { border-bottom: 1px solid var(--line); }
+  ol.flow li::before {
+    content: counter(step); grid-row: span 2; width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 14px; font-weight: 600;
+    background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+  .flow-title { font-weight: 600; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+
+  .note { background: var(--accent-soft); border-radius: var(--radius); padding: 14px 16px; font-size: 15px; display: grid; gap: 6px; }
+  .note.warn { background: var(--warn-soft); }
+  .note.warn strong { color: var(--warn); }
+  .note.both { background: var(--both-soft); }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; background: var(--ground); white-space: nowrap; }
+  td.amount { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* 단계 카드: 보는 사람이 직접 체크하며 진행한다 */
+  .task { display: grid; gap: 12px; padding: 18px 18px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .task-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+  .task-list { display: grid; gap: 12px; }
+  ul.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  ul.check > li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; }
+  ul.check input { width: 18px; height: 18px; margin: 4px 0 0; accent-color: var(--accent); }
+  ul.check label { cursor: pointer; }
+  ul.check input:checked + label { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+  ul.check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .detail { display: grid; gap: 4px; margin-top: 4px; padding-left: 12px; border-left: 2px solid var(--line); color: var(--muted); font-size: 15px; }
+  .detail b { color: var(--ink); font-weight: 600; }
+  .progress { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .progress b { color: var(--accent); }
+
+  .ui { font-weight: 600; color: var(--ink); background: var(--ground); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .ui small { font-weight: 400; color: var(--muted); font-size: 12px; }
+  code { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 14px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; overflow-wrap: anywhere; }
+
+  /* 그리드 칸은 기본 min-width가 내용 폭이라 코드 블록이 페이지를 밀어낸다 */
+  .page > *, section > *, .task > *, .task-list > *, .dev-body > *, ul.check label { min-width: 0; }
+  ul.check label { display: block; }
+  .code { position: relative; display: grid; min-width: 0; max-width: 100%; }
+  pre { margin: 0; overflow-x: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.6; }
+  pre .c { color: var(--muted); }
+  .copy {
+    position: absolute; top: 6px; right: 6px; font: inherit; font-size: 12px; font-weight: 600;
+    color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; cursor: pointer;
+  }
+  .copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  details.dev-part { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  details.dev-part > summary { cursor: pointer; padding: 14px 18px; font-weight: 600; list-style-position: inside; }
+  details.dev-part > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dev-body { display: grid; gap: 16px; padding: 0 18px 18px; }
+
+  ul.facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  ul.facts li { padding-left: 14px; border-left: 3px solid var(--line); }
+  footer { border-top: 1px solid var(--line); padding-top: 20px; display: grid; gap: 6px; }
+  footer .sign { font-weight: 600; }
+
+  @media (max-width: 520px) {
+    body { font-size: 15px; }
+    th, td { padding: 9px 10px; }
+    .task { padding: 16px 14px 14px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    ul.check label { transition: color 0.15s; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">mathdesk · 정식 서버 준비</div>
+    <h1>AWS 계정 준비와 서버 이전 순서</h1>
+    <div class="meta">
+      <span>작성일 <b>2026-10-11</b></span>
+      <span>받는 분 <b>핑수</b></span>
+      <span>보내는 사람 <b>용스</b></span>
+    </div>
+  </header>
+
+  <section class="lead">
+    <p>핑수님, 지난번 보내 드린 "정식 운영 준비 안내"의 "④ 서버(AWS) 계정 만들기"를 따라 하실 수 있게 순서대로 풀어 쓴 안내입니다.</p>
+    <p><strong>AWS 계정은 핑수님 명의로 만들고 결제도 핑수님 카드로 됩니다.</strong> 저는 핑수님 계정 안에 <strong>서버만 다룰 수 있는 제 전용 사용자</strong>를 하나 받아서 그걸로 서버를 설치합니다. 나중에 제 접근을 끊고 싶으시면 그 사용자 하나만 지우시면 됩니다.</p>
+    <p>각 단계 옆의 표시로 누가 하는지 구분했습니다.</p>
+    <p class="meta">
+      <span><span class="who client">핑수님</span> 혼자 하시는 단계</span>
+      <span><span class="who both">같이</span> 전화나 화면 공유로 함께</span>
+      <span><span class="who dev">용스</span> 제가 하는 단계</span>
+    </p>
+  </section>
+
+  <section id="flow">
+    <h2><span class="n">1</span>한눈에 보기</h2>
+    <ol class="flow">
+      <li><div class="flow-title">가입 전 준비물 챙기기 <span class="who client">핑수님</span> <span class="time">5분</span></div><p>이메일, 휴대폰, 카드, 인증 앱.</p></li>
+      <li><div class="flow-title">AWS 가입 <span class="who client">핑수님</span> <span class="time">20~30분, 승인까지 최대 하루</span></div><p><strong>반드시 아래에 드리는 링크로</strong> 가입해 주세요. 다른 경로로 가입하면 서버를 한국(서울)에 둘 수 없습니다.</p></li>
+      <li><div class="flow-title">계정 잠금 장치(2단계 인증) 켜기 <span class="who client">핑수님</span> <span class="time">10분</span></div><p>휴대폰 인증 앱으로 로그인할 때마다 6자리 숫자를 한 번 더 넣게 합니다.</p></li>
+      <li><div class="flow-title">요금 알림 설정 <span class="who client">핑수님</span> <span class="time">5분</span></div><p>한 달 요금이 정한 금액을 넘으려 하면 이메일이 옵니다.</p></li>
+      <li><div class="flow-title">용스 전용 사용자 만들기 <span class="who both">같이</span> <span class="time">20분</span></div><p>화면을 같이 보면서 만듭니다. 서버(Lightsail)만 다룰 수 있고 결제·계정 정보는 볼 수 없는 사용자입니다.</p></li>
+      <li><div class="flow-title">서버 설치와 이전 <span class="who dev">용스</span> <span class="time">기능 승인 후 하루</span></div><p>서울에 서버를 만들고 mathdesk를 설치합니다. 문자 발송까지 확인한 뒤 원장 계정을 드립니다.</p></li>
+    </ol>
+  </section>
+
+  <section id="cost">
+    <h2><span class="n">2</span>서버 비용</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>항목</th><th>요금</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td>서버 (Lightsail 2GB)</td><td class="amount">월 12달러</td><td>메모리 2GB, 저장 공간 60GB, 데이터 전송 월 3TB 포함. 고정 금액입니다</td></tr>
+          <tr><td>매일 자동 백업 (스냅샷)</td><td class="amount">월 1~3달러</td><td>최근 7일치를 보관합니다. 1GB당 월 0.05달러</td></tr>
+          <tr><td>부가세</td><td class="amount">10%</td><td>개인 가입자도 붙습니다</td></tr>
+          <tr><td><strong>합계</strong></td><td class="amount">월 약 2만 원</td><td>1달러 = 1,400원 기준. 지난 안내문의 "서버 약 2.1만 원"과 같습니다</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="facts">
+      <li><strong>가입하면 100달러 크레딧을 줍니다.</strong> 크레딧이 남아 있는 동안은 서버 요금이 크레딧에서 빠집니다. 위 금액이면 대략 첫 6~7개월 서버 요금이 크레딧으로 충당됩니다. 크레딧은 가입 후 12개월 안에 써야 합니다.</li>
+      <li><strong>원화로 결제됩니다.</strong> 계약 상대는 AWS 한국 법인(Amazon Web Services Korea)이고, 카드 결제는 원화로만 됩니다. 영수증에 달러 금액, 원화 금액, 적용 환율이 함께 나옵니다.</li>
+      <li>쓰다 보니 느리면 화면에서 몇 번 눌러 한 단계 큰 서버(4GB, 월 24달러)로 옮길 수 있습니다. 그때는 미리 말씀드리겠습니다.</li>
+    </ul>
+  </section>
+
+  <section id="client">
+    <h2><span class="n">3</span>핑수님께서 하실 일 <span class="progress" id="progress-client"></span></h2>
+
+    <p class="note warn"><span><strong>비밀번호, 인증번호, 6자리 코드, 카드 정보는 메신저나 이메일로 보내지 말아 주세요.</strong> 제가 그런 값을 따로 여쭤보는 일도 없습니다. 5단계에서 제 사용자의 첫 비밀번호만 화면 공유로 받아 적고, 저는 받자마자 바꿉니다.</span></p>
+
+    <div class="task-list">
+      <div class="task">
+        <div class="task-head"><h3>① 가입 전 준비물</h3><span class="who client">핑수님</span><span class="time">5분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c-prep-mail"><label for="c-prep-mail"><strong>앞으로 계속 쓰실 이메일 주소</strong> 하나
+            <span class="detail"><span>이 이메일이 AWS 계정의 주인 아이디가 됩니다. 비밀번호 재설정과 요금 알림도 여기로 옵니다. 잊어버리기 쉬운 새 주소보다 평소 쓰시는 주소가 좋습니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-prep-phone"><label for="c-prep-phone"><strong>휴대폰</strong> (문자 인증용)</label></li>
+          <li><input type="checkbox" id="c-prep-card"><label for="c-prep-card"><strong>해외 결제가 되는 카드</strong> (Visa·Mastercard 등, 국내 카드사 발급이면 됩니다)
+            <span class="detail"><span>가입할 때 카드 확인용으로 <b>1달러 승인</b>이 잡혔다가 3~5일 안에 취소됩니다. 실제로 빠져나가는 돈이 아닙니다.</span><span>국내 전용 카드(해외 결제 불가)가 되는지는 AWS 안내에 나와 있지 않아서, 해외 결제가 되는 카드를 권합니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-prep-app"><label for="c-prep-app">휴대폰에 <strong>인증 앱</strong> 설치: Google Authenticator 또는 Microsoft Authenticator (무료)</label></li>
+          <li><input type="checkbox" id="c-prep-addr"><label for="c-prep-addr"><strong>영문 주소</strong> 미리 찾아 두기
+            <span class="detail"><span>가입 화면이 영어 주소를 받습니다. 도로명주소 안내 사이트(juso.go.kr)에서 주소를 검색하면 영문 주소가 같이 나옵니다.</span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>② AWS 가입</h3><span class="who client">핑수님</span><span class="time">20~30분</span></div>
+        <p class="note warn"><span><strong>꼭 이 주소로 시작해 주세요:</strong> <a href="https://signin.aws.amazon.com/signup?request_type=register" target="_blank" rel="noopener">signin.aws.amazon.com/signup?request_type=register</a></span><span>AWS가 요즘 일부 사람에게 보여 주는 <b>"새 가입 화면(Sign up for AWS (new))"</b>으로 가입하면 한국 주소 계정의 서버 위치가 <b>시드니(호주)로 고정</b>되고, 제 전용 사용자도 만들 수 없습니다. 위 주소는 서울을 고를 수 있는 기존 가입 화면("advanced")입니다.</span></p>
+        <ul class="check">
+          <li><input type="checkbox" id="c-su-1"><label for="c-su-1"><span class="ui">루트 사용자 이메일 주소 <small>Root user email address</small></span>에 ①의 이메일을, <span class="ui">AWS 계정 이름 <small>AWS account name</small></span>에 <code>mathdesk</code>를 넣고 <span class="ui">이메일 주소 확인 <small>Verify email address</small></span>을 누릅니다.</label></li>
+          <li><input type="checkbox" id="c-su-2"><label for="c-su-2">이메일로 온 <strong>확인 코드</strong>를 넣습니다.</label></li>
+          <li><input type="checkbox" id="c-su-3"><label for="c-su-3"><strong>루트 비밀번호</strong>를 정합니다. 8자 이상, 대문자·소문자·숫자·기호 중 3가지 이상을 섞어야 합니다.
+            <span class="detail"><span>이 비밀번호는 <b>핑수님만</b> 아셔야 합니다. 저에게도 알려 주시면 안 됩니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-su-4"><label for="c-su-4">플랜 선택 화면에서 <strong>유료 플랜 <small>Paid plan</small></strong>을 고릅니다.
+            <span class="detail"><span><b>무료 플랜(Free plan)은 고르지 마세요.</b> 6개월이 지나거나 크레딧을 다 쓰면 계정이 자동으로 닫히고, 90일 뒤에는 서버와 자료가 지워집니다.</span><span>유료 플랜도 100달러 크레딧을 똑같이 받습니다. 쓴 만큼만 나갑니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-su-5"><label for="c-su-5">연락처 정보에서 <span class="ui">개인 <small>Personal</small></span>을 고르고 이름, 전화번호, 영문 주소를 넣은 뒤 약관에 동의합니다.</label></li>
+          <li><input type="checkbox" id="c-su-6"><label for="c-su-6">결제 정보에 카드를 넣습니다.</label></li>
+          <li><input type="checkbox" id="c-su-7"><label for="c-su-7">전화 인증: 국가 <code>대한민국 (+82)</code>를 고르고 휴대폰 번호를 넣은 뒤 <span class="ui">SMS 전송 <small>Send SMS</small></span>을 누르고, 받은 숫자를 넣습니다.
+            <span class="detail"><span>문자가 안 오면 아래 <a href="#trouble">6장 막힐 때</a>를 봐 주세요.</span></span></label></li>
+          <li><input type="checkbox" id="c-su-8"><label for="c-su-8">지원 플랜(Support plan)은 <strong>기본 지원 – 무료 <small>Basic support – Free</small></strong>를 고르고 <span class="ui">가입 완료 <small>Complete sign up</small></span>를 누릅니다.</label></li>
+          <li><input type="checkbox" id="c-su-9"><label for="c-su-9">"계정이 활성화되었습니다"라는 이메일을 기다립니다. 보통 몇 분이면 오고, 길면 하루까지 걸립니다.</label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>③ 계정 잠금 장치(2단계 인증) 켜기</h3><span class="who client">핑수님</span><span class="time">10분</span></div>
+        <p>AWS는 계정 주인에게 2단계 인증을 의무로 요구합니다. 처음 로그인하고 35일 안에 켜야 합니다.</p>
+        <ul class="check">
+          <li><input type="checkbox" id="c-mfa-1"><label for="c-mfa-1"><a href="https://console.aws.amazon.com" target="_blank" rel="noopener">console.aws.amazon.com</a>에서 <span class="ui">루트 사용자 <small>Root user</small></span>를 고르고 가입한 이메일과 비밀번호로 로그인합니다.</label></li>
+          <li><input type="checkbox" id="c-mfa-2"><label for="c-mfa-2">오른쪽 위 계정 이름 → <span class="ui">보안 자격 증명 <small>Security credentials</small></span> → <span class="ui">MFA 디바이스 할당 <small>Assign MFA device</small></span>을 누릅니다.</label></li>
+          <li><input type="checkbox" id="c-mfa-3"><label for="c-mfa-3">디바이스 이름에 <code>pingsu-phone</code>을 넣고 <span class="ui">인증 관리자 앱 <small>Authenticator app</small></span>을 고릅니다.</label></li>
+          <li><input type="checkbox" id="c-mfa-4"><label for="c-mfa-4">화면에 나온 QR 코드를 휴대폰 인증 앱으로 찍고, 앱에 나오는 6자리 숫자를 <strong>연속으로 두 번</strong>(첫 번째 숫자, 30초 뒤 바뀐 두 번째 숫자) 넣은 뒤 <span class="ui">MFA 추가 <small>Add MFA</small></span>를 누릅니다.</label></li>
+          <li><input type="checkbox" id="c-mfa-5"><label for="c-mfa-5"><strong>휴대폰을 잃어버릴 때를 대비해</strong> QR 화면에 있는 <span class="ui">비밀 키 표시 <small>Show secret key</small></span>의 글자를 종이에 적어 안전한 곳에 두시거나, 인증 앱을 하나 더(예: 태블릿) 같은 방법으로 등록해 주세요.</label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>④ 요금 알림 설정</h3><span class="who client">핑수님</span><span class="time">5분</span></div>
+        <p>예상보다 요금이 많이 나오면 바로 알 수 있게 합니다. 알림 기능은 무료입니다.</p>
+        <ul class="check">
+          <li><input type="checkbox" id="c-bud-1"><label for="c-bud-1">맨 위 검색창에 <code>Budgets</code>를 넣고 <span class="ui">예산 <small>Budgets</small></span> → <span class="ui">예산 생성 <small>Create budget</small></span>을 누릅니다.</label></li>
+          <li><input type="checkbox" id="c-bud-2"><label for="c-bud-2"><span class="ui">템플릿 사용(간소화) <small>Use a template (simplified)</small></span> → <span class="ui">월별 비용 예산 <small>Monthly cost budget</small></span>을 고릅니다.</label></li>
+          <li><input type="checkbox" id="c-bud-3"><label for="c-bud-3">예산 금액에 <code>25</code>(달러)를 넣고, 알림 받을 이메일에 <strong>핑수님 이메일과 제 이메일</strong>을 함께 넣은 뒤 <span class="ui">예산 생성 <small>Create budget</small></span>을 누릅니다.
+            <span class="detail"><span>평소 서버 요금은 월 15달러 안팎이라, 25달러 알림이 오면 뭔가 평소와 다르다는 뜻입니다. 알림이 오면 저에게 알려 주세요.</span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>⑤ 용스 전용 사용자 만들기</h3><span class="who both">같이</span><span class="time">20분, 전화 + 화면 공유</span></div>
+        <p class="note both"><span>이 단계는 시간을 맞춰 <strong>통화하면서 화면을 같이 보며</strong> 진행합니다. 핑수님이 클릭하시고, 마지막 두 항목에서 제가 제 휴대폰으로 QR을 찍습니다.</span></p>
+        <ul class="check">
+          <li><input type="checkbox" id="c-iam-1"><label for="c-iam-1"><strong>권한 묶음 만들기:</strong> 검색창에 <code>IAM</code> → <span class="ui">정책 <small>Policies</small></span> → <span class="ui">정책 생성 <small>Create policy</small></span> → <span class="ui">JSON</span> 탭을 누르고, 안의 내용을 모두 지운 뒤 아래 글을 붙여 넣습니다.
+            <span class="code" style="margin-top:8px">
+              <pre id="policy-json">{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Effect": "Allow", "Action": "lightsail:*", "Resource": "*" }
+  ]
+}</pre>
+              <button class="copy" type="button" data-copy="policy-json">복사</button>
+            </span>
+            <span class="detail"><span>"서버 서비스(Lightsail)에 관한 일만 할 수 있다"는 뜻입니다. 결제, 계정 정보, 다른 서비스는 건드릴 수 없습니다.</span><span><span class="ui">다음 <small>Next</small></span> → 정책 이름 <code>mathdesk-lightsail</code> → <span class="ui">정책 생성 <small>Create policy</small></span>.</span></span></label></li>
+          <li><input type="checkbox" id="c-iam-2"><label for="c-iam-2"><strong>사용자 만들기:</strong> 왼쪽 <span class="ui">사용자 <small>Users</small></span> → <span class="ui">사용자 생성 <small>Create user</small></span> → 이름 <code>yongs</code>.</label></li>
+          <li><input type="checkbox" id="c-iam-3"><label for="c-iam-3"><span class="ui">AWS Management Console에 대한 사용자 액세스 권한 제공 <small>Provide user access to the AWS Management Console</small></span>에 체크하고 <span class="ui">IAM 사용자를 생성하고 싶음 <small>I want to create an IAM user</small></span>을 고릅니다.
+            <span class="detail"><span>암호는 <span class="ui">자동 생성된 암호 <small>Autogenerated password</small></span>, <span class="ui">다음 로그인 시 새 암호 생성 <small>must create a new password at next sign-in</small></span>은 체크된 그대로 둡니다.</span></span></label></li>
+          <li><input type="checkbox" id="c-iam-4"><label for="c-iam-4"><span class="ui">직접 정책 연결 <small>Attach policies directly</small></span> → 검색에 <code>mathdesk-lightsail</code> → 체크 → <span class="ui">다음</span> → <span class="ui">사용자 생성 <small>Create user</small></span>.</label></li>
+          <li><input type="checkbox" id="c-iam-5"><label for="c-iam-5">완료 화면의 <strong>콘솔 로그인 URL, 사용자 이름, 암호</strong>를 화면 공유로 제가 받아 적습니다. 저는 그 자리에서 로그인해 암호를 바로 바꿉니다.</label></li>
+          <li><input type="checkbox" id="c-iam-6"><label for="c-iam-6"><strong>제 사용자에도 2단계 인증 걸기:</strong> <span class="ui">사용자</span> → <code>yongs</code> → <span class="ui">보안 자격 증명 <small>Security credentials</small></span> → <span class="ui">MFA 디바이스 할당</span> → 이름 <code>yongs-phone</code>, <span class="ui">인증 관리자 앱</span>. 화면의 QR을 <strong>제 휴대폰</strong>으로 찍고 제가 6자리 숫자 두 개를 불러 드리면 넣고 <span class="ui">MFA 추가</span>를 누릅니다.</label></li>
+          <li><input type="checkbox" id="c-iam-7"><label for="c-iam-7">끝나면 <strong>로그아웃</strong>해 주세요. 이후 핑수님은 결제 확인이나 알림 확인 때만 루트로 로그인하시면 됩니다.</label></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="dev">
+    <h2><span class="n">4</span>제가 하는 일 <span class="who dev">용스</span></h2>
+    <p>핑수님은 이 장을 읽지 않으셔도 됩니다. 제가 따라 할 작업 순서이고, 무엇을 하는지 궁금하실 때 참고하시면 됩니다.</p>
+    <p class="note"><span>서버 설치는 <strong>기능 확인과 승인이 끝난 뒤</strong> 합니다. 그 전에 운영용 설정 파일(작업 번호 TASK-57)을 준비하고, 서버 구성 방식은 설계 문서로 먼저 확정합니다(TASK-56).</span></p>
+
+    <details class="dev-part" id="dev-steps">
+      <summary>서버 설치 순서 펼치기 <span class="progress" id="progress-dev"></span></summary>
+      <div class="dev-body">
+        <h3>A. 접속 확인</h3>
+        <ul class="check">
+          <li><input type="checkbox" id="d-sign"><label for="d-sign">받은 로그인 URL(<code>https://&lt;계정ID&gt;.signin.aws.amazon.com/console</code>)로 <code>yongs</code> 로그인 → 암호 변경 → MFA 확인. 콘솔 오른쪽 위 리전이 <strong>아시아 태평양(서울) ap-northeast-2</strong>인지 확인.</label></li>
+        </ul>
+
+        <h3>B. Lightsail 서버 만들기</h3>
+        <ul class="check">
+          <li><input type="checkbox" id="d-inst"><label for="d-inst">Lightsail → <span class="ui">Create instance</span>: 위치 <code>Seoul, Zone A</code>, 플랫폼 <code>Linux/Unix</code>, 블루프린트 <code>OS Only → Ubuntu 24.04 LTS</code>, 네트워크 <code>Dual-stack</code>, 플랜 <code>$12 (2GB RAM, 2 vCPU, 60GB SSD)</code>, 이름 <code>mathdesk-prod</code>.</label></li>
+          <li><input type="checkbox" id="d-ip"><label for="d-ip"><span class="ui">Networking → Create static IP</span>로 고정 IP를 만들어 붙인다. 붙어 있으면 무료다. 문자 서비스(알리고)에 "발송 서버 IP"로 등록할 주소가 이것이다.</label></li>
+          <li><input type="checkbox" id="d-fw"><label for="d-fw">방화벽(IPv4·IPv6 각각): HTTP 80 규칙 삭제. SSH 22는 <span class="ui">Restrict to IP address</span>로 내 IP만 허용하고 <span class="ui">Allow Lightsail browser SSH</span> 체크. 외부 접속은 Cloudflare 터널(서버에서 바깥으로 나가는 연결)뿐이라 열어 둘 포트가 없다.</label></li>
+          <li><input type="checkbox" id="d-snap"><label for="d-snap"><span class="ui">Snapshots → Automatic snapshots</span> 켜기, 시각 <code>19:00 UTC</code>(한국 새벽 4시). 최근 7개 보관. 인스턴스를 지우면 자동 스냅샷도 같이 지워지므로, 플랜 변경이나 삭제 전에는 수동 스냅샷을 따로 뜬다.</label></li>
+          <li><input type="checkbox" id="d-key"><label for="d-key">Lightsail <span class="ui">Account → SSH keys</span>에서 서울 리전 기본 키를 받거나 내 공개키를 올린다. 이후 터미널에서 <code>ssh ubuntu@&lt;고정IP&gt;</code>.</label></li>
+        </ul>
+
+        <h3>C. 서버 기본 설정</h3>
+        <div class="code">
+          <pre id="cmd-base"><span class="c"># 시간대·업데이트 (Ubuntu는 보안 업데이트 자동 설치가 기본으로 켜져 있다)</span>
+sudo timedatectl set-timezone Asia/Seoul
+sudo apt update &amp;&amp; sudo apt -y upgrade
+
+<span class="c"># 메모리 2GB라 이미지 빌드 때 모자랄 수 있어 스왑 2GB</span>
+sudo fallocate -l 2G /swapfile &amp;&amp; sudo chmod 600 /swapfile
+sudo mkswap /swapfile &amp;&amp; sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+<span class="c"># Docker Engine + compose 플러그인 (공식 설치 스크립트)</span>
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker ubuntu   <span class="c"># 다시 로그인하면 sudo 없이 docker</span></pre>
+          <button class="copy" type="button" data-copy="cmd-base">복사</button>
+        </div>
+
+        <h3>D. mathdesk 설치</h3>
+        <ul class="check">
+          <li><input type="checkbox" id="d-clone"><label for="d-clone">저장소를 서버에서 받아 <strong>서버에서 직접 빌드</strong>한다. 서버가 x86이라 맥(arm64)에서 교차 빌드할 필요가 없다.</label></li>
+        </ul>
+        <div class="code">
+          <pre id="cmd-app">git clone https://github.com/bluesky5008/mathdesk.git &amp;&amp; cd mathdesk
+cp .env.example .env &amp;&amp; chmod 600 .env
+<span class="c"># .env는 서버에서 직접 채운다(저장소·메신저로 옮기지 않는다)</span>
+<span class="c">#   POSTGRES_PASSWORD           openssl rand -base64 24 로 새로 만든다</span>
+<span class="c">#   MATHDESK_INITIAL_ADMIN_*    초기 원장 계정. 이전 날 핑수님이 비밀번호를 바로 바꾼다</span>
+<span class="c">#   ALIGO_* / MATHDESK_MESSAGING_MODE=live, LLM 키   이전 날 같이 발급해 넣는다</span>
+
+<span class="c"># Cloudflare 터널: 핑수님 Cloudflare에 관리자로 초대받은 계정으로 승인</span>
+cloudflared tunnel login
+cloudflared tunnel create mathdesk-prod
+cloudflared tunnel route dns mathdesk-prod &lt;정식 도메인&gt;
+
+<span class="c"># 운영 구성 파일(TASK-57에서 준비)로 기동. 마이그레이션은 기동 시 자동 적용</span>
+docker compose -f compose.prod.yaml up -d --build</pre>
+          <button class="copy" type="button" data-copy="cmd-app">복사</button>
+        </div>
+
+        <h3>E. 확인과 인계</h3>
+        <ul class="check">
+          <li><input type="checkbox" id="d-health"><label for="d-health"><code>https://&lt;정식 도메인&gt;/api/health</code> 200, 로그인, 강사 권한 범위 확인. 방화벽에 SSH 외 열린 포트가 없는지 확인.</label></li>
+          <li><input type="checkbox" id="d-aligo"><label for="d-aligo">알리고에 고정 IP 등록, API 키 발급 → <code>.env</code> → 핑수님 휴대폰으로 시험 문자 1통.</label></li>
+          <li><input type="checkbox" id="d-backup"><label for="d-backup">자동 백업(<code>ops/backup.sh</code>를 매일 실행) 1회 수동 실행과 복원 확인. Lightsail 스냅샷과 별개로 DB 덤프를 남긴다.</label></li>
+          <li><input type="checkbox" id="d-handover"><label for="d-handover">핑수님이 원장 비밀번호를 직접 바꾸는 것을 확인하고 결과를 작업 기록에 남긴다.</label></li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <section id="after">
+    <h2><span class="n">5</span>이전한 뒤에</h2>
+    <ul class="facts">
+      <li><strong>요금 확인:</strong> 매달 초 AWS에서 청구 이메일이 옵니다. 첫 몇 달은 크레딧에서 빠져 0원으로 보일 수 있습니다.</li>
+      <li><strong>제 접근을 끊고 싶으실 때:</strong> 루트로 로그인 → <code>IAM</code> → <span class="ui">사용자</span> → <code>yongs</code> 체크 → <span class="ui">삭제 <small>Delete</small></span>. 서버와 자료는 그대로 남고 제 로그인만 막힙니다.</li>
+      <li><strong>루트 계정은 핑수님만:</strong> 루트 비밀번호와 인증 앱은 누구와도 나누지 마세요. 제가 루트로 로그인해야 하는 일은 없습니다.</li>
+    </ul>
+  </section>
+
+  <section id="trouble">
+    <h2><span class="n">6</span>막힐 때</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>증상</th><th>해결</th></tr></thead>
+        <tbody>
+          <tr><td>인증 문자가 안 와요</td><td>국가가 <code>대한민국 (+82)</code>인지, 번호가 맞는지 확인하고 다시 보내 보세요. 통신사에서 해외 발신 문자를 막는 경우가 있습니다. 같은 번호로 다른 AWS 계정을 만든 적이 있어도 실패할 수 있습니다. 계속 안 되면 화면의 고객 지원 문의(Account activation → Phone verification)로 요청하시거나 저에게 연락 주세요.</td></tr>
+          <tr><td>가입 화면에 플랜 선택이나 리전 이야기가 없고, AWS Builder ID로 로그인하라고 나와요</td><td>"새 가입 화면"으로 들어가신 겁니다. 창을 닫고 <a href="https://signin.aws.amazon.com/signup?request_type=register" target="_blank" rel="noopener">위의 가입 주소</a>로 다시 시작해 주세요. 이미 그 화면으로 가입을 마치셨다면 저에게 말씀해 주세요. 고급 기능을 켜는 절차가 따로 있습니다.</td></tr>
+          <tr><td>카드에서 1달러가 결제됐어요</td><td>카드 확인용 승인입니다. 3~5일 안에 취소됩니다.</td></tr>
+          <tr><td>가입했는데 서비스를 쓸 수 없다고 나와요</td><td>계정 활성화가 끝나지 않은 상태입니다. 활성화 이메일이 올 때까지(최대 하루) 기다려 주세요.</td></tr>
+          <tr><td>휴대폰을 바꾸거나 잃어버렸어요</td><td>③에서 적어 두신 비밀 키로 새 휴대폰 인증 앱에 다시 등록하시면 됩니다. 비밀 키가 없으면 AWS 본인 확인 절차를 거쳐야 하니, 미리 적어 두시는 게 중요합니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p class="muted">이 안내는 2026년 10월 기준 AWS 공식 문서(가입 절차, 요금제, Lightsail 요금, IAM 사용자 생성)를 확인해 정리했습니다. 화면 문구는 AWS가 바꿀 수 있으니, 다르게 보이면 같은 뜻의 버튼을 눌러 주시거나 연락 주세요. 체크 표시는 이 브라우저에만 저장됩니다.</p>
+    <p class="sign">용스 드림</p>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var KEY = 'mathdesk-aws-checks';
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('ul.check input[type="checkbox"]'));
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+    function count(scope, el, label) {
+      var list = boxes.filter(function (b) { return b.closest(scope); });
+      var done = list.filter(function (b) { return b.checked; }).length;
+      document.getElementById(el).innerHTML = label + ' <b>' + done + '</b> / ' + list.length;
+    }
+    function render() {
+      count('#client', 'progress-client', '진행');
+      count('#dev', 'progress-dev', '진행');
+    }
+    boxes.forEach(function (box) {
+      box.checked = !!saved[box.id];
+      box.addEventListener('change', function () {
+        saved[box.id] = box.checked;
+        try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { /* 저장이 막혀도 화면은 동작한다 */ }
+        render();
+      });
+    });
+    render();
+
+    // 복사 버튼: 클립보드가 막힌 환경에서는 글을 선택해 둔다
+    Array.prototype.forEach.call(document.querySelectorAll('.copy'), function (button) {
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        var target = document.getElementById(button.getAttribute('data-copy'));
+        var text = target.innerText;
+        function selectText() {
+          var range = document.createRange();
+          range.selectNodeContents(target);
+          var selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          button.textContent = '선택됨';
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { button.textContent = '복사됨'; }, selectText);
+        } else {
+          selectText();
+        }
+        setTimeout(function () { button.textContent = '복사'; }, 1800);
+      });
+    });
+  })();
+</script>
