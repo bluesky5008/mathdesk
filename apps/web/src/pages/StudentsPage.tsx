@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 
 import { PageHeader } from '../components/PageHeader'
-import { describeClasses, useCurrentClasses } from '../lib/currentClasses'
+import { describeClasses, releaseFromToday, releaseNotice, useCurrentClasses } from '../lib/currentClasses'
+import { today } from '../lib/date'
 import { ConsultDialog } from './ConsultDialog'
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
@@ -20,11 +21,15 @@ import {
 } from '../components/ui/table'
 import { Toggle } from '../components/ui/toggle'
 import {
+  createEnrollment,
   createStudent,
   deleteStudent,
+  fetchClasses,
+  fetchEnrollments,
   fetchStudentDeletionPreview,
   fetchStudents,
   updateStudent,
+  type Klass,
   type Student,
 } from '../api'
 import { DeleteDialog } from './DeleteDialog'
@@ -98,7 +103,77 @@ function StudentFields({
   ))
 }
 
-export function StudentsPage() {
+/**
+ * 반 칸에서 바로 배정·해제한다(TASK-78). 운영 중인 반과 지금 배정된 반을 체크 목록으로 펼친다.
+ * 체크는 오늘부터 배정, 체크 해제는 반 명단의 [해제]와 같은 규칙이다. 시작일 지정·반 옮기기는 반 탭에서 한다.
+ * 표 감싸개가 가로 스크롤이라 띄우는 목록은 잘리므로 칸 안에서 펼친다.
+ */
+function ClassPicker({ student, current }: { student: Student; current: Klass[] }) {
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const classes = useQuery({ queryKey: ['classes', true], queryFn: () => fetchClasses(true) })
+  const assigned = new Set(current.map((klass) => klass.id))
+  const options = (classes.data ?? []).filter((klass) => klass.is_active || assigned.has(klass.id))
+
+  const toggle = useMutation({
+    mutationFn: async ({ klass, assign }: { klass: Klass; assign: boolean }) => {
+      const on = today()
+      if (assign) {
+        await createEnrollment(klass.id, student.id, on)
+        return
+      }
+      const row = (await fetchEnrollments(klass.id, on)).find((r) => r.student_id === student.id)
+      if (row) await releaseFromToday(klass.id, row)
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['enrollments'] }),
+  })
+
+  function change(klass: Klass) {
+    const assign = !assigned.has(klass.id)
+    if (assign || window.confirm(releaseNotice(student.name, klass.name))) toggle.mutate({ klass, assign })
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        className="rounded-sm text-left underline-offset-4 outline-none hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        onClick={() => setOpen(!open)}
+      >
+        {describeClasses(current)}
+        <span aria-hidden className="ml-1 text-muted-fg">
+          {open ? '▴' : '▾'}
+        </span>
+      </button>
+      {open && (
+        <div className="mt-2 grid gap-1.5 rounded-md border bg-surface p-2">
+          {options.map((klass) => (
+            <label key={klass.id} className="flex items-center gap-2 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={assigned.has(klass.id)}
+                disabled={toggle.isPending}
+                onChange={() => change(klass)}
+              />
+              {klass.is_active ? klass.name : `${klass.name} (비활성)`}
+            </label>
+          ))}
+          {classes.isSuccess && options.length === 0 && (
+            <p className="text-xs text-muted-fg">운영 중인 반이 없습니다.</p>
+          )}
+        </div>
+      )}
+      {toggle.isError && (
+        <p role="alert" className="mt-1 text-xs text-danger">
+          {toggle.error.message}
+        </p>
+      )}
+    </div>
+  )
+}
+
+export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = {}) {
   const queryClient = useQueryClient()
   const students = useQuery({ queryKey: ['students'], queryFn: fetchStudents })
   const currentClasses = useCurrentClasses()
@@ -203,7 +278,13 @@ export function StudentsPage() {
                   <TableCell className="font-medium whitespace-nowrap">{student.name}</TableCell>
                   <TableCell className="break-keep text-muted-fg">{student.school}</TableCell>
                   <TableCell className="text-muted-fg">{student.grade}</TableCell>
-                  <TableCell className="break-keep">{describeClasses(currentClasses.get(student.id))}</TableCell>
+                  <TableCell className="break-keep">
+                    {isDirector && student.status !== 'withdrawn' ? (
+                      <ClassPicker student={student} current={currentClasses.get(student.id) ?? []} />
+                    ) : (
+                      describeClasses(currentClasses.get(student.id))
+                    )}
+                  </TableCell>
                   <TableCell className="tabular-nums">{student.omr_number}</TableCell>
                   <TableCell className="text-muted-fg">
                     {STATUS[student.status as keyof typeof STATUS] ?? student.status}

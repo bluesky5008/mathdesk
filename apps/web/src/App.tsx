@@ -92,7 +92,7 @@ export function App() {
           }
         />
         <Route path="/students" element={<ManageTabs />}>
-          <Route index element={<StudentsPage />} />
+          <Route index element={<StudentsPage isDirector={user.role === 'director'} />} />
           <Route path="classes" element={<ClassesPage isDirector={user.role === 'director'} />} />
         </Route>
       </Routes>

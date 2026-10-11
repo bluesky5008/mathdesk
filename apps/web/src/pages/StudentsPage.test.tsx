@@ -3,13 +3,14 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { dayBefore, today } from '../lib/date'
 import { StudentsPage } from './StudentsPage'
 
-function renderPage() {
+function renderPage(props: { isDirector?: boolean } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <StudentsPage />
+      <StudentsPage {...props} />
     </QueryClientProvider>,
   )
 }
@@ -231,3 +232,119 @@ describe('StudentsPage', () => {
   })
 })
 
+// TASK-78: 학생 목록의 반 칸에서 바로 반을 배정·해제한다(클라이언트 요구, 사용자 결정 2026-10-11)
+describe('StudentsPage class picker', () => {
+  const classes = [
+    { id: 5, name: '고1 인A', grade: '1', teacher_id: 1, is_active: true, schedules: [] },
+    { id: 6, name: '고1 인B', grade: '1', teacher_id: 1, is_active: true, schedules: [] },
+    { id: 2, name: '고2 윤B', grade: '고2', teacher_id: 1, is_active: false, schedules: [] },
+  ]
+
+  /** 김나윤을 고1 인A(배정 11)에 두고, 쓰기 요청을 모아 둔다. */
+  function stubRoster(startDate = '2026-03-02') {
+    const calls: { method: string; url: string; body: unknown }[] = []
+    stubFetch((url, init) => {
+      if (init?.method && init.method !== 'GET') {
+        calls.push({ method: init.method, url, body: init.body ? JSON.parse(String(init.body)) : null })
+        return init.method === 'DELETE' ? new Response(null, { status: 204 }) : Response.json({})
+      }
+      const roster = url.match(/\/classes\/(\d+)\/enrollments\?on=/)
+      if (roster) {
+        return Response.json(
+          roster[1] === '5' ? [{ id: 11, student_id: 1, start_date: startDate, end_date: null }] : [],
+        )
+      }
+      if (url.includes('/classes?include_inactive=true')) return Response.json(classes)
+      return Response.json([student, withdrawn])
+    })
+    return calls
+  }
+
+  async function openPicker() {
+    const row = within(await screen.findByRole('row', { name: /김나윤/ }))
+    await userEvent.click(await row.findByRole('button', { name: /고1 인A/ }))
+    return row
+  }
+
+  it('lists active classes with the current ones checked', async () => {
+    stubRoster()
+    renderPage({ isDirector: true })
+
+    const row = await openPicker()
+
+    expect(row.getByRole('checkbox', { name: '고1 인A' })).toBeChecked()
+    expect(row.getByRole('checkbox', { name: '고1 인B' })).not.toBeChecked()
+    expect(row.queryByRole('checkbox', { name: '고2 윤B' })).not.toBeInTheDocument()
+  })
+
+  it('assigns a checked class from today', async () => {
+    const calls = stubRoster()
+    renderPage({ isDirector: true })
+
+    const row = await openPicker()
+    await userEvent.click(row.getByRole('checkbox', { name: '고1 인B' }))
+
+    await waitFor(() =>
+      expect(calls).toEqual([
+        { method: 'POST', url: '/api/classes/6/enrollments', body: { student_id: 1, start_date: today() } },
+      ]),
+    )
+  })
+
+  it('releases an unchecked class from today on, after confirming', async () => {
+    const calls = stubRoster()
+    const confirm = vi.fn(() => true)
+    vi.stubGlobal('confirm', confirm)
+    renderPage({ isDirector: true })
+
+    const row = await openPicker()
+    await userEvent.click(row.getByRole('checkbox', { name: '고1 인A' }))
+
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('오늘 수업부터'))
+    await waitFor(() =>
+      expect(calls).toEqual([
+        { method: 'PATCH', url: '/api/classes/5/enrollments/11', body: { end_date: dayBefore(today()) } },
+      ]),
+    )
+  })
+
+  it('removes an assignment that starts today when it is unchecked', async () => {
+    const calls = stubRoster(today())
+    vi.stubGlobal('confirm', vi.fn(() => true))
+    renderPage({ isDirector: true })
+
+    const row = await openPicker()
+    await userEvent.click(row.getByRole('checkbox', { name: '고1 인A' }))
+
+    await waitFor(() =>
+      expect(calls).toEqual([{ method: 'DELETE', url: '/api/classes/5/enrollments/11', body: null }]),
+    )
+  })
+
+  it('keeps the class when the release is not confirmed', async () => {
+    const calls = stubRoster()
+    vi.stubGlobal('confirm', vi.fn(() => false))
+    renderPage({ isDirector: true })
+
+    const row = await openPicker()
+    await userEvent.click(row.getByRole('checkbox', { name: '고1 인A' }))
+
+    expect(row.getByRole('checkbox', { name: '고1 인A' })).toBeChecked()
+    expect(calls).toEqual([])
+  })
+
+  it('offers no picker to teachers or for withdrawn students', async () => {
+    stubRoster()
+    const { unmount } = renderPage()
+
+    const row = within(await screen.findByRole('row', { name: /김나윤/ }))
+    expect(await row.findByText('고1 인A')).toBeInTheDocument()
+    expect(row.queryByRole('button', { name: /고1 인A/ })).not.toBeInTheDocument()
+    unmount()
+
+    renderPage({ isDirector: true })
+    await userEvent.click(await screen.findByRole('button', { name: '퇴원 포함' }))
+    const left = within(await screen.findByRole('row', { name: /박서준/ }))
+    expect(left.queryByRole('button', { name: /미배정/ })).not.toBeInTheDocument()
+  })
+})

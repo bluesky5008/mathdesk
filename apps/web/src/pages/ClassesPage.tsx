@@ -27,7 +27,7 @@ import {
   type Schedule,
 } from '../api'
 import { dayBefore, today } from '../lib/date'
-import { describeClasses, useCurrentClasses } from '../lib/currentClasses'
+import { describeClasses, releaseFromToday, releaseNotice, useCurrentClasses } from '../lib/currentClasses'
 import { DeleteDialog } from './DeleteDialog'
 
 export const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
@@ -167,10 +167,7 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
     },
   })
   const release = useMutation({
-    mutationFn: async (row: Enrollment) => {
-      if (row.start_date >= on) await cancelEnrollment(klass.id, row.id)
-      else await endEnrollment(klass.id, row.id, dayBefore(on))
-    },
+    mutationFn: (row: Enrollment) => releaseFromToday(klass.id, row),
     onSuccess: () => void refresh(),
   })
   const cancel = useMutation({
@@ -326,11 +323,7 @@ function RosterDialog({ klass, onClose }: { klass: Klass; onClose: () => void })
                     size="sm"
                     onClick={() => {
                       const name = byId.get(row.student_id)?.name ?? `학생 ${row.student_id}`
-                      const ok = window.confirm(
-                        `${name} 학생을 ${klass.name}에서 해제합니다. 오늘 수업부터 명단에서 빠집니다.\n` +
-                          '오늘 이미 입력한 출결·과제는 일일 입력 화면에 보이지 않게 됩니다(기록은 남습니다).',
-                      )
-                      if (ok) release.mutate(row)
+                      if (window.confirm(releaseNotice(name, klass.name))) release.mutate(row)
                     }}
                   >
                     해제
