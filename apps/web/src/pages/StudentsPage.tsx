@@ -6,6 +6,7 @@ import { PageHeader } from '../components/PageHeader'
 import { describeClasses, releaseFromToday, releaseNotice, useCurrentClasses } from '../lib/currentClasses'
 import { today } from '../lib/date'
 import { ConsultDialog } from './ConsultDialog'
+import { PORTAL_STATE, PortalAccountsSection } from './PortalAccountsSection'
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '../components/ui/dialog'
@@ -336,6 +337,7 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                 <TableHeaderCell>학부모 연락처</TableHeaderCell>
                 <TableHeaderCell>수험번호</TableHeaderCell>
                 <TableHeaderCell>상태</TableHeaderCell>
+                <TableHeaderCell>포털</TableHeaderCell>
                 <TableHeaderCell>성적</TableHeaderCell>
                 <TableHeaderCell />
               </TableRow>
@@ -421,6 +423,15 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                       </Select>
                     ) : (
                       (STATUS[student.status as keyof typeof STATUS] ?? student.status)
+                    )}
+                  </TableCell>
+                  {/* 포털 계정 상태(FR-48 상세). 발급은 [수정] 창에서 한다 */}
+                  <TableCell className="text-xs whitespace-nowrap text-muted-fg">
+                    {student.portal && (
+                      <>
+                        <div>학생 {PORTAL_STATE[student.portal.student]}</div>
+                        <div>학부모 {PORTAL_STATE[student.portal.guardian]}</div>
+                      </>
                     )}
                   </TableCell>
                   {/* 성적은 두 줄까지만 보이고 전체는 마우스를 올리거나 수정 창에서 본다 */}
@@ -520,6 +531,12 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                   ))}
                 </Select>
               </Field>
+              <PortalAccountsSection
+                studentId={edit.id}
+                phone={students.data?.find((s) => s.id === edit.id)?.phone ?? null}
+                guardianPhone={students.data?.find((s) => s.id === edit.id)?.guardian_phone ?? null}
+                isDirector={isDirector}
+              />
               {save.isError && (
                 <p role="alert" className="col-span-2 text-sm text-danger">
                   {save.error.message}

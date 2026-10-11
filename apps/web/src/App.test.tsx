@@ -118,3 +118,17 @@ it('hides the school tab from teachers', async () => {
   expect(await screen.findByRole('link', { name: '반' })).toBeInTheDocument()
   expect(screen.queryByRole('link', { name: '학교' })).not.toBeInTheDocument()
 })
+
+// TASK-93: 학생·학부모 계정은 원장·강사 셸이 아니라 포털 셸을 본다(FR-49, DCR-024)
+it('opens the portal shell for a portal account', async () => {
+  const guardian = { ...DIRECTOR, id: 9, login_id: '01098765432', display_name: '김나윤 학부모', role: 'guardian' }
+  mountApp((url) => {
+    if (url === '/api/auth/me') return Response.json(guardian)
+    if (url === '/api/portal/students') return Response.json([{ id: 1, name: '김나윤', grade: '고2', status: 'enrolled', classes: [] }])
+    return Response.json([])
+  })
+
+  expect(await screen.findByRole('heading', { name: '김나윤' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: '기록' })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: '종합 대시보드' })).not.toBeInTheDocument()
+})

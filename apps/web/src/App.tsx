@@ -17,6 +17,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { StudentDailyPage } from './pages/StudentDailyPage'
 import { StudentsPage } from './pages/StudentsPage'
 import { TimetablePage } from './pages/TimetablePage'
+import { PORTAL_ROLES, PortalApp } from './portal/PortalApp'
 
 // 통계 화면만 차트 라이브러리를 쓴다. 같이 묶으면 모든 화면의 첫 로딩이 두 배로 무거워진다.
 const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })))
@@ -68,6 +69,11 @@ export function App() {
         onLogout={signOut}
       />
     )
+  }
+
+  // 학생·학부모 계정은 원장·강사 화면이 아니라 포털 전용 셸을 본다(FR-49, ADR-014)
+  if (PORTAL_ROLES.includes(user.role)) {
+    return <PortalApp user={user} onLogout={signOut} />
   }
 
   return (

@@ -34,7 +34,11 @@ export type Student = {
   // 대표 보호자 번호와 성적·비고(DCR-014). 수정 시 빈 값은 보호자 삭제·성적 지움
   guardian_phone: string | null
   score_note: string | null
+  // 포털 계정 상태 요약(FR-48 상세): none · pending · active · expired · inactive
+  portal?: { student: PortalState; guardian: PortalState }
 }
+
+export type PortalState = 'none' | 'pending' | 'active' | 'expired' | 'inactive'
 
 // 종료 시각은 선택 항목이다(FR-07, DCR-007). 화면은 요일·시작 시각만 다룬다
 export type Schedule = { weekday: number; start_time: string; end_time?: string | null }
@@ -850,4 +854,109 @@ export function deleteStudent(id: number): Promise<void> {
 /** 반도 확인 없이 바로 하드 삭제한다(DCR-016). */
 export function deleteClass(id: number): Promise<void> {
   return request<void>(`/classes/${id}`, { method: 'DELETE' })
+}
+
+// ── 포털 계정 발급(FR-48 상세, DCR-024) ─────────────────────────────
+
+export type PortalAccount = { state: PortalState; login_id: string | null; user_id: number | null }
+
+export type PortalAccounts = {
+  student: PortalAccount
+  guardians: (PortalAccount & { guardian_id: number })[]
+}
+
+export type IssuedAccount = { user_id: number; login_id: string; state: PortalState; linked: boolean }
+
+export function fetchPortalAccounts(studentId: number): Promise<PortalAccounts> {
+  return request<PortalAccounts>(`/students/${studentId}/portal-accounts`)
+}
+
+export function issuePortalAccount(studentId: number, kind: 'student' | 'guardian'): Promise<IssuedAccount> {
+  return request<IssuedAccount>(`/students/${studentId}/portal-accounts`, {
+    method: 'POST',
+    body: JSON.stringify({ kind }),
+  })
+}
+
+export function reissuePortalAccount(studentId: number, userId: number): Promise<void> {
+  return request<void>(`/students/${studentId}/portal-accounts/${userId}/reissue`, { method: 'POST' })
+}
+
+// ── 학생·학부모 포털(FR-49 상세, DES-26) ──────────────────────────────
+
+export type PortalStudent = {
+  id: number
+  name: string
+  grade: string | null
+  status: string
+  classes: { id: number; name: string; teacher_name: string | null }[]
+}
+
+/** 수업일별 기록 — 문자 본문(FR-18 상세)과 같은 구획 */
+export type PortalSession = {
+  date: string
+  class_name: string
+  progress: { period: number; content: string | null }[]
+  homework: string | null
+  video_url: string | null
+  teacher_note: string | null
+  test_name: string | null
+  attendance: string
+  attendance_reason: string | null
+  homework_grade: string | null
+  grade_comment: string | null
+  recheck: { prev_grade: string; prev_date: string; result: string | null } | null
+  test_score: string | null
+  class_average: number | null
+  comment: string | null
+}
+
+export type PortalSummary = {
+  attendance: Record<'last_30_days' | 'all_time', { present: number; total: number }>
+  latest_session: PortalSession | null
+  latest_tests: StudentRound[]
+  timetable: { class_name: string; weekday: number; start_time: string; end_time: string }[]
+}
+
+export type PortalExam = { exam_id: number; name: string; exam_date: string | null; score: number | null; max_score: number | null }
+
+export type PortalExamDetail = PortalExam & {
+  answers: { no: number; raw_value: string | null; is_correct: boolean | null; points: number | null }[]
+}
+
+export type PortalConsult = { consulted_on: string; content: string; follow_up: string | null }
+
+export type PortalMessage = { sent_at: string; body: string }
+
+export function fetchPortalStudents(): Promise<PortalStudent[]> {
+  return request<PortalStudent[]>('/portal/students')
+}
+
+export function fetchPortalSummary(studentId: number): Promise<PortalSummary> {
+  return request<PortalSummary>(`/portal/students/${studentId}/summary`)
+}
+
+export function fetchPortalSessions(studentId: number, before?: string, limit = 20): Promise<PortalSession[]> {
+  const query = before ? `?before=${before}&limit=${limit}` : `?limit=${limit}`
+  return request<PortalSession[]>(`/portal/students/${studentId}/sessions${query}`)
+}
+
+export function fetchPortalTestTrend(studentId: number, count = 10): Promise<{ total: number; rounds: StudentRound[] }> {
+  return request(`/portal/students/${studentId}/test-trend?count=${count}`)
+}
+
+export function fetchPortalExams(studentId: number): Promise<PortalExam[]> {
+  return request<PortalExam[]>(`/portal/students/${studentId}/exams`)
+}
+
+export function fetchPortalExam(studentId: number, examId: number): Promise<PortalExamDetail> {
+  return request<PortalExamDetail>(`/portal/students/${studentId}/exams/${examId}`)
+}
+
+export function fetchPortalConsults(studentId: number): Promise<PortalConsult[]> {
+  return request<PortalConsult[]>(`/portal/students/${studentId}/consults`)
+}
+
+export function fetchPortalMessages(studentId: number): Promise<PortalMessage[]> {
+  return request<PortalMessage[]>(`/portal/students/${studentId}/messages`)
 }

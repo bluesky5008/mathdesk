@@ -656,3 +656,66 @@ describe('StudentsPage school dropdown', () => {
     expect(screen.queryByRole('link', { name: '학교 탭' })).not.toBeInTheDocument()
   })
 })
+
+// TASK-93: 포털 계정 상태 열과 수정 창의 [발급]/[재발급](FR-48 상세, AC-50)
+describe('StudentsPage portal accounts', () => {
+  const accounts = {
+    student: { state: 'none', login_id: null, user_id: null },
+    guardians: [{ guardian_id: 4, state: 'active', login_id: '01077778888', user_id: 12 }],
+  }
+
+  function stubPortal(row: object = { ...student, portal: { student: 'none', guardian: 'active' } }) {
+    const writes: { url: string; body: Record<string, unknown> | null }[] = []
+    stubFetch((url, init) => {
+      if (init?.method === 'POST') {
+        writes.push({ url, body: init.body ? JSON.parse(String(init.body)) : null })
+        return Response.json({ user_id: 20, login_id: '01011112222', state: 'pending', linked: false }, { status: 201 })
+      }
+      if (url.endsWith('/portal-accounts')) return Response.json(accounts)
+      return Response.json(url.includes('/students') ? [row] : [])
+    })
+    return writes
+  }
+
+  it('shows the portal state of the student and guardian accounts in the list', async () => {
+    stubPortal()
+    renderPage({ isDirector: true })
+
+    const cell = await screen.findByText('학부모 사용 중')
+    expect(cell).toBeInTheDocument()
+    expect(screen.getByText('학생 미발급')).toBeInTheDocument()
+  })
+
+  it('issues a student account from the edit dialog and shows the initial credentials', async () => {
+    const writes = stubPortal()
+    renderPage({ isDirector: true })
+
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    await userEvent.click(await dialog.findByRole('button', { name: '학생 계정 발급' }))
+
+    await waitFor(() => expect(writes[0]).toEqual({ url: '/api/students/1/portal-accounts', body: { kind: 'student' } }))
+    expect(await dialog.findByText(/01011112222/)).toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: '학부모 계정 재발급' })).toBeInTheDocument()
+  })
+
+  it('disables student issuing when the student has no phone', async () => {
+    stubPortal({ ...student, phone: null, portal: { student: 'none', guardian: 'none' } })
+    renderPage({ isDirector: true })
+
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    expect(await dialog.findByRole('button', { name: '학생 계정 발급' })).toBeDisabled()
+    expect(dialog.getByText('학생 연락처를 먼저 등록하세요.')).toBeInTheDocument()
+  })
+
+  it('shows the state only to teachers', async () => {
+    stubPortal()
+    renderPage({ isDirector: false })
+
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    expect(await dialog.findByText('학부모 계정')).toBeInTheDocument()
+    expect(dialog.queryByRole('button', { name: /발급/ })).not.toBeInTheDocument()
+  })
+})
