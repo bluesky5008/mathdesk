@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 
 import { ATTENDANCE } from '../components/AttendanceButtons'
+import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
 import { Field } from '../components/ui/field'
 import { WEEKDAYS, weekdayOf } from '../components/ui/month-calendar'
@@ -16,7 +17,8 @@ import {
   TableRow,
 } from '../components/ui/table'
 import { TONE } from '../components/ui/toggle'
-import { fetchDaily, fetchDailyHistory, type DailyHistoryRow } from '../api'
+import { dailyHistoryImageUrl, fetchDaily, fetchDailyHistory, type DailyHistoryRow } from '../api'
+import { copyImage, downloadImage } from '../clipboard'
 import { EmptyRosterNotice, useDailySelection } from './DailyLayout'
 
 const ATTENDING = ['present', 'late', 'early_leave']
@@ -76,6 +78,10 @@ export function StudentDailyPage() {
   const attending = rows.filter((row) => ATTENDING.includes(row.attendance_status)).length
   const scores = rows.map((row) => row.test_score_num).filter((score) => score != null).map(Number)
   const average = scores.length ? Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10 : null
+  // 리포트 이미지 저장과 같은 방식 — 서버가 만든 PNG를 내려받거나 클립보드에 넣는다(DCR-021)
+  const student = roster.find((record) => record.student_id === activeStudentId)
+  const imageUrl =
+    classId !== null && activeStudentId !== null ? dailyHistoryImageUrl(classId, activeStudentId, date) : ''
 
   return (
     <>
@@ -93,6 +99,17 @@ export function StudentDailyPage() {
             ))}
           </Select>
         </Field>
+        <Button type="button" variant="outline" disabled={!imageUrl} onClick={() => void copyImage(imageUrl)}>
+          이미지 복사
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!imageUrl}
+          onClick={() => downloadImage(imageUrl, `학생별정보-${student?.name ?? ''}-${date}.png`)}
+        >
+          이미지 저장
+        </Button>
       </div>
 
       {daily.data && roster.length === 0 ? (

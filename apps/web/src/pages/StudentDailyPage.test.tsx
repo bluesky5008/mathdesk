@@ -5,9 +5,12 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import type { DailyHistory } from '../api'
+import { copyImage, downloadImage } from '../clipboard'
 import { DailyLayout } from './DailyLayout'
 import { DailyPage } from './DailyPage'
 import { StudentDailyPage } from './StudentDailyPage'
+
+vi.mock('../clipboard', () => ({ copyImage: vi.fn(), downloadImage: vi.fn() }))
 
 const classes = [{ id: 1, name: '고2 윤B', grade: '고2', teacher_id: 1, is_active: true, schedules: [] }]
 
@@ -148,4 +151,26 @@ it('explains how to assign students when the roster is empty', async () => {
   renderPage()
 
   expect(await screen.findByText(/이 날짜에 이 반에 배정된 학생이 없습니다/)).toBeInTheDocument()
+})
+
+// DCR-021 / AC-47 ①: 리포트 이미지 저장과 같은 방식 — 서버 PNG를 내려받거나 클립보드에 넣는다
+it('saves and copies the student card image for the chosen student and date', async () => {
+  renderPage()
+  await screen.findByRole('link', { name: '09/14(월)' })
+  const url = '/api/daily/history-image?class_id=1&student_id=1&to=2026-09-18&limit=20'
+
+  await userEvent.click(screen.getByRole('button', { name: '이미지 저장' }))
+  expect(downloadImage).toHaveBeenCalledWith(url, '학생별정보-학생1-2026-09-18.png')
+
+  await userEvent.click(screen.getByRole('button', { name: '이미지 복사' }))
+  expect(copyImage).toHaveBeenCalledWith(url)
+})
+
+it('disables the image buttons when nobody is enrolled', async () => {
+  records = []
+  renderPage()
+  await screen.findByText(/배정된 학생이 없습니다/)
+
+  expect(screen.getByRole('button', { name: '이미지 저장' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: '이미지 복사' })).toBeDisabled()
 })

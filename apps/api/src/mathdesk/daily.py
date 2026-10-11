@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Annotated
 from fastapi import Query
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .db import get_session
 from .models import (
     AuditLog,
+    Campus,
     ClassSession,
     ClassSessionProgress,
     Enrollment,
@@ -484,14 +485,8 @@ async def read_calendar(
     return CalendarOut(recorded_dates=list(dates))
 
 
-@router.get("/history")
-async def read_history(
-    class_id: int,
-    student_id: int,
-    scope: CurrentScope,
-    session: Db,
-    to: date | None = None,
-    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+async def _history(
+    session: AsyncSession, scope: Scope, class_id: int, student_id: int, anchor: date, limit: int
 ) -> HistoryOut:
     """한 학생의 날짜별 기록(FR-45). 그 학생이 배정되어 있던, 기록이 있는 수업만 최신 순."""
     klass = await _visible_class(session, scope, class_id)
@@ -503,7 +498,6 @@ async def read_history(
     )
     if student is None or enrolled is None:
         raise _forbidden()
-    anchor = to or date.today()
 
     sessions = list(
         await session.scalars(
@@ -577,3 +571,42 @@ async def read_history(
         klass={"id": klass.id, "name": klass.name},
         rows=rows,
     )
+
+
+HistoryLimit = Annotated[int, Query(ge=1, le=50)]
+
+
+@router.get("/history")
+async def read_history(
+    class_id: int,
+    student_id: int,
+    scope: CurrentScope,
+    session: Db,
+    to: date | None = None,
+    limit: HistoryLimit = 20,
+) -> HistoryOut:
+    return await _history(session, scope, class_id, student_id, to or date.today(), limit)
+
+
+@router.get("/history-image")
+async def read_history_image(
+    request: Request,
+    class_id: int,
+    student_id: int,
+    scope: CurrentScope,
+    session: Db,
+    to: date | None = None,
+    limit: HistoryLimit = 20,
+) -> Response:
+    """학생별 정보 카드 PNG(FR-45 상세, DCR-021) — 리포트 카드와 같은 렌더러."""
+    # messaging → daily → report → messaging 순환이라 여기서 들여온다
+    from .branding import load_brand
+    from .report import HISTORY_WIDTH, render_history_html
+
+    anchor = to or date.today()
+    history = await _history(session, scope, class_id, student_id, anchor, limit)
+    campus = await session.get(Campus, scope.campus_id)
+    colour, logo = await load_brand(session, scope.campus_id)
+    html = render_history_html(history, anchor, campus.name, brand_colour=colour, logo_data_url=logo)
+    png = await request.app.state.report_renderer.render_html(html, width=HISTORY_WIDTH)
+    return Response(png, media_type="image/png")

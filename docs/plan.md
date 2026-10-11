@@ -120,8 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (30/38)
-   ├─ [▶] TASK-91 학생별 정보 이미지 저장 (DCR-021) ...... in-progress
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (31/38)
+   ├─ [✓] TASK-91 학생별 정보 이미지 저장 (DCR-021) ...... 2026-10-11 17:40
    ├─ [✓] TASK-90 학생별 정보 탭·수업일 달력 (DCR-020) 2026-10-11 17:05
    ├─ [✓] TASK-89 테스트명 입력·문자/리포트 공통 (DCR-019) 2026-10-11 16:35
    ├─ [✓] TASK-88 성적 통계 회차별 추이 (DCR-018) ... 2026-10-11 16:10
@@ -299,7 +299,7 @@ flowchart TD
     T87 -. depends .-> T89
     C3 --> T90["TASK-90 일일 입력 학생별 정보 탭과 수업일 달력 (DCR-020)"]:::done
     T89 -. depends .-> T90
-    C3 --> T91["TASK-91 학생별 정보 이미지 저장 (DCR-021)"]:::active
+    C3 --> T91["TASK-91 학생별 정보 이미지 저장 (DCR-021)"]:::done
     T90 -. depends .-> T91
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
     C3 --> T75["TASK-75 OMR 방향 자동 판별"]:::done
@@ -1103,7 +1103,7 @@ flowchart TD
 
 ### TASK-91: 학생별 정보 이미지 저장
 
-- 상태: in-progress (2026-10-11 시작)
+- 상태: completed (2026-10-11 17:40)
 - 상위: 없음
 - 목표: `GET /daily/history-image`가 학생별 정보 카드 PNG(머리말·요약 2개·6열 표, 폭 960×2)를 기존 Chromium 렌더러로 돌려준다. `report.render_history_html` 템플릿 신설, `ReportRenderer.render_html`에 폭 인자(기본 760). [학생별 정보] 탭 학생 선택 옆에 [이미지 복사]·[이미지 저장](`copyImage`·`downloadImage` 재사용, 파일명 `학생별정보-<학생명>-<날짜>.png`).
 - 관련 요구사항과 설계: [DCR-021](./work/20260922-mathdesk-baseline/DCR-021-학생별-정보-이미지-저장.md)(기준선 `v22`, 승인 2026-10-11) — [FR-45 상세](./requirements.md#fr-45-상세), [AC-47](./requirements.md#인수-조건), [DES-08 상세](./design.md#des-08-상세), [ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md)

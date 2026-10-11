@@ -362,6 +362,11 @@ export type DailyHistory = {
   rows: DailyHistoryRow[]
 }
 
+/** 학생별 정보 카드 PNG(FR-45 상세, DCR-021). 내려받기·복사는 주소를 직접 쓴다 */
+export function dailyHistoryImageUrl(classId: number, studentId: number, to: string, limit = 20): string {
+  return `/api/daily/history-image?class_id=${classId}&student_id=${studentId}&to=${to}&limit=${limit}`
+}
+
 export function fetchDailyHistory(
   classId: number,
   studentId: number,

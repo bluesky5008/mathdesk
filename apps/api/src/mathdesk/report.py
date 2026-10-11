@@ -8,18 +8,27 @@
 `:root` 라이트 팔레트를 쓰고, 학원 시그니처 색(FR-40)만 `--md-color-brand`로 덮어쓴다.
 """
 
+from __future__ import annotations
+
 import os
 import re
+from datetime import date
 from html import escape
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from playwright.async_api import Browser, async_playwright
 
 from .messaging import ATTENDANCE_LABEL, MessageContext, WEEKDAYS
 
+if TYPE_CHECKING:  # daily → messaging → report 순환을 피한다
+    from .daily import HistoryOut, HistoryRow
+
 # 레이아웃은 CSS 픽셀 760에 맞추고 2배로 촬영한다. 카톡으로 받은 카드를 폰에서
 # 확대해 보는 일이 흔해 1배는 흐리다.
 CARD_WIDTH = 760
+# 학생별 정보 카드는 6열 표가 들어가 더 넓다(DCR-021)
+HISTORY_WIDTH = 960
 SCALE = 2
 
 # 브랜드 색(FR-40)은 CSS 선언 안으로 들어간다. HTML 이스케이프는 CSS 주입을 막지 못하므로
@@ -285,12 +294,12 @@ class ReportRenderer:
     ) -> bytes:
         return await self.render_html(render_report_html(context, brand_colour, logo_data_url))
 
-    async def render_html(self, html: str) -> bytes:
+    async def render_html(self, html: str, width: int = CARD_WIDTH) -> bytes:
         """이 저장소가 조립한 카드 HTML을 촬영한다. 외부 입력을 렌더하지 않는다(DES-08)."""
         if self._browser is None:
             raise RuntimeError("렌더러가 시작되지 않았다. lifespan에서 start()를 호출한다.")
         page = await self._browser.new_page(
-            viewport={"width": CARD_WIDTH, "height": 600}, device_scale_factor=SCALE
+            viewport={"width": width, "height": 600}, device_scale_factor=SCALE
         )
         try:
             await page.set_content(html)
@@ -358,6 +367,131 @@ def render_difficulty_html(
     <div class="meta">{escape(meta)}</div>
     <div class="levels">{levels}</div>
     <div class="note">AI 추정 난이도 · 실제 정답률과 별개입니다</div>
+  </div>
+</body>
+</html>"""
+
+
+# ── 학생별 정보 카드(FR-45 상세, DCR-021) ──────────────────────────────────
+# 리포트 카드의 머리말·요약·토큰을 그대로 쓰고 날짜별 표만 더한다.
+
+HISTORY_CSS = """
+.table { padding: 0 var(--md-space-6) var(--md-space-6); }
+table { width: 100%; border-collapse: collapse; font-size: var(--md-text-sm); }
+th { text-align: left; font-size: var(--md-text-xs); font-weight: 600; letter-spacing: 0.04em;
+     color: var(--md-color-muted-fg); padding: var(--md-space-2) var(--md-space-2);
+     border-bottom: 1px solid var(--md-color-border); white-space: nowrap; }
+td { padding: var(--md-space-3) var(--md-space-2); border-bottom: 1px solid var(--md-color-border);
+     vertical-align: top; word-break: break-word; }
+td.date { white-space: nowrap; font-weight: 600; }
+td .sub { display: block; font-size: var(--md-text-xs); color: var(--md-color-muted-fg); }
+.badge { display: inline-block; padding: 2px var(--md-space-2); border-radius: var(--md-radius-sm);
+         font-size: var(--md-text-xs); font-weight: 600; color: var(--md-color-brand-fg); }
+.badge.present { background: var(--md-color-success); }
+.badge.late { background: var(--md-color-warning); color: var(--md-color-warning-fg); }
+.badge.absent { background: var(--md-color-danger); }
+.badge.early_leave { background: var(--md-color-muted-fg); }
+.muted { color: var(--md-color-muted-fg); }
+.num { font-variant-numeric: tabular-nums; }
+"""
+
+ATTENDING = ("present", "late", "early_leave")
+RECHECK_RESULT = {"pass": "합격", "fail": "불합격"}
+
+
+def _short(day: date) -> str:
+    return f"{day.month:02d}/{day.day:02d}"
+
+
+def _history_row(row: HistoryRow) -> str:
+    attendance = ATTENDANCE_LABEL.get(row.attendance_status)
+    if attendance:
+        status = f'<span class="badge {escape(row.attendance_status)}">{escape(attendance)}</span>'
+        if row.attendance_reason:
+            status += f'<span class="sub">{escape(row.attendance_reason)}</span>'
+    else:
+        status = '<span class="muted">미확인</span>'
+
+    recheck = row.recheck
+    if recheck.target and recheck.prev_grade and recheck.prev_date:
+        result = RECHECK_RESULT.get(recheck.result or "")
+        recheck_cell = (
+            f'<span class="sub">직전 {escape(recheck.prev_grade)} · {_short(recheck.prev_date)}</span>'
+            + (f"<strong>{result}</strong>" if result else '<span class="muted">미입력</span>')
+        )
+    else:
+        recheck_cell = "—"
+
+    if row.test_score_num is None:
+        test = "—"
+    else:
+        average = f"{row.class_average:g}" if row.class_average is not None else "—"
+        test = f'<span class="num">{float(row.test_score_num):g} / {average}</span>'
+    if row.test_name:
+        test = f'<span class="sub">{escape(row.test_name)}</span>{test}'
+
+    return (
+        f'<tr><td class="date">{_short(row.date)}({WEEKDAYS[row.date.weekday()]})</td>'
+        f"<td>{status}</td><td>{recheck_cell}</td>"
+        f"<td>{escape(row.homework_grade or '')}</td><td>{test}</td>"
+        f"<td>{escape(row.comment or '')}</td></tr>"
+    )
+
+
+def render_history_html(
+    history: HistoryOut,
+    to: date,
+    campus_name: str,
+    brand_colour: str | None = None,
+    logo_data_url: str | None = None,
+) -> str:
+    """학생별 정보 카드 HTML — 머리말(학생·반·기간), 요약 2개, 날짜별 표. 웹 화면과 같은 열·값."""
+    if brand_colour and not HEX_COLOUR.match(brand_colour):
+        raise ValueError(f"브랜드 색은 #RGB 또는 #RRGGBB 형식이어야 한다: {brand_colour!r}")
+    brand = f"\n:root {{ --md-color-brand: {brand_colour}; }}" if brand_colour else ""
+    ink = header_ink(brand_colour) if brand_colour else "light"
+    mark = (
+        f'<img src="{escape(logo_data_url)}" alt="{escape(campus_name)}">' if logo_data_url else ""
+    )
+
+    rows = history.rows
+    attending = sum(1 for row in rows if row.attendance_status in ATTENDING)
+    scores = [float(row.test_score_num) for row in rows if row.test_score_num is not None]
+    average = (
+        f"{round(sum(scores) / len(scores), 1):g}점 ({len(scores)}회)" if scores else "—"
+    )
+    facts = (
+        '<div class="facts">'
+        f'<div class="fact"><div class="k">출석</div><div class="v">{attending} / {len(rows)}회</div></div>'
+        f'<div class="fact"><div class="k">테스트 평균</div><div class="v">{average}</div></div>'
+        "</div>"
+    )
+    if rows:
+        table = (
+            '<div class="table"><table><thead><tr>'
+            "<th>날짜</th><th>출결</th><th>이전 과제 재검사</th><th>과제피드백</th><th>테스트</th><th>코멘트</th>"
+            "</tr></thead><tbody>" + "".join(_history_row(row) for row in rows) + "</tbody></table></div>"
+        )
+    else:
+        table = '<div class="empty">선택한 날짜까지 기록이 있는 수업이 없습니다</div>'
+
+    css = CARD_CSS % {"width": HISTORY_WIDTH, "facts": 2} + HISTORY_CSS
+    when = f"{escape(str(history.klass['name']))} · {to.isoformat()}까지 최근 {len(rows)}회"
+    return f"""<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><style>
+{TOKENS_CSS}{brand}
+{css}
+</style></head>
+<body>
+  <div class="card">
+    <div class="hero ink-{ink}">
+      <div class="academy">{mark}<span>{escape(campus_name)}</span></div>
+      <h1>{escape(str(history.student['name']))} 학습 기록</h1>
+      <div class="when">{when}</div>
+    </div>
+    {facts}
+    {table}
   </div>
 </body>
 </html>"""
