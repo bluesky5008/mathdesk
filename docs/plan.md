@@ -120,8 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (35/42)
-   ├─ [~] TASK-95 형제 연결 확인·같은 번호 안내 (DCR-026) in-progress
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (36/42)
+   ├─ [✓] TASK-95 형제 연결 확인·같은 번호 안내 (DCR-026) 2026-10-11 23:48
    ├─ [✓] TASK-94 포털 기록 달력·추이 그래프 (DCR-025) .. 2026-10-11 23:25
    ├─ [✓] TASK-93 학생·학부모 포털 (DCR-024) ............ 2026-10-11 22:09
    ├─ [✓] TASK-92 반 단위 일괄 발송 (DCR-023) ........... 2026-10-11 19:55
@@ -308,7 +308,7 @@ flowchart TD
     C3 --> T92["TASK-92 반 단위 일괄 발송 (DCR-023)"]:::done
     C3 --> T93["TASK-93 학생·학부모 포털 (DCR-024)"]:::done
     C3 --> T94["TASK-94 포털 기록 달력·추이 그래프 (DCR-025)"]:::done
-    C3 --> T95["TASK-95 형제 연결 확인·같은 번호 안내 (DCR-026)"]:::active
+    C3 --> T95["TASK-95 형제 연결 확인·같은 번호 안내 (DCR-026)"]:::done
     T93 -. depends .-> T95
     T93 -. depends .-> T94
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
@@ -1113,7 +1113,7 @@ flowchart TD
 
 ### TASK-95: 형제 연결 확인과 같은 학부모 번호 안내
 
-- 상태: in-progress
+- 상태: completed (2026-10-11 23:48)
 - 상위: 없음
 - 목표: [DCR-026](./work/20260922-mathdesk-baseline/DCR-026-형제-연결-확인과-같은-학부모-번호-안내.md)(기준선 `v27`, 승인 2026-10-11) 구현 — (a) API: 발급 `confirm_link`·409, 조회 `existing`, `StudentOut.guardian_phone_shared_with` (b) 웹: 확인 카드·사전 안내(`PortalAccountsSection`), 등록 폼·목록·수정 창 안내(`StudentsPage`) (c) 테스트 운영 배포.
 - 관련 요구사항과 설계: [FR-48 상세](./requirements.md#fr-48-상세), FR-06, [AC-50 ④·AC-53](./requirements.md#인수-조건), [DES-26 상세](./design.md#des-26-상세--학생학부모-포털-dcr-024-adr-014)
