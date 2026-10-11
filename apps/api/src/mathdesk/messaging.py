@@ -1,9 +1,10 @@
+import asyncio
 import re
 from datetime import date
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,7 @@ from .db import get_session
 from .messaging_adapter import Recipient, SendResult, build_adapter, choose_channel
 from .models import (
     AppUser,
+    BackgroundTask,
     Campus,
     Guardian,
     MessageLog,
@@ -26,7 +28,8 @@ from .models import (
     StudentDailyRecord,
 )
 from .models.daily import HOMEWORK_GRADE
-from .scope import CurrentScope
+from .scope import CurrentScope, Scope
+from .tasks import task_handler
 
 Db = Annotated[AsyncSession, Depends(get_session)]
 
@@ -207,6 +210,37 @@ class SendIn(BaseModel):
     template_code: str | None = None  # 주면 알림톡으로, 없으면 문자로 보낸다
 
 
+# 반 단위 일괄 발송(FR-47, DCR-023)
+BATCH_LIMIT = 500
+SUCCESS_STATUSES = ("sent", "fallback_sent")
+
+
+class BatchIn(BaseModel):
+    session_id: int
+    recipients: list[str] = Field(min_length=1)
+    template_code: str | None = None
+    student_ids: list[int] | None = None  # 없으면 그 수업일의 전원
+    include_already_sent: bool = False
+
+
+class BatchStudent(BaseModel):
+    student_id: int
+    name: str
+
+
+class BatchSkipped(BatchStudent):
+    reason: str  # no_recipient | already_sent
+
+
+class BatchPlan(BaseModel):
+    planned: list[BatchStudent]
+    skipped: list[BatchSkipped]
+
+
+class BatchOut(BatchPlan):
+    task_id: int
+
+
 class SendResultOut(BaseModel):
     channel: str
     recipient_phone: str
@@ -224,6 +258,7 @@ class SendOut(BaseModel):
 class MessageLogOut(BaseModel):
     id: int
     student_id: int | None
+    session_id: int | None
     recipient_type: str
     recipient_phone: str
     channel: str
@@ -442,20 +477,27 @@ async def _recipients_for(
     return recipients
 
 
-@router.post("/send")
-async def send_message(payload: SendIn, scope: CurrentScope, session: Db) -> SendOut:
-    context = await _context(payload.session_id, payload.student_id, scope, session)
-    student = await session.get(Student, payload.student_id)
-    recipients = await _recipients_for(session, student, payload.recipients)
+async def _send_one(
+    session: AsyncSession,
+    scope: Scope,
+    session_id: int,
+    student_id: int,
+    kinds: list[str],
+    template_code: str | None,
+    adapter,
+) -> SendOut:
+    """학생 1명 발송. 단건 엔드포인트와 반 단위 일괄 작업이 함께 쓴다(DES-09)."""
+    context = await _context(session_id, student_id, scope, session)
+    student = await session.get(Student, student_id)
+    recipients = await _recipients_for(session, student, kinds)
     if not recipients:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, "보낼 수 있는 연락처가 없습니다."
         )
 
-    adapter = build_adapter()
     attempts: list[tuple[str, SendResult]] = []
-    if payload.template_code:
-        template = await _alimtalk_template(session, scope.campus_id, payload.template_code)
+    if template_code:
+        template = await _alimtalk_template(session, scope.campus_id, template_code)
         channel = "alimtalk"
         body = render_alimtalk(template.body, template.variables or {}, context)
         fallback = await _fallback_on(session, scope.campus_id)
@@ -477,7 +519,8 @@ async def send_message(payload: SendIn, scope: CurrentScope, session: Db) -> Sen
         session.add(
             MessageLog(
                 campus_id=scope.campus_id,
-                student_id=payload.student_id,
+                student_id=student_id,
+                session_id=session_id,
                 recipient_type=result.recipient_type,
                 recipient_phone=result.recipient_phone,
                 channel=used,
@@ -507,6 +550,150 @@ async def send_message(payload: SendIn, scope: CurrentScope, session: Db) -> Sen
     )
 
 
+@router.post("/send")
+async def send_message(payload: SendIn, scope: CurrentScope, session: Db) -> SendOut:
+    return await _send_one(
+        session, scope, payload.session_id, payload.student_id, payload.recipients,
+        payload.template_code, build_adapter(),
+    )
+
+
+async def _already_sent(session: AsyncSession, session_id: int) -> set[int]:
+    """그 수업에 성공(접수) 로그가 있는 학생. 테스트 모드·실패 로그는 세지 않는다(FR-47 상세)."""
+    rows = await session.scalars(
+        select(MessageLog.student_id).where(
+            MessageLog.session_id == session_id,
+            MessageLog.is_test.is_(False),
+            MessageLog.status.in_(SUCCESS_STATUSES),
+        )
+    )
+    return {student_id for student_id in rows if student_id is not None}
+
+
+async def _plan_batch(
+    session: AsyncSession,
+    scope: Scope,
+    session_id: int,
+    kinds: list[str],
+    student_ids: list[int] | None,
+    include_already_sent: bool,
+) -> BatchPlan:
+    row = await _session_for_write(session, scope, session_id)
+    students = await _enrolled_students(session, row.class_id, row.session_date)
+    if student_ids is not None:
+        wanted = set(student_ids)
+        students = [student for student in students if student.id in wanted]
+    sent = set() if include_already_sent else await _already_sent(session, row.id)
+
+    planned: list[BatchStudent] = []
+    skipped: list[BatchSkipped] = []
+    for student in students:
+        if not await _recipients_for(session, student, kinds):
+            skipped.append(BatchSkipped(student_id=student.id, name=student.name, reason="no_recipient"))
+        elif student.id in sent:
+            skipped.append(BatchSkipped(student_id=student.id, name=student.name, reason="already_sent"))
+        else:
+            planned.append(BatchStudent(student_id=student.id, name=student.name))
+    return BatchPlan(planned=planned, skipped=skipped)
+
+
+@router.get("/send-batch/preview")
+async def preview_batch(
+    session_id: int,
+    recipients: Annotated[list[str], Query(min_length=1)],
+    scope: CurrentScope,
+    session: Db,
+    include_already_sent: bool = False,
+) -> BatchPlan:
+    return await _plan_batch(session, scope, session_id, recipients, None, include_already_sent)
+
+
+@router.post("/send-batch")
+async def start_batch(
+    payload: BatchIn, request: Request, scope: CurrentScope, session: Db
+) -> BatchOut:
+    """반 단위 일괄 발송을 백그라운드 작업으로 등록한다(FR-47). 진행은 GET /tasks/{id}."""
+    if payload.student_ids is not None and len(payload.student_ids) > BATCH_LIMIT:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"한 번에 {BATCH_LIMIT}명까지 보낼 수 있습니다.")
+    plan = await _plan_batch(
+        session, scope, payload.session_id, payload.recipients, payload.student_ids,
+        payload.include_already_sent,
+    )
+    if not plan.planned:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "보낼 대상이 없습니다.")
+    if len(plan.planned) > BATCH_LIMIT:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"한 번에 {BATCH_LIMIT}명까지 보낼 수 있습니다.")
+
+    runner = request.app.state.task_runner
+    task_id = await runner.enqueue(
+        session, scope.campus_id, "message_batch",
+        {
+            "session_id": payload.session_id,
+            "student_ids": [student.student_id for student in plan.planned],
+            "recipients": payload.recipients,
+            "template_code": payload.template_code,
+            "actor_id": scope.user.id,
+        },
+    )
+    running = asyncio.create_task(runner.run_pending())
+    request.app.state.background.add(running)
+    running.add_done_callback(request.app.state.background.discard)
+    return BatchOut(task_id=task_id, planned=plan.planned, skipped=plan.skipped)
+
+
+def _student_status(result: SendOut) -> tuple[str, str | None]:
+    statuses = [item.status for item in result.results]
+    if any(status in SUCCESS_STATUSES for status in statuses):
+        return "sent", None
+    if statuses and all(status == "test" for status in statuses):
+        return "test", None
+    return "failed", next((item.error for item in result.results if item.error), None)
+
+
+@task_handler("message_batch")
+async def run_message_batch(session: AsyncSession, task: BackgroundTask) -> dict:
+    """학생마다 `_send_one`을 호출하고 바로 커밋한다. 재개 시 이 작업이 만들어진 뒤
+    성공 로그가 생긴 학생은 건너뛴다(AC-49 ⑦) — 같은 학생에게 두 번 가지 않는다."""
+    payload = task.payload
+    actor = await session.get(AppUser, payload["actor_id"])
+    scope = Scope(user=actor, campus_id=task.campus_id)
+    adapter = build_adapter()
+    student_ids: list[int] = payload["student_ids"]
+    students: list[dict] = []
+    summary = {"sent": 0, "failed": 0, "test": 0, "skipped": 0}
+
+    for index, student_id in enumerate(student_ids, start=1):
+        student = await session.get(Student, student_id)
+        name = student.name if student else str(student_id)
+        done_after_start = await session.scalar(
+            select(MessageLog.id).where(
+                MessageLog.session_id == payload["session_id"],
+                MessageLog.student_id == student_id,
+                MessageLog.is_test.is_(False),
+                MessageLog.status.in_(SUCCESS_STATUSES),
+                MessageLog.requested_at >= task.created_at,
+            ).limit(1)
+        )
+        if done_after_start is not None:
+            entry = {"student_id": student_id, "name": name, "status": "skipped", "channel": None, "error": None}
+        else:
+            try:
+                result = await _send_one(
+                    session, scope, payload["session_id"], student_id, payload["recipients"],
+                    payload.get("template_code"), adapter,
+                )
+                status_, error = _student_status(result)
+                entry = {"student_id": student_id, "name": name, "status": status_, "channel": result.channel, "error": error}
+            except HTTPException as refused:
+                entry = {"student_id": student_id, "name": name, "status": "failed", "channel": None, "error": refused.detail}
+        students.append(entry)
+        summary[entry["status"]] += 1
+        task.progress = int(index * 100 / len(student_ids))
+        task.result = summary | {"students": students}
+        await session.commit()
+    return summary | {"students": students}
+
+
 @router.get("/logs")
 async def list_logs(scope: CurrentScope, session: Db, limit: int = 50) -> list[MessageLogOut]:
     rows = await session.scalars(
@@ -519,6 +706,7 @@ async def list_logs(scope: CurrentScope, session: Db, limit: int = 50) -> list[M
         MessageLogOut(
             id=row.id,
             student_id=row.student_id,
+            session_id=row.session_id,
             recipient_type=row.recipient_type,
             recipient_phone=row.recipient_phone,
             channel=row.channel,

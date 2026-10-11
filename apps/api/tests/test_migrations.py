@@ -66,5 +66,14 @@ def test_daily_record_has_a_comment_column(empty_database, column_names, alembic
     alembic(empty_database, "upgrade", "head")
     assert "comment" in column_names("student_daily_record")
 
-    alembic(empty_database, "downgrade", "-1")
+    alembic(empty_database, "downgrade", "d5b9f3a7c2e4")  # comment 리비전 바로 앞
     assert "comment" not in column_names("student_daily_record")
+
+
+def test_message_log_has_a_session_column(empty_database, column_names, alembic):
+    """DCR-023 — 일괄 발송의 중복 판정·재개에 쓰는 message_log.session_id."""
+    alembic(empty_database, "upgrade", "head")
+    assert "session_id" in column_names("message_log")
+
+    alembic(empty_database, "downgrade", "e6c0a4b8d2f5")  # session_id 리비전 바로 앞
+    assert "session_id" not in column_names("message_log")

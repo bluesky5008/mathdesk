@@ -461,6 +461,50 @@ export function sendMessage(
   })
 }
 
+/** 반 단위 일괄 발송(FR-47, DCR-023) */
+export type BatchPlan = {
+  planned: { student_id: number; name: string }[]
+  skipped: { student_id: number; name: string; reason: string }[]
+}
+
+export type BatchStudentResult = {
+  student_id: number
+  name: string
+  status: string
+  channel: string | null
+  error: string | null
+}
+
+function batchQuery(sessionId: number, recipients: string[], includeAlreadySent: boolean): string {
+  const query = new URLSearchParams({ session_id: String(sessionId) })
+  recipients.forEach((kind) => query.append('recipients', kind))
+  query.set('include_already_sent', String(includeAlreadySent))
+  return query.toString()
+}
+
+export function previewBatch(sessionId: number, recipients: string[], includeAlreadySent: boolean): Promise<BatchPlan> {
+  return request<BatchPlan>(`/messages/send-batch/preview?${batchQuery(sessionId, recipients, includeAlreadySent)}`)
+}
+
+export function startBatch(
+  sessionId: number,
+  recipients: string[],
+  includeAlreadySent: boolean,
+  templateCode?: string,
+  studentIds?: number[],
+): Promise<BatchPlan & { task_id: number }> {
+  return request<BatchPlan & { task_id: number }>('/messages/send-batch', {
+    method: 'POST',
+    body: JSON.stringify({
+      session_id: sessionId,
+      recipients,
+      include_already_sent: includeAlreadySent,
+      ...(templateCode ? { template_code: templateCode } : {}),
+      ...(studentIds ? { student_ids: studentIds } : {}),
+    }),
+  })
+}
+
 export function fetchMessageLogs(): Promise<MessageLog[]> {
   return request<MessageLog[]>('/messages/logs')
 }

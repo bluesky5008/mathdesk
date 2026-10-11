@@ -28,6 +28,7 @@ import {
 } from '../api'
 import { copyImage, copyText, downloadImage } from '../clipboard'
 import { AlimtalkTemplates } from './AlimtalkTemplates'
+import { BatchSendDialog } from './BatchSendDialog'
 
 const RECIPIENTS = [
   ['student', '학생'],
@@ -72,6 +73,8 @@ export function MessagesPage() {
 
   const [tab, setTab] = useState<'text' | 'report'>('text')
   const [recipients, setRecipients] = useState<string[]>([])
+  // 반 전체 발송(FR-47)은 같은 수신 대상·발송 방식으로 그날 배정 학생 전원에게 보낸다
+  const [batchOpen, setBatchOpen] = useState(false)
   const send = useMutation({
     mutationFn: () => sendMessage(sessionId!, activeStudentId!, recipients, templateCode || undefined),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['message-logs'] }),
@@ -247,6 +250,14 @@ export function MessagesPage() {
               >
                 {templateCode ? '알림톡 발송' : '문자 발송'}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setBatchOpen(true)}
+                disabled={recipients.length === 0 || sessionId === null}
+              >
+                반 전체 발송
+              </Button>
             </div>
 
             {send.isError && (
@@ -259,9 +270,34 @@ export function MessagesPage() {
                 {`${send.data.results.length}건 처리(${send.data.channel})`}
               </p>
             )}
+            {send.isSuccess && send.data.results.some((result) => result.status === 'failed') && (
+              <div className="flex flex-col gap-2">
+                {send.data.results
+                  .filter((result) => result.status === 'failed')
+                  .map((result) => (
+                    <p key={result.recipient_phone} className="text-sm text-danger">
+                      {`${result.recipient_phone} 실패${result.error ? ` — ${result.error}` : ''}`}
+                    </p>
+                  ))}
+                {/* 실패 건만 재시도(설계 발송 흐름 5). 같은 학생을 같은 조건으로 다시 보낸다 */}
+                <Button type="button" variant="outline" onClick={() => send.mutate()} disabled={send.isPending}>
+                  다시 보내기
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {batchOpen && sessionId !== null && (
+        <BatchSendDialog
+          sessionId={sessionId}
+          recipients={recipients}
+          templateCode={templateCode || undefined}
+          onClose={() => setBatchOpen(false)}
+          onFinished={() => void queryClient.invalidateQueries({ queryKey: ['message-logs'] })}
+        />
+      )}
 
       <Card className="mt-5">
         <CardHeader>
