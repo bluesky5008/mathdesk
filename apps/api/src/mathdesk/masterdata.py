@@ -1,3 +1,4 @@
+import re
 from datetime import date, time
 from typing import Annotated
 
@@ -8,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
 from .models import AppUser, AppUserCampus, AuditLog, ClassSchedule, Enrollment, Guardian, Klass, School, Student
-from .portal_accounts import portal_summary, sync_portal_access
+from .portal_accounts import normalize_phone, portal_summary, sync_portal_access
 from .scope import CurrentScope, Scope, ScopedRepository
 
 Db = Annotated[AsyncSession, Depends(get_session)]
@@ -66,6 +67,8 @@ class StudentOut(BaseModel):
     score_note: str | None = None
     # 포털 계정 상태 요약(FR-48 상세): {"student": state, "guardian": state}
     portal: dict[str, str] | None = None
+    # 같은 캠퍼스에서 같은 학부모 번호(숫자만 비교)를 가진 다른 학생 이름(DCR-026). 오타 안내용이며 저장은 막지 않는다
+    guardian_phone_shared_with: list[str] = []
 
 
 class ScheduleIn(BaseModel):
@@ -185,6 +188,28 @@ def _student_out(student: Student, guardian_phone: str | None, school: str | Non
     return out.model_copy(update={"guardian_phone": guardian_phone, "school": school})
 
 
+async def _guardian_phone_shares(session: AsyncSession, scope: Scope, student_ids: list[int]) -> dict[int, list[str]]:
+    """학생마다 대표 보호자 번호가 같은 캠퍼스의 다른 학생 이름(이름순). 한 번의 조회로 읽는다(DCR-026)."""
+    rows = await session.execute(
+        select(Guardian.student_id, Guardian.phone, Student.name)
+        .join(Student, Student.id == Guardian.student_id)
+        .where(Student.campus_id == scope.campus_id)
+        .order_by(Guardian.id)
+    )
+    primary: dict[int, tuple[str, str]] = {}
+    for student_id, phone, name in rows:
+        primary.setdefault(student_id, (re.sub(r"\D", "", phone), name))
+    by_digits: dict[str, list[tuple[str, int]]] = {}
+    for student_id, (digits, name) in primary.items():
+        if digits:
+            by_digits.setdefault(digits, []).append((name, student_id))
+    shares: dict[int, list[str]] = {}
+    for student_id in student_ids:
+        digits = primary.get(student_id, ("", ""))[0]
+        shares[student_id] = sorted(name for name, other in by_digits.get(digits, []) if other != student_id)
+    return shares
+
+
 async def _school_name(session: AsyncSession, scope: Scope, school_id: int | None) -> str | None:
     """학생이 고른 학교의 이름. 같은 캠퍼스의 학교가 아니면 422(DCR-015)."""
     if school_id is None:
@@ -232,8 +257,11 @@ async def list_students(
     student_ids = [student.id for student, _ in rows]
     phones = await _guardian_phones(session, student_ids)
     portal = await portal_summary(session, student_ids)
+    shares = await _guardian_phone_shares(session, scope, student_ids)
     return [
-        _student_out(student, phones.get(student.id), school).model_copy(update={"portal": portal[student.id]})
+        _student_out(student, phones.get(student.id), school).model_copy(
+            update={"portal": portal[student.id], "guardian_phone_shared_with": shares[student.id]}
+        )
         for student, school in rows
     ]
 
@@ -252,7 +280,10 @@ async def create_student(payload: StudentIn, scope: CurrentScope, session: Db) -
     await session.flush()
     await _sync_guardian(session, student.id, payload.guardian_phone)
     await session.commit()
-    return _student_out(student, payload.guardian_phone or None, school)
+    shares = await _guardian_phone_shares(session, scope, [student.id])
+    return _student_out(student, payload.guardian_phone or None, school).model_copy(
+        update={"guardian_phone_shared_with": shares[student.id]}
+    )
 
 
 @router.patch("/students/{student_id}")
@@ -280,7 +311,10 @@ async def update_student(
         await sync_portal_access(session, scope, student_id)
     await session.commit()
     phones = await _guardian_phones(session, [student_id])
-    return _student_out(student, phones.get(student_id), await _school_name(session, scope, student.school_id))
+    shares = await _guardian_phone_shares(session, scope, [student_id])
+    return _student_out(student, phones.get(student_id), await _school_name(session, scope, student.school_id)).model_copy(
+        update={"guardian_phone_shared_with": shares[student_id]}
+    )
 
 
 # ── 학교(FR-43, DCR-015) — 원장 전용 ─────────────────────────────────────

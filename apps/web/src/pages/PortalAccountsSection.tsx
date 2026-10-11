@@ -6,6 +6,7 @@ import {
   fetchPortalAccounts,
   issuePortalAccount,
   reissuePortalAccount,
+  type ExistingAccount,
   type IssuedAccount,
   type PortalAccount,
   type PortalState,
@@ -31,27 +32,33 @@ function AccountRow({
   account,
   phone,
   isDirector,
+  existing,
 }: {
   studentId: number
   kind: 'student' | 'guardian'
   account: PortalAccount
   phone: string | null
   isDirector: boolean
+  existing?: ExistingAccount | null
 }) {
   const queryClient = useQueryClient()
   const [notice, setNotice] = useState('')
+  const [confirming, setConfirming] = useState(false)
   const label = kind === 'student' ? '학생 계정' : '학부모 계정'
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['portal-accounts', studentId] })
     void queryClient.invalidateQueries({ queryKey: ['students'] })
   }
   const issue = useMutation({
-    mutationFn: () => issuePortalAccount(studentId, kind),
+    mutationFn: (confirmLink: boolean) => issuePortalAccount(studentId, kind, confirmLink),
     onSuccess: (issued) => {
+      setConfirming(false)
       setNotice(describe(kind, issued))
       refresh()
     },
   })
+  // 기존 학부모 계정에 연결하는 경우는 이름을 보고 확인한 뒤에만 보낸다(DCR-026)
+  const start = () => (existing ? setConfirming(true) : issue.mutate(false))
   const reissue = useMutation({
     mutationFn: () => reissuePortalAccount(studentId, account.user_id!),
     onSuccess: () => {
@@ -76,7 +83,7 @@ function AccountRow({
             size="sm"
             className="ml-auto"
             disabled={!phone || issue.isPending || reissue.isPending}
-            onClick={() => (issued ? reissue.mutate() : issue.mutate())}
+            onClick={() => (issued ? reissue.mutate() : start())}
           >
             {issued ? `${label} 재발급` : `${label} 발급`}
           </Button>
@@ -84,6 +91,30 @@ function AccountRow({
       </div>
       {isDirector && !phone && (
         <p className="text-xs text-muted-fg">{kind === 'student' ? '학생 연락처를 먼저 등록하세요.' : '학부모 연락처를 먼저 등록하세요.'}</p>
+      )}
+      {existing && !confirming && (
+        <p className="text-xs break-keep text-warning-fg">
+          {`이 번호는 ${existing.students.join('·')} 학생의 학부모 계정과 같습니다.`}
+        </p>
+      )}
+      {existing && confirming && (
+        <div
+          role="alertdialog"
+          aria-label="형제 연결 확인"
+          className="flex flex-col gap-2 rounded-md border border-warning bg-warning/20 px-3 py-2"
+        >
+          <p className="text-sm break-keep">
+            {`${existing.students.join('·')} 학생의 학부모 계정(${existing.login_id})에 이 학생을 연결합니다. 번호가 맞고 형제가 맞습니까?`}
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setConfirming(false)}>
+              취소
+            </Button>
+            <Button type="button" size="sm" disabled={issue.isPending} onClick={() => issue.mutate(true)}>
+              형제가 맞습니다, 연결
+            </Button>
+          </div>
+        </div>
       )}
       {notice && (
         <p role="status" className="text-xs break-keep text-success">
@@ -121,7 +152,14 @@ export function PortalAccountsSection({
   return (
     <section aria-label="포털 계정" className="col-span-2 flex flex-col gap-2 rounded-md border px-3 py-2">
       <AccountRow studentId={studentId} kind="student" account={accounts.data.student} phone={phone} isDirector={isDirector} />
-      <AccountRow studentId={studentId} kind="guardian" account={guardian} phone={guardianPhone} isDirector={isDirector} />
+      <AccountRow
+        studentId={studentId}
+        kind="guardian"
+        account={guardian}
+        phone={guardianPhone}
+        isDirector={isDirector}
+        existing={accounts.data.guardians[0]?.existing ?? null}
+      />
     </section>
   )
 }

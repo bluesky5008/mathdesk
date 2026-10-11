@@ -43,8 +43,16 @@ class AccountOut(BaseModel):
     user_id: int | None = None
 
 
+class ExistingAccount(BaseModel):
+    """그 보호자 번호가 이미 다른 학생의 학부모 계정일 때(DCR-026) — 연결 전 확인용."""
+
+    login_id: str
+    students: list[str]
+
+
 class GuardianAccountOut(AccountOut):
     guardian_id: int
+    existing: ExistingAccount | None = None
 
 
 class AccountsOut(BaseModel):
@@ -55,6 +63,8 @@ class AccountsOut(BaseModel):
 class IssueIn(BaseModel):
     kind: Kind
     guardian_id: int | None = None  # 비우면 대표 보호자
+    # 기존 학부모 계정에 연결(형제)하려면 참이어야 한다 — 오타로 남의 학부모에게 연결되지 않도록(DCR-026)
+    confirm_link: bool = False
 
 
 class IssuedOut(BaseModel):
@@ -205,22 +215,40 @@ async def read_accounts(student_id: int, scope: CurrentScope, session: Db) -> Ac
     linked = await _linked(session, student_id)
     student_user = next((u for l, u in linked if u.role == "student"), None)
     by_guardian = {l.guardian_id: u for l, u in linked if u.role == "guardian"}
+    guardians = []
+    for g in await _guardians(session, student_id):
+        user = by_guardian.get(g.id)
+        guardians.append(GuardianAccountOut(
+            guardian_id=g.id,
+            state=account_state(user, now),
+            login_id=user.login_id if user else None,
+            user_id=user.id if user else None,
+            existing=None if user else await _existing_guardian_account(session, normalize_phone(g.phone)),
+        ))
     return AccountsOut(
         student=AccountOut(
             state=account_state(student_user, now),
             login_id=student_user.login_id if student_user else None,
             user_id=student_user.id if student_user else None,
         ),
-        guardians=[
-            GuardianAccountOut(
-                guardian_id=g.id,
-                state=account_state(by_guardian.get(g.id), now),
-                login_id=by_guardian[g.id].login_id if g.id in by_guardian else None,
-                user_id=by_guardian[g.id].id if g.id in by_guardian else None,
-            )
-            for g in await _guardians(session, student_id)
-        ],
+        guardians=guardians,
     )
+
+
+async def _existing_guardian_account(session: AsyncSession, login_id: str | None) -> ExistingAccount | None:
+    """그 번호의 학부모 계정과 연결된 학생 이름(이름순). 없으면 None."""
+    if login_id is None:
+        return None
+    user = await session.scalar(select(AppUser).where(AppUser.login_id == login_id, AppUser.role == "guardian"))
+    if user is None:
+        return None
+    names = await session.scalars(
+        select(Student.name)
+        .join(AppUserStudent, AppUserStudent.student_id == Student.id)
+        .where(AppUserStudent.user_id == user.id)
+        .order_by(Student.name)
+    )
+    return ExistingAccount(login_id=login_id, students=list(names))
 
 
 def _audit(scope: Scope, action: str, user_id: int, student_id: int) -> AuditLog:
@@ -268,6 +296,11 @@ async def issue_account(student_id: int, payload: IssueIn, scope: CurrentScope, 
         if not (payload.kind == "guardian" and existing.role == "guardian"):
             role = {"student": "학생", "guardian": "학부모", "director": "원장", "teacher": "강사"}[existing.role]
             raise HTTPException(status.HTTP_409_CONFLICT, f"이미 {role} 계정이 쓰는 번호입니다.")
+        if not payload.confirm_link:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "이미 다른 학생의 학부모 계정인 번호입니다. 형제가 맞으면 확인 후 연결하세요.",
+            )
         session.add(AppUserStudent(user_id=existing.id, student_id=student_id, guardian_id=guardian.id))
         await session.flush()
         await _set_active(session, scope, existing, await _has_active_student(session, existing.id))

@@ -56,6 +56,11 @@ function gradeOptions(current: string) {
   return current && !GRADES.includes(current) ? [...GRADES, current] : GRADES
 }
 
+// 같은 학부모 번호를 가진 다른 학생이 있으면 안내한다. 형제면 정상이므로 저장은 막지 않는다(DCR-026)
+function sharedGuardianNotice(names: string[]) {
+  return `학부모 연락처가 ${names.join('·')} 학생과 같습니다. 형제가 아니면 번호를 확인하세요.`
+}
+
 // 목록 칸의 드롭다운은 평소에는 글자처럼 보이고 가리키면 테두리가 보인다
 const INLINE_SELECT = '-ml-2 h-8 border-transparent bg-transparent text-muted-fg hover:border-border'
 
@@ -229,6 +234,8 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
   const [showWithdrawn, setShowWithdrawn] = useState(false)
   const [edit, setEdit] = useState<{ id: number; form: Form; status: string } | null>(null)
   const [consulting, setConsulting] = useState<{ id: number; name: string } | null>(null)
+  // 등록 직후 같은 학부모 번호 안내(DCR-026)
+  const [sharedNotice, setSharedNotice] = useState<string[]>([])
 
   const visible = (students.data ?? []).filter(
     (student) => showWithdrawn || student.status !== 'withdrawn',
@@ -238,8 +245,9 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
 
   const create = useMutation({
     mutationFn: () => createStudent(toPayload(form, 'enrolled')),
-    onSuccess: () => {
+    onSuccess: (created) => {
       setForm(EMPTY)
+      setSharedNotice(created.guardian_phone_shared_with ?? [])
       void refresh()
     },
   })
@@ -313,6 +321,11 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
           {create.isError && (
             <p role="alert" className="mt-3 text-sm text-danger">
               {create.error.message}
+            </p>
+          )}
+          {sharedNotice.length > 0 && (
+            <p role="status" className="mt-3 text-sm break-keep text-warning-fg">
+              {sharedGuardianNotice(sharedNotice)}
             </p>
           )}
         </CardContent>
@@ -404,7 +417,12 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                     )}
                   </TableCell>
                   <TableCell className="tabular-nums whitespace-nowrap">{student.phone}</TableCell>
-                  <TableCell className="tabular-nums whitespace-nowrap">{student.guardian_phone}</TableCell>
+                  <TableCell className="tabular-nums whitespace-nowrap">
+                    {student.guardian_phone}
+                    {(student.guardian_phone_shared_with ?? []).length > 0 && (
+                      <div className="text-xs text-warning-fg">{`${student.guardian_phone_shared_with!.join('·')}과 같음`}</div>
+                    )}
+                  </TableCell>
                   <TableCell className="tabular-nums">{student.omr_number}</TableCell>
                   <TableCell className="text-muted-fg">
                     {isDirector ? (
@@ -531,6 +549,11 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                   ))}
                 </Select>
               </Field>
+              {(students.data?.find((s) => s.id === edit.id)?.guardian_phone_shared_with ?? []).length > 0 && (
+                <p className="col-span-2 text-xs break-keep text-warning-fg">
+                  {sharedGuardianNotice(students.data!.find((s) => s.id === edit.id)!.guardian_phone_shared_with!)}
+                </p>
+              )}
               <PortalAccountsSection
                 studentId={edit.id}
                 phone={students.data?.find((s) => s.id === edit.id)?.phone ?? null}
