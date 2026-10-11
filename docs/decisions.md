@@ -64,11 +64,12 @@
 | DCR-023 | dcr | 반 단위 일괄 발송 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md) | FR-47·AC-49 신설, REST 2건, DES-18 작업 종류 |
 | DCR-024 | dcr | 학생·학부모 포털 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md) | ADR-014, FR-48·FR-49·AC-50~52 신설, FR-02·03·05·39·NFR-07 수정, DES-03·04·26, 기준선 v25 |
 | DCR-025 | dcr | 포털 기록 달력과 추이 그래프 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-025](./work/20260922-mathdesk-baseline/DCR-025-포털-기록-달력과-추이-그래프.md) | DCR-024 보강, FR-49 상세 ②·③, AC-51 ⑧, 포털 REST 1건, 기준선 v26 |
+| DCR-026 | dcr | 형제 연결 확인과 같은 학부모 번호 안내 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-026](./work/20260922-mathdesk-baseline/DCR-026-형제-연결-확인과-같은-학부모-번호-안내.md) | DCR-024 보강, FR-48 상세·FR-06, AC-50 ④·AC-53, 기준선 v27 |
 
 ## 번호 발행 규칙
 
 - ADR·DCR 번호는 저장소 전역 일련번호다. 새 번호는 이 등록부의 마지막 번호 다음 번호로 발행한다.
-- 다음 ADR 번호: `ADR-015`. 다음 DCR 번호: `DCR-026`.
+- 다음 ADR 번호: `ADR-015`. 다음 DCR 번호: `DCR-027`.
 - 개별 ADR·DCR 파일이 정본이며 이 등록부는 목록이다. 불일치하면 파일에 맞춰 등록부를 수정한다.
 
 ## 아웃라인 결정 항목과의 대응
