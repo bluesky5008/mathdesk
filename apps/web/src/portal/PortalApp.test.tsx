@@ -54,10 +54,22 @@ function mount(handler: (url: string) => Response, path = '/portal') {
   )
 }
 
+const OLDER = { ...SESSION, date: '2026-09-16', test_name: null, test_score: null, class_average: null, comment: '복습 필요' }
+
 function routes(url: string): Response {
   if (url === '/api/portal/students') return Response.json(STUDENTS)
   if (url.endsWith('/summary')) return Response.json(SUMMARY)
-  if (url.includes('/sessions')) return Response.json([SESSION])
+  if (url.includes('/calendar')) {
+    return Response.json({ recorded_dates: url.includes('month=2026-09') ? ['2026-09-16', '2026-09-18'] : [] })
+  }
+  if (url.includes('/sessions')) {
+    if (url.includes('on=2026-09-18')) return Response.json([SESSION])
+    if (url.includes('on=')) return Response.json([])
+    return Response.json([SESSION, OLDER])
+  }
+  if (url.includes('/test-trend')) {
+    return Response.json({ total: 12, rounds: SUMMARY.latest_tests })
+  }
   return Response.json([])
 }
 
@@ -76,6 +88,7 @@ describe('PortalApp', () => {
 
   it('renders a session record with the same sections as the message', async () => {
     mount(routes, '/portal/records')
+    // 최초 선택은 가장 최근 기록일(DCR-025)
 
     const card = within(await screen.findByRole('article', { name: '9/18(금) 고2 윤B' }))
     expect(card.getByText('[1교시] 미적분 1단원')).toBeInTheDocument()
@@ -104,5 +117,45 @@ describe('PortalApp', () => {
     expect(card.getByText('미확인')).toBeInTheDocument()
     expect(card.queryByText('수업진도')).not.toBeInTheDocument()
     expect(card.queryByText('테스트 점수')).not.toBeInTheDocument()
+  })
+
+  // DCR-025: 달력 → 선택한 날의 기록 → 전체 기록 한 줄 표
+  it('opens the calendar on the latest recorded day and switches days', async () => {
+    mount(routes, '/portal/records')
+
+    expect(await screen.findByRole('article', { name: '9/18(금) 고2 윤B' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /9월 18일.*기록 있음/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /9월 16일.*기록 있음/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /9월 17일.*기록 있음/ })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /9월 17일/ }))
+    expect(await screen.findByText('이 날은 기록이 없습니다.')).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: '9/18(금) 고2 윤B' })).not.toBeInTheDocument()
+  })
+
+  it('lists every record in one line and selects the day when a line is clicked', async () => {
+    mount(routes, '/portal/records')
+
+    await screen.findByText('복습 필요')
+    const table = within(screen.getByRole('table', { name: '전체 기록' }))
+    const rows = table.getAllByRole('row').slice(1)
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('9/18(금)')
+    expect(rows[0]).toHaveTextContent('지각')
+    expect(rows[0]).toHaveTextContent('80 / 70')
+    expect(rows[1]).toHaveTextContent('복습 필요')
+
+    await userEvent.click(within(rows[1]).getByRole('button'))
+    expect(await screen.findByText('이 날은 기록이 없습니다.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /9월 16일.*기록 있음/ })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  // DCR-025: 추이 탭 그래프 — 관리 화면과 같은 표시, 10회/20회
+  it('draws the trend chart above the table and allows 20 rounds only when there are more than 10', async () => {
+    mount(routes, '/portal/tests')
+
+    expect(await screen.findByRole('figure', { name: '회차별 성적 추이 그래프' })).toBeInTheDocument()
+    expect(await screen.findByRole('table')).toBeInTheDocument()
+    expect(screen.getByLabelText('회차')).not.toBeDisabled()
   })
 })
