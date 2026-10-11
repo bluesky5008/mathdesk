@@ -120,8 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (32/39)
-   ├─ [▶] TASK-92 반 단위 일괄 발송 (DCR-023) ........... in-progress
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (33/39)
+   ├─ [✓] TASK-92 반 단위 일괄 발송 (DCR-023) ........... 2026-10-11 19:55
    ├─ [✓] TASK-91 학생별 정보 이미지 저장 (DCR-021) ...... 2026-10-11 17:40
    ├─ [✓] TASK-90 학생별 정보 탭·수업일 달력 (DCR-020) 2026-10-11 17:05
    ├─ [✓] TASK-89 테스트명 입력·문자/리포트 공통 (DCR-019) 2026-10-11 16:35
@@ -302,7 +302,7 @@ flowchart TD
     T89 -. depends .-> T90
     C3 --> T91["TASK-91 학생별 정보 이미지 저장 (DCR-021)"]:::done
     T90 -. depends .-> T91
-    C3 --> T92["TASK-92 반 단위 일괄 발송 (DCR-023)"]:::active
+    C3 --> T92["TASK-92 반 단위 일괄 발송 (DCR-023)"]:::done
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
     C3 --> T75["TASK-75 OMR 방향 자동 판별"]:::done
     C3 --> T76["TASK-76 OMR 판정 기준: 조명 보정"]:::done
@@ -1105,11 +1105,11 @@ flowchart TD
 
 ### TASK-92: 반 단위 일괄 발송
 
-- 상태: in-progress (2026-10-11 시작)
+- 상태: completed (2026-10-11 19:55)
 - 상위: 없음
 - 목표: `POST /messages/send-batch`·`GET /messages/send-batch/preview`와 `message_batch` 백그라운드 작업(학생마다 `_send_one` 재사용, 학생별 커밋·진행률, 재개 시 로그 있는 학생 건너뜀, 최대 500명, 대상 0명 422). 알림 문자 화면에 [반 전체 발송] 대화상자(대상·제외 목록·이미 보냄 포함 체크·수신 대상·템플릿) → 진행률 폴링 → 학생별 결과 표와 [실패만 다시 보내기], 단건 결과의 [다시 보내기].
 - 관련 요구사항과 설계: [DCR-023](./work/20260922-mathdesk-baseline/DCR-023-반-단위-일괄-발송.md)(기준선 `v24`, 승인 2026-10-11) — [FR-47 상세](./requirements.md#fr-47-상세), [AC-49](./requirements.md#인수-조건), DES-09·DES-18, [메시지 발송 흐름 5·6](./design.md#메시지-발송)
-- 변경 대상: `apps/api/src/mathdesk/messaging.py`(`_send_one` 분리, 엔드포인트 2개, `@task_handler("message_batch")`), `tests/test_message_batch.py`(신설); 웹 `api.ts`(타입·함수), `pages/MessagesPage.tsx`(대화상자·진행률·결과·재시도), `MessagesPage.test.tsx`
+- 변경 대상: `apps/api/src/mathdesk/messaging.py`(`_send_one` 분리, 엔드포인트 2개, `@task_handler("message_batch")`), `models/messaging.py`·마이그레이션 `f7d1a5c9e3b6`(`message_log.session_id`, 구현 중 보정), `deletion.py`(반 삭제 시 참조 비움), `tests/test_message_batch.py`(신설)·`test_migrations.py`; 웹 `api.ts`(타입·함수), `pages/MessagesPage.tsx`(대화상자·진행률·결과·재시도), `MessagesPage.test.tsx`
 - 의존성: 없음(실발송 시험은 알리고 사업자 인증 뒤)
 - 위험: 작업 큐 단일 실행(분석 중이면 대기). 마이그레이션 없음 — 롤백은 코드 되돌리기
 - 검증 방법: 선행 테스트 — API(preview 대상·제외 3종, 등록·422 2종, 실행 후 학생별 로그·본문 개별성, 일부 실패 결과·실패만 재등록, 재개 건너뜀, 테스트 모드 외부 호출 0, 담당 외 403). 웹(대화상자 내용, 등록 본문, 폴링 후 결과 표, 재시도 호출 2종). API·웹 전체, `npm run build`
