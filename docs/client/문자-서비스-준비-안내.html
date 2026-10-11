@@ -182,6 +182,7 @@
   </header>
 
   <section class="lead">
+    <p class="note warn"><span><strong>2026-10-11 저녁 정정.</strong> 두 분께서 알리고에 개인 회원으로 가입해 보신 결과, 알리고의 <strong>서버 연결(API)은 사업자 인증을 마친 회원만</strong> 쓸 수 있다는 안내가 떴습니다. 제가 앞서 "개인 회원 그대로 된다"고 적은 부분이 틀렸습니다. 죄송합니다. 가입·충전·발신번호 등록(①~④)까지는 그대로 유효하고, <strong>⑤ API 키 단계는 아래 2장의 세 갈래 중 하나를 정한 뒤</strong> 진행합니다. 충전하셨다면 환불되니(알리고 내정보 → 환불/탈퇴) 다른 길을 고르셔도 손해는 없습니다.</span></p>
     <p>핑수님, mathdesk가 학부모님께 수업 피드백 문자를 실제로 보내려면 <strong>문자 발송 서비스</strong>에 가입해 두어야 합니다. 지금 테스트 서버는 "보내기"를 눌러도 밖으로 나가지 않고 발송 내역에만 남는 상태입니다. 지난번 "정식 운영 준비 안내"의 "③ 문자 서비스 가입"을 어떤 서비스를 왜 고르는지부터 순서대로 풀어 쓴 안내입니다.</p>
     <p><strong>가입과 충전은 모두 핑수님 명의</strong>로 합니다. 학부모님 휴대폰에는 <strong>핑수님 본인 번호</strong>가 보내는 사람으로 뜹니다. 저는 가입이 끝난 뒤 받은 값 세 가지를 서버에 넣고 시험 문자를 보내는 일만 합니다. 서버(AWS)·주소 준비와는 따로 진행해도 되고, 전체 소요는 <strong>약 1시간에 번호 승인 대기 1~3시간</strong>입니다.</p>
     <p class="meta">
@@ -205,24 +206,24 @@
 
   <section id="choose">
     <h2><span class="n">2</span>어느 서비스를 쓸까요</h2>
-    <p>조건은 두 가지였습니다. <strong>사업자등록증 없이 개인이 가입해 본인 번호로 보낼 수 있을 것</strong>, 그리고 <strong>mathdesk 서버가 자동으로 보낼 수 있는 연결 창구(API)를 열어 줄 것</strong>. 국내에서 많이 쓰는 서비스 다섯 곳을 이 기준으로 확인했습니다.</p>
+    <p>조건은 두 가지였습니다. <strong>사업자등록증 없이 개인이 가입해 본인 번호로 보낼 수 있을 것</strong>, 그리고 <strong>mathdesk 서버가 자동으로 보낼 수 있는 연결 창구(API)를 열어 줄 것</strong>. 국내에서 많이 쓰는 서비스 다섯 곳을 이 기준으로 확인했는데, 두 번째 조건을 개인 회원에게 열어 주는 곳은 <strong>솔라피 한 곳</strong>뿐이었습니다. 알리고는 가입·사이트 발송은 개인도 되지만 서버 연결은 사업자 인증이 필요합니다.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>서비스</th><th>개인 가입 + 서버 연결</th><th>장문 1건 요금<br><span class="muted">부가세 별도</span></th><th>알아 둘 점</th><th>판단</th></tr></thead>
         <tbody>
           <tr>
-            <td class="pick"><strong>알리고</strong><br><span class="muted">smartsms.aligo.in</span></td>
-            <td class="pick">가능. 본인 휴대폰은 본인인증만으로 등록</td>
-            <td class="pick amount">25.9원<br><span class="muted">단문 8.4원</span></td>
-            <td class="pick">가장 저렴합니다. mathdesk가 처음부터 이 서비스에 맞춰 만들어져 있어 추가 개발 없이 바로 연결됩니다. 개인 회원은 하루 500건까지 보낼 수 있습니다(필요하면 사전 승인으로 늘릴 수 있음). 충전금은 5년간 유효하고 남으면 환불됩니다.</td>
-            <td class="pick"><span class="verdict ok">추천</span></td>
+            <td><strong>알리고</strong><br><span class="muted">smartsms.aligo.in</span></td>
+            <td>개인 가입·사이트 발송은 가능하지만 <strong>서버 연결(API)은 사업자 인증 회원만</strong></td>
+            <td class="amount">25.9원<br><span class="muted">단문 8.4원</span></td>
+            <td>가장 저렴하고 mathdesk가 이미 연결되어 있습니다. 사업자 인증은 <strong>학원 사업자등록증 + 핑수님 재직증명서</strong>(원장님 협조)로도 되고, 본인 사업자등록으로도 됩니다. 인증이 되면 카카오 알림톡까지 열립니다.</td>
+            <td><span class="verdict hold">사업자 인증 시</span></td>
           </tr>
           <tr>
-            <td><strong>솔라피</strong><br><span class="muted">solapi.com</span></td>
-            <td>가능. 본인 휴대폰 본인인증</td>
-            <td class="amount">45원<br><span class="muted">단문 18원</span></td>
-            <td>요금이 알리고의 약 1.7배입니다. 개인 계정은 하루 <strong>50건</strong>부터 시작해 최대 500건까지만 늘릴 수 있어, 학생 160명 기준으로는 처음부터 한도에 걸립니다. mathdesk 쪽 연결 코드도 새로 만들어야 합니다.</td>
-            <td><span class="verdict hold">예비</span></td>
+            <td class="pick"><strong>솔라피</strong><br><span class="muted">solapi.com</span></td>
+            <td class="pick">가능. 가입 때 본인인증한 휴대폰이 발신번호로 자동 등록되고, <strong>개인 계정도 API 키 발급</strong></td>
+            <td class="pick amount">45원<br><span class="muted">단문 18원</span></td>
+            <td class="pick">사업자등록 없이 되는 유일한 길입니다. 요금은 알리고의 약 1.7배(한 달 약 27만 원). 개인 계정은 하루 <strong>50건</strong>부터 시작하고 사유를 적어 요청하면 <strong>500건</strong>까지 올려 줍니다. 그 이상은 사업자 인증이 필요합니다. mathdesk에 솔라피 연결 코드를 새로 만들어야 합니다(제 작업, 며칠).</td>
+            <td class="pick"><span class="verdict ok">개인으로 가능</span></td>
           </tr>
           <tr>
             <td><strong>뿌리오</strong><br><span class="muted">ppurio.com</span></td>
@@ -248,7 +249,21 @@
         </tbody>
       </table>
     </div>
-    <p class="note"><span><strong>결론: 알리고로 시작합니다.</strong> 개인 가입이 되고, 가장 싸고, 하루 한도가 넉넉하고, mathdesk가 이미 연결되어 있습니다. 가비아·문자나라 같은 다른 서비스는 개인 회원의 서버 연결 조건을 공개 자료에서 확인할 수 없어 후보에서 뺐습니다.</span></p>
+    <h3>세 갈래 중 하나를 정해 주세요</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>A. 학원 사업자로 알리고 인증</th><th>B. 솔라피 개인 계정</th><th>C. 본인 사업자등록 후 알리고</th></tr></thead>
+        <tbody>
+          <tr><td>필요한 것</td><td>원장님 협조: <strong>학원 사업자등록증 사본</strong> + 핑수님 <strong>재직증명서</strong>(3개월 이내, 회사 직인)</td><td>없음. 지금 휴대폰과 본인인증만</td><td>홈택스에서 본인 사업자등록(무료). 세금 신고 의무가 생기므로 본인이 판단</td></tr>
+          <tr><td>한 달 문자 요금</td><td class="amount">약 15.8만 원</td><td class="amount">약 27만 원</td><td class="amount">약 15.8만 원</td></tr>
+          <tr><td>하루 한도</td><td>넉넉함</td><td>50건에서 시작, 요청으로 500건까지</td><td>넉넉함</td></tr>
+          <tr><td>카카오 알림톡 전환</td><td>가능(학원 명의)</td><td>불가(사업자 필요)</td><td>가능(본인 명의)</td></tr>
+          <tr><td>준비 기간</td><td>서류 받는 시간 + 알리고 심사 1~2일</td><td>바로. 단 mathdesk 연결 개발 며칠</td><td>사업자등록 1~3일 + 알리고 심사</td></tr>
+          <tr><td>mathdesk 변경</td><td>없음</td><td>솔라피 연결 코드 신규(제가 함)</td><td>없음</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><span><strong>제 권유: 원장님께 서류를 부탁드릴 수 있으면 A</strong>, 어려우면 B입니다. A는 지금 코드 그대로 쓰고 요금도 싸며 나중에 알림톡까지 갑니다. B는 누구 협조도 필요 없지만 요금이 1.7배이고 하루 500건 상한이 있습니다. 둘 다 발신번호는 핑수님 본인 휴대폰입니다. 가비아·문자나라·네이버 클라우드는 개인 회원의 서버 연결 조건을 공개 자료에서 확인할 수 없어 후보에서 뺐습니다.</span></p>
   </section>
 
   <section id="cost">
@@ -315,6 +330,7 @@
 
       <div class="task">
         <div class="task-head"><h3>⑤ API 키 발급과 서버 주소 등록</h3><span class="who both">함께</span><span class="time">10분</span></div>
+        <p class="note warn"><span><strong>이 단계는 2장의 갈래를 정한 뒤에 합니다.</strong> 알리고는 개인 회원 상태에서는 이 메뉴를 쓸 수 없습니다. A·C를 고르셨다면 먼저 알리고 <span class="ui">내정보 → 사업자정보 → 사업자인증 하러가기</span>에서 사업자등록증(+재직증명서)을 올려 승인을 받은 뒤 아래를 진행합니다. B(솔라피)를 고르셨다면 아래 대신 제가 솔라피용 순서를 따로 드립니다.</span></p>
         <p>이 단계는 전화나 화면 공유로 <strong>같이</strong> 하는 게 가장 빠릅니다. 혼자 하셔도 됩니다.</p>
         <ul class="check">
           <li><input type="checkbox" id="c-api-1"><label for="c-api-1">바로 가기 <a href="https://smartsms.aligo.in/admin/api/auth.html" target="_blank" rel="noopener">smartsms.aligo.in/admin/api/auth.html</a>로 들어갑니다(로그인 상태에서). 메뉴로 가려면 <strong>PC 화면</strong>의 왼쪽 메뉴 <span class="ui">문자API</span> → <span class="ui">신청/인증</span>입니다.
@@ -399,7 +415,8 @@ curl -s https://&lt;주소&gt;/api/health</pre>
       <table>
         <thead><tr><th>증상</th><th>해결</th></tr></thead>
         <tbody>
-          <tr><td>API 키 메뉴가 안 보여요</td><td>휴대폰 화면(홈·내정보·결제정보만 있는 화면)에는 없습니다. 로그인한 채로 <a href="https://smartsms.aligo.in/admin/api/auth.html" target="_blank" rel="noopener">smartsms.aligo.in/admin/api/auth.html</a>을 직접 열거나, PC에서 왼쪽 메뉴 <strong>문자API → 신청/인증</strong>으로 가세요. 사업자 인증은 필요 없습니다.</td></tr>
+          <tr><td>API 키 메뉴가 안 보이거나 "개인회원은 이용할 수 없다"고 나와요</td><td>알리고의 서버 연결은 사업자 인증 회원만 쓸 수 있습니다. 2장의 A·B·C 중 하나를 정해 알려 주세요. 메뉴 자체는 PC 화면 왼쪽 <strong>문자API → 신청/인증</strong>(<a href="https://smartsms.aligo.in/admin/api/auth.html" target="_blank" rel="noopener">바로 가기</a>)에 있습니다.</td></tr>
+          <tr><td>알리고에 이미 충전했는데 솔라피로 가게 됐어요</td><td>알리고 <span class="ui">내정보 → 환불/탈퇴</span>에서 남은 충전금을 환불받을 수 있습니다(5년 안이면 가능).</td></tr>
           <tr><td>발신번호 등록에서 서류를 내라고 해요</td><td>명의를 "본인"으로 골랐는지, ②에서 본인인증한 번호와 같은 번호인지 확인하세요. 다른 사람 명의 번호는 개인 회원으로 등록할 수 없습니다.</td></tr>
           <tr><td>반나절이 지나도 발신번호가 "대기"예요</td><td>알리고 심사는 평일 10~17시에만 진행됩니다. 다음 영업일까지 기다리시고, 그래도 그대로면 알리고 고객센터(02-511-4560)에 문의하세요.</td></tr>
           <tr><td>시험 문자가 안 와요</td><td>①의 번호도용 문자차단이 켜져 있거나 해지한 지 2~3일이 안 됐을 수 있습니다. 그다음은 제가 서버 주소 등록과 설정을 다시 봅니다.</td></tr>
@@ -411,7 +428,7 @@ curl -s https://&lt;주소&gt;/api/health</pre>
   </section>
 
   <footer>
-    <p class="muted">이 안내는 2026년 10월 11일 기준 알리고(요금·발신번호 안내·이용약관), 솔라피(가격 정책·일 발송 한도·발신번호 FAQ), 뿌리오(API 연동 안내·발신번호 인증 안내), NHN Cloud(SMS 서비스 정책), 카카오 비즈니스 가이드를 확인해 정리했습니다. 요금과 심사 기간은 바뀔 수 있으니 결제 직전 화면의 금액을 믿어 주세요. 화면 문구가 다르게 보이면 같은 뜻의 메뉴를 누르시거나 연락 주세요. 체크 표시는 이 브라우저에만 저장됩니다.</p>
+    <p class="muted">이 안내는 2026년 10월 11일 기준 알리고(요금·발신번호 안내·이용약관·사업자 인증 안내, 그리고 두 분이 가입 중 실제로 본 API 제한 안내), 솔라피(가격 정책·일 발송 한도·발신번호 FAQ), 뿌리오(API 연동 안내·발신번호 인증 안내), NHN Cloud(SMS 서비스 정책), 카카오 비즈니스 가이드를 확인해 정리했습니다. 요금과 심사 기간은 바뀔 수 있으니 결제 직전 화면의 금액을 믿어 주세요. 화면 문구가 다르게 보이면 같은 뜻의 메뉴를 누르시거나 연락 주세요. 체크 표시는 이 브라우저에만 저장됩니다.</p>
     <p class="sign">용스 드림</p>
   </footer>
 </div>
