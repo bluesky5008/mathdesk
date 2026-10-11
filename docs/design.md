@@ -3,7 +3,7 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v15`
+> 기준선: `v16`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
@@ -210,6 +210,7 @@
 ```text
 campus 1─* app_user_campus *─1 app_user
 campus 1─* student 1─* guardian
+campus 1─* school 1─* student
 campus 1─* class 1─* class_schedule
 class 1─* enrollment *─1 student
 class 1─* class_session 1─* class_session_progress
@@ -226,7 +227,8 @@ campus 1─* stored_file,  campus 1─* integration_setting
 | `campus` | `id`, `name`, `is_active` | 모든 도메인 테이블의 스코프 기준 |
 | `app_user` | `id`, `login_id`, `password_hash`, `display_name`, `role`, `is_active` | 역할 `director`·`teacher` `must_change_password`(원장이 정한 비밀번호면 참 — 참인 동안 `GET /auth/me`·로그아웃·`POST /auth/password` 외 요청은 공통 스코프 검사에서 403, [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md)) |
 | `app_user_campus` | `user_id`, `campus_id` | 접근 가능 캠퍼스 |
-| `student` | `id`, `campus_id`, `name`, `school`, `grade`, `phone`, `status`, `omr_number`, `score_note` | `omr_number`는 캠퍼스 내 유일, 자리별 범위 검증(FR-05). `score_note`는 성적·비고 텍스트(NULL 허용, 500자 이내 — [DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md)) |
+| `student` | `id`, `campus_id`, `name`, `school_id`, `grade`, `phone`, `status`, `omr_number`, `score_note` | `omr_number`는 캠퍼스 내 유일, 자리별 범위 검증(FR-05). `score_note`는 성적·비고 텍스트(NULL 허용, 500자 이내 — [DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md)). `school_id`는 `school` FK(NULL 허용, `ON DELETE SET NULL`) — 학교 이름은 `school`에만 둔다([DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) |
+| `school` | `id`, `campus_id`, `name` | `(campus_id, name)` 유일. 이름은 앞뒤 공백을 지우고 1~100자(FR-43, [DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) |
 | `guardian` | `id`, `student_id`, `relation`, `name`, `phone`, `is_notify_target` | |
 | `class` | `id`, `campus_id`, `name`, `grade`, `teacher_id`, `is_active` | |
 | `class_schedule` | `id`, `class_id`, `weekday`, `start_time`, `end_time` | `end_time`은 선택(NULL 허용) — 시작 시각만 입력·표시한다(FR-07, [DCR-007](./work/20260922-mathdesk-baseline/DCR-007-시작-시각만-쓰는-반-시간표.md)). 같은 반에서 요일·시작 시각 중복 불가 |
@@ -269,7 +271,8 @@ campus 1─* stored_file,  campus 1─* integration_setting
 |---|---|
 | 인증 | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/password`(본인 변경, 현재 비밀번호 확인, 다른 세션 삭제) |
 | 사용자·캠퍼스 | `GET/POST/PATCH /users`, `GET /campuses`, `POST /users/{id}/password`(원장, 같은 캠퍼스, 임시 비밀번호·변경 강제·세션 전부 삭제·잠금 해제) |
-| 학생·보호자 | `GET/POST /students`, `GET/PATCH/DELETE /students/{id}`, `GET /students/{id}/deletion-preview`, `GET/POST/PATCH /students/{id}/guardians`. 학생 입출력에 `guardian_phone`·`score_note`([DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md)): `GET`은 대표 보호자(가장 먼저 등록된 보호자)의 번호를 함께 준다(한 번의 조회). `POST`·`PATCH`는 같은 트랜잭션에서 대표 보호자를 맞춘다 — 값이 있으면 번호만 바꾸거나 관계 "학부모"·이름 빈칸·통보 대상으로 만들고, 빈 값이면 지운다. 필드를 보내지 않으면 보호자를 건드리지 않는다 |
+| 학생·보호자 | `GET/POST /students`, `GET/PATCH/DELETE /students/{id}`, `GET /students/{id}/deletion-preview`, `GET/POST/PATCH /students/{id}/guardians`. 학생 입출력에 `guardian_phone`·`score_note`([DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md)): `GET`은 대표 보호자(가장 먼저 등록된 보호자)의 번호를 함께 준다(한 번의 조회). `POST`·`PATCH`는 같은 트랜잭션에서 대표 보호자를 맞춘다 — 값이 있으면 번호만 바꾸거나 관계 "학부모"·이름 빈칸·통보 대상으로 만들고, 빈 값이면 지운다. 필드를 보내지 않으면 보호자를 건드리지 않는다. 학생 입력은 `school_id`(같은 캠퍼스의 학교가 아니면 422), 출력은 `school_id`와 `school`(학교 이름, 조인으로 한 번에 읽음) — 입력 `school` 문자열은 받지 않는다([DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) |
+| 학교 | `GET/POST /schools`, `PATCH/DELETE /schools/{id}` — 원장 전용(강사 403), 캠퍼스 스코프. `GET`은 `[{id, name, student_count}]` 이름순(학생 수는 집계 한 번). `POST`·`PATCH`는 `{name}` 공백 제거 후 1~100자(422), 같은 캠퍼스 중복 409, 다른 캠퍼스·없는 id 404. `DELETE`는 한 트랜잭션에서 그 학교 학생의 `school_id`를 NULL로 바꾸고 지우며 감사 로그 `school.delete`(이름, 학생 수)를 남긴다([DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md)) |
 | 반·수강 | `GET/POST /classes`, `PATCH/DELETE /classes/{id}`(강사의 `PATCH`는 담당 반만, 본문의 `teacher_id`·`is_active`가 현재 값과 같아야 하며 아니면 403·무변경, 감사 로그 `class.update` — [DCR-011](./work/20260922-mathdesk-baseline/DCR-011-강사의-담당-반-수정.md)), `GET /classes/{id}/deletion-preview`, `GET/POST/DELETE /classes/{id}/enrollments` |
 | 주간 시간표 | `GET /timetable`(역할 스코프: 강사는 담당 반, 원장은 전체. `{class_minutes, slots[{class_id, class_name, grade, teacher, weekday, start_time, end_time}], unscheduled[]}`, `end_time`=시작+수업 길이 계산값), `PUT /settings/class-minutes`(원장, 30~480분, `integration_setting.class_minutes`, 기본 240 — [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md)) — [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) |
 | 일일 기록 | `GET /daily?class_id=&date=`, `PUT /daily/{session_id}/notes`, `PUT /daily/{session_id}/records`, `PUT /daily/{session_id}/records/{student_id}/recheck`, `POST /daily/{session_id}/attendance/confirm`, `POST /daily/{session_id}/attendance/unlock` |
@@ -502,6 +505,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v15` (2026-10-11): [DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md) 재승인으로 `student.score_note`가 추가되고 학생 입출력에 `guardian_phone`·`score_note`가 더해졌다(하위 호환).
 
+기준선 `v16` (2026-10-11): [DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md) 재승인으로 `school` 테이블과 `student.school_id`가 추가되고 `student.school` 문자열이 삭제되었으며(데이터 이관 마이그레이션), REST에 학교 4개가 추가되고 학생 입력이 `school` → `school_id`로 바뀌었다.
+
 기준선 `v11` (2026-09-24): [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) 승인으로 `class_minutes` 기본값이 240으로 바뀌었다(구조·계약 변경 없음).
 
 기준선 `v10` (2026-09-24): [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) 재승인으로 `POST /auth/password`·`POST /users/{id}/password`와 `app_user.must_change_password`가 신설되고, 변경 강제 중에는 공통 스코프 검사가 요청을 거부한다.
@@ -537,6 +542,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-10-11 | 학생 삭제 선행 조건 제거, 감사 로그 상태 | [DCR-012](./work/20260922-mathdesk-baseline/DCR-012-재원-학생의-바로-삭제.md) | approved 유지, 기준선 v12 → v13 | Claude / 사용자 |
 | 2026-10-11 | 학생 즉시 삭제, 학생 `DELETE` 본문 제거 | [DCR-013](./work/20260922-mathdesk-baseline/DCR-013-학생-즉시-삭제.md) | approved 유지, 기준선 v13 → v14 | Claude / 사용자 |
 | 2026-10-11 | `student.score_note`, 학생 입출력 `guardian_phone`·`score_note` | [DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md) | approved 유지, 기준선 v14 → v15 | Claude / 사용자 |
+| 2026-10-11 | `school` 테이블, `student.school_id`, REST 학교 4개, 학생 입력 `school_id` | [DCR-015](./work/20260922-mathdesk-baseline/DCR-015-학교-관리와-학교-드롭다운.md) | approved 유지, 기준선 v15 → v16 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |
