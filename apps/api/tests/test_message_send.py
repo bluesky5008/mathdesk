@@ -133,3 +133,20 @@ def test_message_path_never_calls_an_llm(api, prepared, blocked_network, monkeyp
     )
     assert _send(api, prepared).status_code == 200
     assert calls == []
+
+
+# DCR-014 AC-41 ④: 학생 화면에서 넣은 학부모 연락처가 학부모 문자 수신자가 된다
+def test_guardian_phone_from_the_student_form_receives_guardian_messages(api, klass, blocked_network):
+    session_id = api.get("/api/daily", params={"class_id": klass["class_id"], "date": DATE}).json()["session"]["id"]
+    student_id = klass["student_ids"][1]
+    student = next(s for s in api.get("/api/students").json() if s["id"] == student_id)
+    body = {k: student[k] for k in ("name", "school", "grade", "phone", "omr_number", "status")}
+    api.patch(f"/api/students/{student_id}", json=body | {"guardian_phone": "010-5555-6666"})
+
+    response = api.post(
+        "/api/messages/send",
+        json={"session_id": session_id, "student_id": student_id, "recipients": ["guardian"]},
+    )
+
+    assert response.status_code == 200, response.text
+    assert [r["recipient_phone"] for r in response.json()["results"]] == ["010-5555-6666"]

@@ -1,6 +1,6 @@
 from datetime import date, datetime, time
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Time, UniqueConstraint, false
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, Time, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, enum_column
@@ -51,6 +51,8 @@ class Student(Base):
         default="enrolled",
     )
     omr_number: Mapped[str | None] = mapped_column(String(8))
+    # 성적·비고 자유 텍스트(DCR-014). 길이 제한(500자)은 API 입력에서 건다
+    score_note: Mapped[str | None] = mapped_column(Text)
 
 
 class Guardian(Base):

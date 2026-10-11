@@ -36,8 +36,10 @@ const FIELDS = [
   ['name', '이름'],
   ['school', '학교'],
   ['grade', '학년'],
-  ['phone', '연락처'],
+  ['phone', '학생 연락처'],
+  ['guardian_phone', '학부모 연락처'],
   ['omr_number', '수험번호'],
+  ['score_note', '성적'],
 ] as const
 
 // 재원 상태는 FR-05가 정한 3종이다. 퇴원은 지우지 않고 상태로만 남겨 과거 기록을 보존한다.
@@ -53,7 +55,7 @@ function gradeOptions(current: string) {
 // 목록 칸의 드롭다운은 평소에는 글자처럼 보이고 가리키면 테두리가 보인다
 const INLINE_SELECT = '-ml-2 h-8 border-transparent bg-transparent text-muted-fg hover:border-border'
 
-const EMPTY = { name: '', school: '', grade: '', phone: '', omr_number: '' }
+const EMPTY = { name: '', school: '', grade: '', phone: '', guardian_phone: '', omr_number: '', score_note: '' }
 
 type Form = typeof EMPTY
 
@@ -65,6 +67,8 @@ function toPayload(form: Form, status: string) {
     phone: form.phone || null,
     omr_number: form.omr_number || null,
     status,
+    guardian_phone: form.guardian_phone || null,
+    score_note: form.score_note || null,
   }
 }
 
@@ -74,7 +78,9 @@ function toForm(student: Student): Form {
     school: student.school ?? '',
     grade: student.grade ?? '',
     phone: student.phone ?? '',
+    guardian_phone: student.guardian_phone ?? '',
     omr_number: student.omr_number ?? '',
+    score_note: student.score_note ?? '',
   }
 }
 
@@ -287,8 +293,11 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                 <TableHeaderCell>학교</TableHeaderCell>
                 <TableHeaderCell>학년</TableHeaderCell>
                 <TableHeaderCell>반</TableHeaderCell>
+                <TableHeaderCell>학생 연락처</TableHeaderCell>
+                <TableHeaderCell>학부모 연락처</TableHeaderCell>
                 <TableHeaderCell>수험번호</TableHeaderCell>
                 <TableHeaderCell>상태</TableHeaderCell>
+                <TableHeaderCell>성적</TableHeaderCell>
                 <TableHeaderCell />
               </TableRow>
             </TableHead>
@@ -321,13 +330,15 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                       student.grade
                     )}
                   </TableCell>
-                  <TableCell className="break-keep">
+                  <TableCell className="min-w-24 break-keep">
                     {isDirector && student.status !== 'withdrawn' ? (
                       <ClassPicker student={student} current={currentClasses.get(student.id) ?? []} />
                     ) : (
                       describeClasses(currentClasses.get(student.id))
                     )}
                   </TableCell>
+                  <TableCell className="tabular-nums whitespace-nowrap">{student.phone}</TableCell>
+                  <TableCell className="tabular-nums whitespace-nowrap">{student.guardian_phone}</TableCell>
                   <TableCell className="tabular-nums">{student.omr_number}</TableCell>
                   <TableCell className="text-muted-fg">
                     {isDirector ? (
@@ -346,6 +357,14 @@ export function StudentsPage({ isDirector = false }: { isDirector?: boolean } = 
                       </Select>
                     ) : (
                       (STATUS[student.status as keyof typeof STATUS] ?? student.status)
+                    )}
+                  </TableCell>
+                  {/* 성적은 두 줄까지만 보이고 전체는 마우스를 올리거나 수정 창에서 본다 */}
+                  <TableCell className="min-w-32 max-w-56 text-muted-fg">
+                    {student.score_note && (
+                      <p className="line-clamp-2 break-keep" title={student.score_note}>
+                        {student.score_note}
+                      </p>
                     )}
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">

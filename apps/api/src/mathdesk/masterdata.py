@@ -46,6 +46,9 @@ class StudentIn(BaseModel):
     phone: str | None = Field(default=None, max_length=20)
     status: str = Field(default="enrolled", pattern="^(enrolled|paused|withdrawn)$")
     omr_number: str | None = None
+    # DCR-014: 대표 보호자 번호와 성적·비고. 보내지 않으면 수정 시 그대로 둔다(빈 값과 구분)
+    guardian_phone: str | None = Field(default=None, max_length=20)
+    score_note: str | None = Field(default=None, max_length=500)
 
 
 class StudentOut(BaseModel):
@@ -56,6 +59,8 @@ class StudentOut(BaseModel):
     phone: str | None
     status: str
     omr_number: str | None
+    guardian_phone: str | None = None
+    score_note: str | None = None
 
 
 class ScheduleIn(BaseModel):
@@ -157,6 +162,38 @@ async def _validated_omr_number(
     return value
 
 
+async def _guardian_phones(session: AsyncSession, student_ids: list[int]) -> dict[int, str]:
+    """학생마다 대표 보호자(가장 먼저 등록된 보호자)의 번호(DCR-014). 한 번의 조회로 읽는다."""
+    rows = await session.execute(
+        select(Guardian.student_id, Guardian.phone)
+        .where(Guardian.student_id.in_(student_ids))
+        .order_by(Guardian.id)
+    )
+    phones: dict[int, str] = {}
+    for student_id, phone in rows:
+        phones.setdefault(student_id, phone)
+    return phones
+
+
+def _student_out(student: Student, guardian_phone: str | None) -> StudentOut:
+    out = StudentOut.model_validate(student, from_attributes=True)
+    return out.model_copy(update={"guardian_phone": guardian_phone})
+
+
+async def _sync_guardian(session: AsyncSession, student_id: int, phone: str | None) -> None:
+    """대표 보호자를 화면의 학부모 연락처에 맞춘다. 관계·이름은 기존 값을 지킨다(DCR-014)."""
+    guardian = await session.scalar(
+        select(Guardian).where(Guardian.student_id == student_id).order_by(Guardian.id).limit(1)
+    )
+    if phone:
+        if guardian is None:
+            session.add(Guardian(student_id=student_id, relation="학부모", name="", phone=phone))
+        else:
+            guardian.phone = phone
+    elif guardian is not None:
+        await session.delete(guardian)
+
+
 @router.get("/students")
 async def list_students(
     scope: CurrentScope,
@@ -169,8 +206,9 @@ async def list_students(
         statement = statement.where(Student.name.ilike(f"%{q}%"))
     if status_filter:
         statement = statement.where(Student.status == status_filter)
-    students = await session.scalars(statement)
-    return [StudentOut.model_validate(student, from_attributes=True) for student in students]
+    students = list(await session.scalars(statement))
+    phones = await _guardian_phones(session, [student.id for student in students])
+    return [_student_out(student, phones.get(student.id)) for student in students]
 
 
 @router.post("/students", status_code=status.HTTP_201_CREATED)
@@ -178,13 +216,15 @@ async def create_student(payload: StudentIn, scope: CurrentScope, session: Db) -
     scope.require_director()
     omr_number = await _validated_omr_number(session, scope, payload.omr_number)
     student = Student(
-        **payload.model_dump(exclude={"omr_number"}),
+        **payload.model_dump(exclude={"omr_number", "guardian_phone"}),
         omr_number=omr_number,
         campus_id=scope.campus_id,
     )
     session.add(student)
+    await session.flush()
+    await _sync_guardian(session, student.id, payload.guardian_phone)
     await session.commit()
-    return StudentOut.model_validate(student, from_attributes=True)
+    return _student_out(student, payload.guardian_phone or None)
 
 
 @router.patch("/students/{student_id}")
@@ -196,10 +236,16 @@ async def update_student(
     student.omr_number = await _validated_omr_number(
         session, scope, payload.omr_number, exclude_id=student_id
     )
-    for field, value in payload.model_dump(exclude={"omr_number"}).items():
+    fields = payload.model_dump(exclude={"omr_number", "guardian_phone"})
+    if "score_note" not in payload.model_fields_set:
+        del fields["score_note"]
+    for field, value in fields.items():
         setattr(student, field, value)
+    if "guardian_phone" in payload.model_fields_set:
+        await _sync_guardian(session, student_id, payload.guardian_phone)
     await session.commit()
-    return StudentOut.model_validate(student, from_attributes=True)
+    phones = await _guardian_phones(session, [student_id])
+    return _student_out(student, phones.get(student_id))
 
 
 @router.get("/students/{student_id}/guardians")

@@ -31,6 +31,8 @@ const student = {
   phone: '010-1111-2222',
   status: 'enrolled',
   omr_number: '90000001',
+  guardian_phone: '010-7777-8888' as string | null,
+  score_note: '중간 85' as string | null,
 }
 
 const withdrawn = { ...student, id: 2, name: '박서준', status: 'withdrawn', omr_number: '90000002' }
@@ -130,6 +132,8 @@ describe('StudentsPage', () => {
       phone: '010-1111-2222',
       omr_number: '90000001',
       status: 'withdrawn',
+      guardian_phone: '010-7777-8888',
+      score_note: '중간 85',
     })
   })
 
@@ -157,6 +161,8 @@ describe('StudentsPage', () => {
       phone: '010-1111-2222',
       omr_number: '90000001',
       status: 'withdrawn',
+      guardian_phone: '010-7777-8888',
+      score_note: '중간 85',
     })
   })
 
@@ -452,5 +458,79 @@ describe('StudentsPage grade and status dropdowns', () => {
 })
 
 function toPayloadOf(s: typeof student) {
-  return { name: s.name, school: s.school, grade: s.grade, phone: s.phone, omr_number: s.omr_number, status: s.status }
+  return {
+    name: s.name,
+    school: s.school,
+    grade: s.grade,
+    phone: s.phone,
+    omr_number: s.omr_number,
+    status: s.status,
+    guardian_phone: s.guardian_phone,
+    score_note: s.score_note,
+  }
 }
+
+// TASK-82: 학부모 연락처와 성적을 등록 한 줄·수정 창에서 넣고 목록 열에 보인다(DCR-014, AC-41)
+describe('StudentsPage guardian phone and score note', () => {
+  function stubWrites(rows = [student]) {
+    const writes: { method: string; body: Record<string, unknown> }[] = []
+    stubFetch((url, init) => {
+      if (init?.method === 'POST' || init?.method === 'PATCH') {
+        writes.push({ method: init.method, body: JSON.parse(String(init.body)) })
+        return Response.json(student)
+      }
+      return Response.json(url.includes('/students') ? rows : [])
+    })
+    return writes
+  }
+
+  it('registers guardian phone and score note from the one-line form', async () => {
+    const writes = stubWrites([])
+    renderPage({ isDirector: true })
+
+    await userEvent.type(await screen.findByLabelText('이름'), '홍길동')
+    await userEvent.type(screen.getByLabelText('학생 연락처'), '010-1234-5678')
+    await userEvent.type(screen.getByLabelText('학부모 연락처'), '010-8765-4321')
+    await userEvent.type(screen.getByLabelText('성적'), '모의 3등급')
+    await userEvent.click(screen.getByRole('button', { name: '학생 등록' }))
+
+    await waitFor(() =>
+      expect(writes[0]?.body).toMatchObject({
+        name: '홍길동',
+        phone: '010-1234-5678',
+        guardian_phone: '010-8765-4321',
+        score_note: '모의 3등급',
+      }),
+    )
+  })
+
+  it('edits guardian phone and score note in the edit dialog', async () => {
+    const writes = stubWrites()
+    renderPage({ isDirector: true })
+
+    await userEvent.click(await screen.findByRole('button', { name: '수정' }))
+    const dialog = within(screen.getByRole('dialog'))
+    expect(dialog.getByLabelText('학부모 연락처')).toHaveValue('010-7777-8888')
+    expect(dialog.getByLabelText('성적')).toHaveValue('중간 85')
+    await userEvent.clear(dialog.getByLabelText('학부모 연락처'))
+    await userEvent.clear(dialog.getByLabelText('성적'))
+    await userEvent.type(dialog.getByLabelText('성적'), '기말 92')
+    await userEvent.click(dialog.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(writes[0]?.body).toMatchObject({ guardian_phone: null, score_note: '기말 92' }))
+  })
+
+  it('shows student phone, guardian phone and score note as columns', async () => {
+    const note = '중간 85, 서술형 감점 많음. 다음 달 상담 때 오답 노트 확인하기로 함'
+    stubWrites([{ ...student, score_note: note }])
+    renderPage()
+
+    for (const header of ['학생 연락처', '학부모 연락처', '성적']) {
+      expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument()
+    }
+    const row = within(await screen.findByRole('row', { name: /김나윤/ }))
+    expect(row.getByText('010-1111-2222')).toBeInTheDocument()
+    expect(row.getByText('010-7777-8888')).toBeInTheDocument()
+    expect(row.getByText(note)).toHaveAttribute('title', note)
+  })
+})

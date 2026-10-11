@@ -29,6 +29,9 @@ export type Student = {
   phone: string | null
   status: string
   omr_number: string | null
+  // 대표 보호자 번호와 성적·비고(DCR-014). 수정 시 빈 값은 보호자 삭제·성적 지움
+  guardian_phone: string | null
+  score_note: string | null
 }
 
 // 종료 시각은 선택 항목이다(FR-07, DCR-007). 화면은 요일·시작 시각만 다룬다

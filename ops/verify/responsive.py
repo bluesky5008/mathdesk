@@ -34,7 +34,8 @@ CLASSES = [{"id": i, "name": n, "grade": "고2", "teacher_id": 1, "is_active": T
             "schedules": [{"weekday": 4, "start_time": "18:00:00", "end_time": "22:00:00"}]}
            for i, n in enumerate(["고3 윤A", "고2 윤B", "고2 윤C", "고1 윤D"], 1)]
 STUDENTS = [{"id": i, "name": f"학생{i:02d}", "school": "한영고등학교", "grade": "고2",
-             "phone": None, "status": "enrolled", "omr_number": f"1000{i:02d}00"}
+             "phone": "010-1234-5678", "status": "enrolled", "omr_number": f"1000{i:02d}00",
+             "guardian_phone": "010-8765-4321", "score_note": "중간 85, 서술형 감점 많음. 오답 노트 확인 예정"}
             for i in range(1, 48)]
 RECORDS = [{"student_id": i, "name": f"학생{i:02d}", "attendance_status": "present",
             "attendance_reason": None, "homework_grade": "B",

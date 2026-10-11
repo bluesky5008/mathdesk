@@ -204,3 +204,73 @@ def test_enrollment_cannot_overlap_an_existing_period(api, klass):
     assert after_end.status_code == 201
     daily = api.get("/api/daily", params={"class_id": class_id, "date": "2026-09-11"}).json()
     assert [record["student_id"] for record in daily["records"]].count(student_id) == 1
+
+
+# ── DCR-014: 학부모 연락처(대표 보호자)와 성적 칸 — AC-41 ──────────────────
+
+
+def _guardians(api, student_id):
+    return [
+        {k: g[k] for k in ("relation", "name", "phone", "is_notify_target")}
+        for g in api.get(f"/api/students/{student_id}/guardians").json()
+    ]
+
+
+def _patch(api, student, **changes):
+    body = {k: student[k] for k in ("name", "school", "grade", "phone", "omr_number", "status")}
+    return api.patch(f"/api/students/{student['id']}", json=body | changes)
+
+
+def test_guardian_phone_and_score_note_are_saved_and_listed(api):
+    api.sign_in("director_a")
+
+    created = _student(api, guardian_phone="010-2222-3333", score_note="중간고사 85, 서술형 약함")
+
+    assert created.status_code == 201, created.text
+    [listed] = api.get("/api/students").json()
+    assert listed["guardian_phone"] == "010-2222-3333"
+    assert listed["score_note"] == "중간고사 85, 서술형 약함"
+    assert _guardians(api, listed["id"]) == [
+        {"relation": "학부모", "name": "", "phone": "010-2222-3333", "is_notify_target": True}
+    ]
+
+
+def test_editing_guardian_phone_keeps_the_existing_relation_and_name(api):
+    api.sign_in("director_a")
+    student = _student(api).json()
+    api.post(f"/api/students/{student['id']}/guardians", json={"relation": "모", "name": "박영희", "phone": "010-1111-1111"})
+
+    response = _patch(api, student, guardian_phone="010-9999-9999")
+
+    assert response.status_code == 200
+    assert response.json()["guardian_phone"] == "010-9999-9999"
+    assert _guardians(api, student["id"]) == [
+        {"relation": "모", "name": "박영희", "phone": "010-9999-9999", "is_notify_target": True}
+    ]
+
+
+def test_clearing_guardian_phone_removes_the_guardian(api):
+    api.sign_in("director_a")
+    student = _student(api, guardian_phone="010-2222-3333").json()
+
+    _patch(api, student, guardian_phone=None)
+
+    assert _guardians(api, student["id"]) == []
+    assert api.get("/api/students").json()[0]["guardian_phone"] is None
+
+
+def test_omitting_the_new_fields_leaves_guardian_and_score_note_alone(api):
+    api.sign_in("director_a")
+    student = _student(api, guardian_phone="010-2222-3333", score_note="기말 90").json()
+
+    _patch(api, student, status="paused")
+
+    [listed] = api.get("/api/students").json()
+    assert (listed["status"], listed["guardian_phone"], listed["score_note"]) == ("paused", "010-2222-3333", "기말 90")
+
+
+def test_score_note_over_500_characters_is_rejected(api):
+    api.sign_in("director_a")
+
+    assert _student(api, score_note="가" * 501).status_code == 422
+    assert _student(api, score_note="가" * 500).status_code == 201

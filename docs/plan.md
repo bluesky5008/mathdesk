@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v14`
+> 기준선: `v15`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (21/28)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (21/29)
+   ├─ [▶] TASK-82 학부모 연락처와 성적 칸 (DCR-014) .. in-progress
    ├─ [✓] TASK-81 학생 즉시 삭제 (DCR-013) .......... 2026-10-11 13:30
    ├─ [✓] TASK-80 재원 학생의 바로 삭제 (DCR-012) ..... 2026-10-11 12:29
    ├─ [✓] TASK-79 학년·상태 드롭다운 (FR-05) ........ 2026-10-11 12:14
@@ -248,7 +249,7 @@ flowchart TD
     classDef gate fill:#ffcdd2,stroke:#c62828
 ```
 
-사이클 3 (노드 26)
+사이클 3 (노드 27)
 
 ```mermaid
 flowchart TD
@@ -273,6 +274,8 @@ flowchart TD
     T79 -. depends .-> T80
     C3 --> T81["TASK-81 학생 즉시 삭제 (DCR-013)"]:::done
     T80 -. depends .-> T81
+    C3 --> T82["TASK-82 학부모 연락처와 성적 칸 (DCR-014)"]:::active
+    T81 -. depends .-> T82
     C3 --> T74["TASK-74 대시보드 항목 링크"]:::done
     C3 --> T75["TASK-75 OMR 방향 자동 판별"]:::done
     C3 --> T76["TASK-76 OMR 판정 기준: 조명 보정"]:::done
@@ -1072,6 +1075,18 @@ flowchart TD
 ### 사이클 3 — 운영 이관 (2026-09-24 계획)
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
+
+### TASK-82: 학부모 연락처와 성적 칸
+
+- 상태: in-progress
+- 상위: 없음
+- 목표: 학생 등록 한 줄과 수정 창에 학부모 연락처·성적을 더하고(기존 "연락처"는 "학생 연락처"), 목록에 학생 연락처·학부모 연락처·성적 열을 보인다. 학부모 연락처는 대표 보호자에 저장해 학부모 문자 대상으로 쓰인다. 성적은 `student.score_note`(500자 이내).
+- 관련 요구사항과 설계: [DCR-014](./work/20260922-mathdesk-baseline/DCR-014-학부모-연락처와-성적-칸.md)(기준선 `v15`, 승인 2026-10-11) — [FR-05·FR-06](./requirements.md#기능-요구사항), [AC-41](./requirements.md#인수-조건), [데이터 모델](./design.md#데이터-모델), REST 학생·보호자
+- 변경 대상: `apps/api/src/mathdesk/models/masterdata.py`(`score_note`), 마이그레이션 1건, `masterdata.py`(학생 입출력·대표 보호자 저장), API 테스트, `apps/web/src/api.ts`(`Student`), `pages/StudentsPage.tsx`, 웹 테스트
+- 의존성: TASK-81(같은 화면)
+- 위험: 필드를 보내지 않는 기존 호출이 보호자를 지우지 않게 "필드 없음"과 "빈 값"을 구분해야 한다. 열 추가로 표가 넓어진다(카드 안 가로 스크롤). 마이그레이션 전 백업
+- 검증 방법: 선행 테스트 — API(AC-41 ①②③④⑤, 필드 생략 시 보호자 불변, 강사 403 유지), 마이그레이션 왕복. 웹(등록 줄 칸·POST 본문, 수정 창 값·PATCH 본문, 목록 열, 긴 성적 말줄임). VER-35
+- 완료 조건: 테스트 운영 배포
 
 ### TASK-81: 학생 즉시 삭제
 
