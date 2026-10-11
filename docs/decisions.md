@@ -5,7 +5,7 @@
 > 상태: `in-progress`
 > 기준선: `N/A — 등록부는 기준선을 발행하지 않음`
 > 작성일: `2026-09-22`
-> 최종 갱신: `2026-09-22`
+> 최종 갱신: `2026-10-11`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md)
 
 ## 요약
@@ -48,6 +48,7 @@
 | DCR-009 | dcr | 비밀번호 변경과 재설정 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | ADR-007 관련 |
 | DCR-010 | dcr | 수업 길이 기본값 4시간 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | DCR-008 기본값 대체 |
 | DCR-011 | dcr | 강사의 담당 반 수정 | approved | 2026-09-24 | [work/20260922-mathdesk-baseline/DCR-011](./work/20260922-mathdesk-baseline/DCR-011-강사의-담당-반-수정.md) | ADR-007 관련 |
+| DCR-012 | dcr | 재원 학생의 바로 삭제 | awaiting-approval | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-012](./work/20260922-mathdesk-baseline/DCR-012-재원-학생의-바로-삭제.md) | DCR-006 학생 선행 조건 변경 |
 
 ## 번호 발행 규칙
 
