@@ -1,0 +1,471 @@
+<title>mathdesk 카카오톡 알림 준비</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ink: #1d2530;
+    --muted: #5b6676;
+    --line: #d8dde4;
+    --ground: #f5f7f9;
+    --surface: #ffffff;
+    --accent: #1f6f78;
+    --accent-soft: #e3f0f1;
+    --both: #8a5a12;
+    --both-soft: #f6eedd;
+    --dev: #4a5568;
+    --dev-soft: #e9ecf1;
+    --warn: #9a3b2a;
+    --warn-soft: #f7e9e5;
+    --code-bg: #eef1f4;
+    --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e6eaf0;
+      --muted: #9aa4b2;
+      --line: #2c3440;
+      --ground: #12161c;
+      --surface: #1a2028;
+      --accent: #6cbcc4;
+      --accent-soft: #1b3033;
+      --both: #e2b46a;
+      --both-soft: #33291a;
+      --dev: #b4bfcf;
+      --dev-soft: #252c37;
+      --warn: #e59a88;
+      --warn-soft: #3a2420;
+      --code-bg: #10141a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e6eaf0;
+    --muted: #9aa4b2;
+    --line: #2c3440;
+    --ground: #12161c;
+    --surface: #1a2028;
+    --accent: #6cbcc4;
+    --accent-soft: #1b3033;
+    --both: #e2b46a;
+    --both-soft: #33291a;
+    --dev: #b4bfcf;
+    --dev-soft: #252c37;
+    --warn: #e59a88;
+    --warn-soft: #3a2420;
+    --code-bg: #10141a;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    padding-inline: 16px;
+    padding-block: 32px 64px;
+    word-break: keep-all;
+  }
+  .page { max-width: 780px; margin: 0 auto; display: grid; gap: 44px; }
+
+  header { display: grid; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+  .eyebrow { font-size: 13px; letter-spacing: 0.08em; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(26px, 5vw, 34px); line-height: 1.3; margin: 0; font-weight: 700; text-wrap: balance; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); font-size: 14px; }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  section { display: grid; gap: 16px; }
+  h2 { font-size: 21px; margin: 0; font-weight: 700; text-wrap: balance; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+  h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
+  h3 { font-size: 17px; margin: 0; font-weight: 600; text-wrap: balance; }
+  p { margin: 0; max-width: 68ch; }
+  .lead p + p { margin-top: 12px; }
+  strong { font-weight: 600; }
+  .muted { color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  .who { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; border-radius: 999px; padding: 1px 10px; white-space: nowrap; }
+  .who.client { background: var(--accent-soft); color: var(--accent); }
+  .who.both { background: var(--both-soft); color: var(--both); }
+  .who.dev { background: var(--dev-soft); color: var(--dev); }
+  .time { color: var(--muted); font-weight: 400; font-size: 14px; }
+
+  ol.flow { list-style: none; margin: 0; padding: 0; display: grid; counter-reset: step; }
+  ol.flow li {
+    counter-increment: step; display: grid; grid-template-columns: 40px 1fr; gap: 2px 12px;
+    padding: 14px 0; border-top: 1px solid var(--line);
+  }
+  ol.flow li:last-child { border-bottom: 1px solid var(--line); }
+  ol.flow li::before {
+    content: counter(step); grid-row: span 2; width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 14px; font-weight: 600;
+    background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+  .flow-title { font-weight: 600; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+
+  .note { background: var(--accent-soft); border-radius: var(--radius); padding: 14px 16px; font-size: 15px; display: grid; gap: 6px; }
+  .note.warn { background: var(--warn-soft); }
+  .note.warn strong { color: var(--warn); }
+  .note.both { background: var(--both-soft); }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; background: var(--ground); white-space: nowrap; }
+  td.amount { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+  td.pick { background: var(--accent-soft); }
+  .verdict { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 4px; padding: 0 6px; white-space: nowrap; }
+  .verdict.ok { background: var(--accent-soft); color: var(--accent); }
+  .verdict.no { background: var(--warn-soft); color: var(--warn); }
+  .verdict.hold { background: var(--dev-soft); color: var(--dev); }
+
+  .task { display: grid; gap: 12px; padding: 18px 18px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .task-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+  .task-list { display: grid; gap: 12px; }
+  ul.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  ul.check > li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; }
+  ul.check input { width: 18px; height: 18px; margin: 4px 0 0; accent-color: var(--accent); }
+  ul.check label { cursor: pointer; }
+  ul.check input:checked + label { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+  ul.check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .detail { display: grid; gap: 4px; margin-top: 4px; padding-left: 12px; border-left: 2px solid var(--line); color: var(--muted); font-size: 15px; }
+  .detail b { color: var(--ink); font-weight: 600; }
+  .progress { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .progress b { color: var(--accent); }
+
+  .ui { font-weight: 600; color: var(--ink); background: var(--ground); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  code { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 14px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; overflow-wrap: anywhere; }
+
+  .page > *, section > *, .task > *, .task-list > *, .dev-body > *, ul.check label { min-width: 0; }
+  ul.check label { display: block; }
+  .code { position: relative; display: grid; min-width: 0; max-width: 100%; }
+  pre { margin: 0; overflow-x: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.6; }
+  pre .c { color: var(--muted); }
+  .copy {
+    position: absolute; top: 6px; right: 6px; font: inherit; font-size: 12px; font-weight: 600;
+    color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; cursor: pointer;
+  }
+  .copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  details.dev-part { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  details.dev-part > summary { cursor: pointer; padding: 14px 18px; font-weight: 600; list-style-position: inside; }
+  details.dev-part > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dev-body { display: grid; gap: 16px; padding: 0 18px 18px; }
+
+  ul.facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  ul.facts li { padding-left: 14px; border-left: 3px solid var(--line); }
+  footer { border-top: 1px solid var(--line); padding-top: 20px; display: grid; gap: 6px; }
+  footer .sign { font-weight: 600; }
+
+  @media (max-width: 520px) {
+    body { font-size: 15px; }
+    th, td { padding: 9px 10px; }
+    .task { padding: 16px 14px 14px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    ul.check label { transition: color 0.15s; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">mathdesk · 정식 서버 준비</div>
+    <h1>학부모 알림을 카카오톡으로 받게 하려면</h1>
+    <div class="meta">
+      <span>작성일 <b>2026-10-12</b></span>
+      <span>받는 분 <b>밤 · 핑수</b></span>
+      <span>보내는 사람 <b>용스</b></span>
+    </div>
+  </header>
+
+  <section class="lead">
+    <p>두 분께서 학부모 알림을 문자 대신 <strong>카카오톡</strong>으로 보내는 쪽을 생각하신다고 들었습니다. 가능합니다. mathdesk에는 카카오톡 알림(정식 이름은 <strong>알림톡</strong>)을 보내는 기능이 이미 들어 있어서, 아래 준비만 끝나면 추가 개발 없이 켤 수 있습니다. 다만 세 가지를 먼저 알고 정하셔야 합니다.</p>
+    <p class="note"><span><strong>① 카카오톡 알림은 "학원 이름의 카카오톡 채널"에서만 나갑니다.</strong> 그 채널을 만들려면 <strong>학원 사업자등록증</strong>이 필요합니다. 지난 문자 안내문에서 정한 갈래 A(원장님 협조로 학원 서류를 받아 알리고 사업자 인증)와 같은 서류로 됩니다. 학부모님 휴대폰에는 본인 번호가 아니라 <strong>학원 이름과 프로필 사진</strong>이 보낸 사람으로 뜹니다.</span></p>
+    <p class="note"><span><strong>② 카카오톡을 고르셔도 문자 준비는 그대로 필요합니다.</strong> 카카오톡을 안 쓰거나 오래 열지 않은 학부모님께는 같은 내용이 자동으로 문자로 나가고(이때만 문자 요금), 카카오톡 알림을 보내는 창구도 같은 알리고 계정이기 때문입니다. 그러니 순서는 <strong>"문자 준비를 끝낸 뒤 → 카카오톡 채널을 얹는 것"</strong>입니다.</span></p>
+    <p class="note both"><span><strong>③ 두 분이 다르게 고르셔도 됩니다.</strong> mathdesk는 두 분 서버가 따로이고 발송 설정도 서버마다 따로입니다. 한 분은 문자만, 다른 한 분은 카카오톡+문자로 운영할 수 있고 어느 쪽이든 제가 손볼 코드는 없습니다. 각자 아래 2장을 보고 정해서 알려 주세요.</span></p>
+    <p class="meta">
+      <span><span class="who client">본인</span> 혼자 하시는 단계</span>
+      <span><span class="who both">함께</span> 같이 보는 단계</span>
+      <span><span class="who dev">용스</span> 제가 하는 단계</span>
+    </p>
+  </section>
+
+  <section id="flow">
+    <h2><span class="n">1</span>한눈에 보기</h2>
+    <p>문자 준비(지난 안내문 ①~⑥)가 끝난 뒤 이어지는 단계입니다. 전체 소요는 손으로 하는 일 <strong>약 1시간</strong>, 심사 대기 <strong>1~2주</strong>입니다.</p>
+    <ol class="flow">
+      <li><div class="flow-title">문자 준비 마치기 <span class="who client">본인</span> <span class="time">지난 안내문</span></div><p>알리고 가입·충전·발신번호 등록·사업자 인증·API 키까지. 이 안내문의 전제입니다.</p></li>
+      <li><div class="flow-title">카카오톡 채널 만들기 <span class="who client">본인</span> <span class="time">10분</span></div><p>학원 이름으로 채널을 만들고 검색용 아이디를 정합니다. 서류는 아직 필요 없습니다.</p></li>
+      <li><div class="flow-title">비즈니스 인증 신청 <span class="who client">본인</span> <span class="time">10분, 심사 1~3영업일</span></div><p>학원 사업자등록증과 본인 카카오톡 전자증명서로 "직원"으로 신청합니다.</p></li>
+      <li><div class="flow-title">채널 기본 설정 <span class="who client">본인</span> <span class="time">5분</span></div><p>홈 공개를 켜고 고객센터 전화번호를 넣습니다. 이게 비어 있으면 다음 단계가 막힙니다.</p></li>
+      <li><div class="flow-title">알리고에 채널 연결 <span class="who both">함께</span> <span class="time">10분</span></div><p>알리고에서 채널을 "발신프로필"로 등록하고 열쇠(발신프로필 키)를 받습니다.</p></li>
+      <li><div class="flow-title">알림 문구 정하고 심사 <span class="who both">함께</span> <span class="time">30분, 심사 2~5영업일</span></div><p>보낼 문구의 틀을 미리 등록해 카카오 심사를 받습니다. 승인된 틀로만 보낼 수 있습니다.</p></li>
+      <li><div class="flow-title">시험 발송 <span class="who dev">용스</span> <span class="time">10분</span></div><p>본인 카카오톡으로 시험 알림을 보내고, 카카오톡이 없는 번호로 문자 대체가 오는지 확인합니다.</p></li>
+    </ol>
+  </section>
+
+  <section id="choose">
+    <h2><span class="n">2</span>문자와 카카오톡, 무엇이 다른가요</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>문자(장문)</th><th>카카오톡 알림(알림톡)</th></tr></thead>
+        <tbody>
+          <tr><th>학부모 폰에 보이는 보낸 사람</th><td>본인 휴대폰 번호</td><td><strong>학원 이름 + 프로필 사진</strong>(채널)</td></tr>
+          <tr><th>받는 쪽 조건</th><td>휴대폰 번호만 있으면 됨</td><td>그 번호로 카카오톡을 쓰는 분. <strong>채널 친구 추가는 필요 없습니다.</strong> 카카오톡이 없거나 3일 넘게 안 열었거나 채널을 차단한 분께는 <strong>문자로 자동 대체</strong></td></tr>
+          <tr><th>보낼 수 있는 내용</th><td>자유롭게 작성</td><td><strong>미리 심사받은 문구 틀</strong>에 학생별 내용을 끼워 넣음. 수업·출결·과제·점수 같은 안내만 가능, 모집·이벤트 문구는 반려</td></tr>
+          <tr><th>1건 요금<br><span class="muted">부가세 별도, 알리고 기준</span></th><td class="amount">25.9원</td><td class="amount">약 6.5원<br><span class="muted">문자로 대체된 건만 문자 요금</span></td></tr>
+          <tr><th>한 달 예상<br><span class="muted">학생 160명, 약 5,500건</span></th><td class="amount">약 15.8만 원</td><td class="amount">약 4~6만 원<br><span class="muted">대체 문자 비율에 따라</span></td></tr>
+          <tr><th>필요한 서류</th><td>학원 사업자등록증 + 본인 재직증명서(알리고)</td><td>왼쪽 그대로 + <strong>본인 명의 카카오톡 전자증명서</strong>(카카오 채널 인증)</td></tr>
+          <tr><th>준비 기간</th><td>사업자 인증 뒤 하루</td><td>문자 준비 뒤 <strong>1~2주 더</strong>(채널 심사 + 문구 심사)</td></tr>
+          <tr><th>학부모 답장</th><td>본인 휴대폰 문자함으로</td><td>채널 채팅으로 옴(카카오톡 채널 관리자 앱에서 확인). 채팅을 끄면 답장 못 함</td></tr>
+          <tr><th>mathdesk 개발</th><td>없음</td><td>없음(서버 설정 1개 + 승인 문구 등록)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>요금은 2026년 9월에 알리고에서 확인한 값이고, 알림톡 단가는 가입 뒤 알리고 화면에서 다시 보여 드리겠습니다. 결제 직전 화면의 금액을 믿어 주세요.</p>
+    <h3>정해 주실 것</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>문자만</th><th>카카오톡 + 문자 대체</th></tr></thead>
+        <tbody>
+          <tr><th>이런 분께</th><td>빨리 시작하고 싶고, 보낸 사람이 본인 번호여도 괜찮은 분</td><td>학원 이름으로 보내고 싶고, 요금을 1/4로 줄이고 싶고, 1~2주 더 기다릴 수 있는 분</td></tr>
+          <tr><th>원장님께 부탁드릴 것</th><td>사업자등록증 사본, 재직증명서</td><td>왼쪽 + <strong>"학원 이름으로 카카오톡 채널을 만들어 학부모 알림에 쓰겠다"는 동의</strong>(이미 학원 채널이 있으면 그 채널의 관리자로 초대받으면 됩니다)</td></tr>
+          <tr><th>문구</th><td>지금처럼 자유롭게</td><td>문구 틀을 미리 정해 심사(3장). 틀 밖의 말은 못 넣음</td></tr>
+          <tr><th>나중에 바꾸기</th><td>카카오톡으로 전환 가능(이 안내문대로)</td><td>mathdesk에서 문자만으로 되돌릴 수 있음</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>제 권유: <strong>먼저 문자로 시작하고, 서류가 준비되는 대로 카카오톡을 얹는 것</strong>입니다. 카카오톡 심사를 기다리는 동안에도 문자로 운영할 수 있고, 카카오톡이 켜진 뒤에도 문자는 대체 수단으로 계속 씁니다. 두 길이 서로 배타적이지 않습니다.</p>
+  </section>
+
+  <section id="template">
+    <h2><span class="n">3</span>카카오톡 알림의 "문구 틀"이란</h2>
+    <p>문자와 가장 다른 점입니다. 카카오톡 알림은 보낼 때마다 글을 쓰는 게 아니라, <strong>문구의 틀(템플릿)을 미리 카카오에 등록해 심사를 받고</strong>, 승인된 틀의 빈칸(변수)에만 학생별 내용을 채워 보냅니다. 틀과 한 글자라도 다르면 카카오가 거절하고 그 건은 문자로 대체됩니다.</p>
+    <p>mathdesk가 지금 만드는 일일 피드백은 학생마다 출결·진도·과제·점수가 다르니, 그 부분을 빈칸으로 둔 틀을 만들면 됩니다. 예를 들면 이렇습니다(심사 통과를 보장하는 문구는 아닙니다).</p>
+    <div class="code">
+      <pre id="tpl-sample">[#{학원명}] #{학생명} 학생 수업 안내
+
+수업일: #{수업일}
+출결: #{출결}
+오늘 진도: #{진도}
+과제: #{과제}
+선생님 한마디: #{첨언}
+
+문의는 학원으로 연락 주세요.</pre>
+      <button class="copy" type="button" data-copy="tpl-sample">복사</button>
+    </div>
+    <ul class="facts">
+      <li><strong>빈칸에 넣을 수 있는 값</strong>(mathdesk가 채움): 학원명, 학생 이름, 담당 강사, 수업일, 출결, 수업 진도, 과제 등급과 문구, 오늘의 과제, 테스트명, 학생 점수, 반 평균, 선생님 첨언, 학생 코멘트, 수업 영상 링크, 일일 피드백 전체.</li>
+      <li><strong>틀은 여러 개</strong> 만들 수 있습니다. 일일 피드백용, 테스트 결과용, 출결 안내용처럼 나눠 두면 mathdesk에서 보낼 때 고릅니다.</li>
+      <li><strong>반려되는 것:</strong> 원생 모집·이벤트·할인·"친구 추천" 같은 광고 문구가 한 줄이라도 있는 틀, 본문 전체가 빈칸 하나인 틀, 빈칸이 40개를 넘는 틀, 학원 이름과 목적이 드러나지 않는 틀.</li>
+      <li><strong>심사 기간:</strong> 카카오 안내는 영업일 2일, 알리고 안내는 4~5일입니다. 반려되면 고쳐서 다시 넣습니다. 심사가 끝난 틀은 1년 넘게 안 쓰면 정지됩니다.</li>
+      <li>2026년 1월부터 카카오가 알림톡 기준을 조였지만 쿠폰·포인트·마일리지 안내에 관한 것이라 학원의 수업·출결·성적 안내에는 영향이 없습니다.</li>
+    </ul>
+    <p>문구 초안은 제가 만들어 드리고, 두 분은 "이 문구면 되겠다"만 봐 주시면 됩니다. 알리고에 등록하고 심사를 요청하는 일은 ⑦에서 같이 합니다.</p>
+  </section>
+
+  <section id="client">
+    <h2><span class="n">4</span>하실 일 <span class="progress" id="progress-client"></span></h2>
+    <p class="note warn"><span>카카오 계정 비밀번호와 알리고 비밀번호는 저에게 보내지 말아 주세요. 제가 필요한 건 ⑥에서 나오는 <strong>발신프로필 키</strong>와 ⑦의 <strong>승인된 틀의 코드·문구</strong>뿐입니다. 발신프로필 키도 API 키처럼 메신저에 남기지 말고 통화나 화면 공유로 알려 주세요.</span></p>
+
+    <div class="task-list">
+      <div class="task">
+        <div class="task-head"><h3>① 문자 준비 마치기</h3><span class="who client">본인</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c1-1"><label for="c1-1">지난 안내문의 ①~④(알리고 가입·충전·발신번호 등록)를 끝냈습니다.</label></li>
+          <li><input type="checkbox" id="c1-2"><label for="c1-2">원장님께 <strong>학원 사업자등록증 사본</strong>과 <strong>본인 재직증명서</strong>(3개월 이내)를 받아 알리고 <span class="ui">내정보 → 사업자정보 → 사업자인증</span>을 승인받았습니다.
+            <span class="detail"><span>사업자등록증 사본은 카카오 채널 인증(③)에도 똑같이 씁니다. 사진·PDF로 받아 두면 한 번에 끝납니다.</span></span></label></li>
+          <li><input type="checkbox" id="c1-3"><label for="c1-3">알리고 API 키를 발급받고 서버 주소를 등록했습니다(지난 안내문 ⑤). 시험 문자까지 받아 보셨으면 더 좋습니다.</label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>② 원장님께 한 가지 더 말씀드리기</h3><span class="who client">본인</span><span class="time">5분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c2-1"><label for="c2-1">"학원 이름으로 카카오톡 채널을 만들어 학부모 수업 안내에 쓰겠다"고 말씀드리고 동의를 받습니다. 채널 이름(학원 이름 그대로인지)과 고객센터로 적을 전화번호(학원 번호인지 본인 번호인지)도 이때 정합니다.
+            <span class="detail"><span>채널은 학원 사업자 명의로 인증되고 학부모님께 학원 이름으로 보입니다. 본인은 그 채널의 관리자가 됩니다.</span><span>학원에 이미 카카오톡 채널이 있으면 새로 만들지 말고, 그 채널의 관리자 권한을 받으세요(기존 관리자가 채널 관리자센터 → 관리자 → 초대). 그러면 ③·④는 이미 되어 있을 가능성이 높습니다.</span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>③ 카카오톡 채널 만들기</h3><span class="who client">본인</span><span class="time">10분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c3-1"><label for="c3-1">PC에서 <strong>business.kakao.com</strong>(카카오비즈니스 파트너센터)에 본인 카카오 계정으로 로그인하고 통합 약관에 동의합니다.
+            <span class="detail"><span>2025년 12월에 카카오톡 채널 관리자센터·광고 등이 파트너센터 하나로 합쳐졌습니다. 예전 안내 글의 메뉴 이름과 다를 수 있습니다.</span><span>본인 카카오 계정에 본인 명의 휴대폰이 인증되어 있어야 합니다(카카오톡 설정 → 카카오계정에서 확인).</span></span></label></li>
+          <li><input type="checkbox" id="c3-2"><label for="c3-2"><span class="ui">채널 만들기</span>에서 채널 이름(학원 이름), <strong>검색용 아이디</strong>(예: <code>@hsymath</code>, 영문·숫자), 프로필 사진, 카테고리(교육 → 학원)를 넣습니다.
+            <span class="detail"><span><b>검색용 아이디는 한 번 정하면 바꿀 수 없고</b>, 알리고에 채널을 연결할 때(⑥) 이 아이디를 씁니다. 적어 두세요.</span><span>채널 이름은 사업자등록증의 상호와 같거나 그 상호를 포함하는 것이 인증에 유리합니다.</span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>④ 비즈니스 인증 신청</h3><span class="who client">본인</span><span class="time">10분, 심사 1~3영업일</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c4-1"><label for="c4-1">채널 관리 화면에서 <span class="ui">비즈니스 인증</span>(또는 "비즈니스 채널 전환")을 누르고, 신청인 유형을 <strong>직원</strong>으로 고릅니다.
+            <span class="detail"><span>카카오가 받는 신청인은 개인사업자 대표·법인 대표·직원·대행사 네 가지입니다. 원장님이 직접 하시면 "개인사업자 대표"(본인 명의 카카오톡 전자증명서만)로 더 간단하지만, 그러면 채널 마스터가 원장님이 되고 본인은 관리자로 초대받습니다.</span></span></label></li>
+          <li><input type="checkbox" id="c4-2"><label for="c4-2"><strong>학원 사업자등록증</strong> 사진·PDF(10MB 이하)를 올립니다. 상호·사업자등록번호·대표자 이름이 또렷이 보여야 하고, 주민등록번호처럼 개인 고유번호가 적혀 있으면 그 부분만 가립니다.</label></li>
+          <li><input type="checkbox" id="c4-3"><label for="c4-3"><strong>본인 명의 카카오톡 전자증명서</strong> 인증을 합니다. 신청 화면이 카카오톡 앱으로 보내면 <span class="ui">카카오톡 → 더보기 → 지갑 → 전자증명서</span>에서 카카오 인증서로 본인인증하고 화면이 요구하는 증명서를 발급·제출합니다.
+            <span class="detail"><span>직원 신청은 "이 사람이 이 학원 직원"임을 본인 카카오톡으로 증명하는 절차입니다. 4대 보험이 들어 있지 않거나 화면이 다른 서류를 요구하면 그 화면을 캡처해서 보내 주세요. 같이 봅니다.</span></span></label></li>
+          <li><input type="checkbox" id="c4-4"><label for="c4-4">심사 결과를 기다립니다. 보통 1~3영업일이고, 반려되면 사유를 보고 보완해 다시 신청합니다.
+            <span class="detail"><span>자주 반려되는 이유: 서류가 흐리거나 잘림, 채널 이름이 상호와 무관, 개인 고유번호를 안 가림.</span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>⑤ 채널 기본 설정</h3><span class="who client">본인</span><span class="time">5분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c5-1"><label for="c5-1">채널 관리 화면 <span class="ui">설정 → 채널 공개 · 검색 허용</span>을 <strong>ON</strong>으로 둡니다. 홈이 비공개면 알림을 보낼 수 없습니다.</label></li>
+          <li><input type="checkbox" id="c5-2"><label for="c5-2"><span class="ui">고객센터 정보</span>에 ②에서 정한 전화번호를 넣습니다. 이게 비어 있으면 ⑥의 발신프로필 등록이 막힙니다.</label></li>
+          <li><input type="checkbox" id="c5-3"><label for="c5-3">(선택) <span class="ui">채팅</span>을 켤지 정합니다. 켜면 학부모님이 알림에 답장할 수 있고 그 답장은 카카오톡 채널 관리자 앱에 옵니다. 끄면 답장 자체가 안 됩니다.</label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>⑥ 알리고에 채널 연결(발신프로필 등록)</h3><span class="who both">함께</span><span class="time">10분</span></div>
+        <p class="muted">전화나 화면 공유로 같이 하는 게 가장 빠릅니다. 혼자 하셔도 됩니다.</p>
+        <ul class="check">
+          <li><input type="checkbox" id="c6-1"><label for="c6-1">알리고 PC 화면에서 <span class="ui">카카오톡(알림톡) → 발신프로필 관리 → 발신프로필 등록</span>으로 갑니다.</label></li>
+          <li><input type="checkbox" id="c6-2"><label for="c6-2">③의 <strong>검색용 아이디</strong>(<code>@</code> 포함)와 <strong>채널 관리자 휴대폰 번호</strong>(본인)를 넣고 인증 요청을 누르면 카카오톡으로 인증번호가 옵니다. 그 번호를 입력합니다.
+            <span class="detail"><span>인증이 안 오면 ④ 인증이 끝났는지, ⑤ 고객센터 정보가 들어갔는지, 본인이 그 채널의 관리자인지 확인하세요.</span></span></label></li>
+          <li><input type="checkbox" id="c6-3"><label for="c6-3">카테고리(교육 → 학원·교습소)를 고르고 등록을 마치면 <strong>발신프로필 키</strong>(긴 영문·숫자)가 나옵니다. 저에게 통화나 화면 공유로 알려 주세요.
+            <span class="detail"><span>이 키는 학원 채널 이름으로 알림을 보낼 수 있는 열쇠입니다. 메신저에 남기지 말아 주세요.</span></span></label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>⑦ 알림 문구(틀) 정하고 심사 요청</h3><span class="who both">함께</span><span class="time">30분, 심사 2~5영업일</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c7-1"><label for="c7-1">어떤 알림을 카카오톡으로 보낼지 정합니다. 기본은 <strong>일일 수업 피드백</strong> 하나이고, 테스트 결과·출결 안내를 따로 두고 싶으면 말씀해 주세요.</label></li>
+          <li><input type="checkbox" id="c7-2"><label for="c7-2">제가 보내 드리는 문구 초안(3장 예시와 비슷한 꼴)을 읽고 고칠 곳을 알려 주세요. 광고로 읽힐 수 있는 말은 제가 미리 뺍니다.</label></li>
+          <li><input type="checkbox" id="c7-3"><label for="c7-3">알리고 <span class="ui">카카오톡 → 템플릿 관리 → 템플릿 등록</span>에 문구를 넣고 <strong>반드시 "검수 요청"까지</strong> 누릅니다. 등록만 하면 심사가 시작되지 않습니다.
+            <span class="detail"><span>심사 결과는 알리고 화면과 알림으로 옵니다. 반려되면 사유를 캡처해서 보내 주시면 제가 고쳐 드립니다.</span></span></label></li>
+          <li><input type="checkbox" id="c7-4"><label for="c7-4">승인되면 <strong>템플릿 코드</strong>와 승인된 문구 그대로를 저에게 전달합니다(알리고 화면에서 복사).</label></li>
+        </ul>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><h3>⑧ 시험 발송 확인</h3><span class="who dev">용스</span><span class="time">10분</span></div>
+        <ul class="check">
+          <li><input type="checkbox" id="c8-1"><label for="c8-1">제가 서버에 발신프로필 키를 넣고 승인된 문구를 mathdesk에 등록한 뒤, 본인 번호로 시험 알림을 보냅니다. 카카오톡에 <strong>학원 채널 이름</strong>으로 도착하는지, 빈칸이 제대로 채워졌는지 봐 주세요.</label></li>
+          <li><input type="checkbox" id="c8-2"><label for="c8-2">카카오톡이 없는 번호(있으면)로도 보내 문자 대체가 오는지 함께 확인합니다. 여기까지 되면 끝입니다.</label></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="dev">
+    <h2><span class="n">5</span>제가 하는 일 <span class="who dev">용스</span></h2>
+    <p>두 분은 이 장을 읽지 않으셔도 됩니다.</p>
+    <details class="dev-part">
+      <summary>서버 설정과 확인 항목 펼치기 <span class="progress" id="progress-dev"></span></summary>
+      <div class="dev-body">
+        <p class="muted">현재 상태(2026-10-12 검토). 알림톡 발송(알리고 <code>/akv10/alimtalk/send/</code>, 접수 거절 시 문자 대체 + 전달 실패 시 알리고 failover), 알림톡 템플릿 등록·변수 매핑 화면(알림문자 → 알림톡 템플릿, 원장만), 폴백 설정, 반 단위 일괄 발송에서 템플릿 선택까지 구현되어 있다. 실제 알림톡 호출은 0회(Q-03).</p>
+        <div class="code">
+          <pre id="env"><span class="c"># 서버의 mathdesk/.env (chmod 600). 문자 설정 4개 아래에 한 줄 추가</span>
+ALIGO_SENDER_KEY=&lt;⑥에서 받은 발신프로필 키&gt;
+
+docker compose -f compose.prod.yaml up -d
+curl -s https://&lt;주소&gt;/api/health</pre>
+          <button class="copy" type="button" data-copy="env">복사</button>
+        </div>
+        <ul class="check">
+          <li><input type="checkbox" id="d1"><label for="d1">문구 초안 작성: 일일 피드백 틀 1개(필요 시 테스트 결과·출결 틀). 변수는 mathdesk 필드(<code>student_name</code>·<code>session_date</code>·<code>attendance</code>·<code>progress</code>·<code>homework</code>·<code>teacher_note</code> 등)와 1:1로 맞춘다. 심사용 예시 텍스트를 변수마다 붙인다.</label></li>
+          <li><input type="checkbox" id="d2"><label for="d2">승인된 문구를 mathdesk <span class="ui">알림문자 → 알림톡 템플릿</span>에 글자 하나 다르지 않게 넣고 코드·변수 매핑을 저장한다. "실패하면 문자로 대체"는 켜 둔다.</label></li>
+          <li><input type="checkbox" id="d3"><label for="d3">시험 발송 2건: 카카오톡 있는 번호(채널 이름으로 도착·변수 치환 확인), 카카오톡 없는 번호(알리고 failover로 문자 도착 확인). 발송 내역에 <code>sent</code>로 남는지 본다.</label></li>
+          <li><input type="checkbox" id="d4"><label for="d4">알리고 알림톡 단가를 가입 뒤 화면에서 확인해 이 안내문 2장의 요금을 고친다(9월 확인값 6.5원).</label></li>
+          <li><input type="checkbox" id="d5"><label for="d5">알아 둘 제약: 전달 단계 실패의 문자 대체는 알리고 내역에만 남는다(mathdesk 로그에는 알림톡 접수로 남음). 템플릿을 바꾸면 다시 심사받고 mathdesk 등록도 다시 한다.</label></li>
+        </ul>
+        <p class="muted">상세 절차와 출처는 저장소의 <code>ops/messaging-setup.md</code> 2장에 있다.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="facts">
+    <h2><span class="n">6</span>알아 두실 점</h2>
+    <ul class="facts">
+      <li><strong>학부모님이 채널을 친구 추가하지 않아도</strong> 받습니다. 전화번호로 가는 카카오톡 알림이라 그렇습니다. 다만 학부모님이 채널을 차단하면 못 받고, 그 경우 문자로 대체됩니다.</li>
+      <li><strong>카카오톡을 안 쓰는 학부모님</strong>께는 자동으로 문자가 갑니다. 그 건은 문자 요금(장문 25.9원)이 듭니다. 알림톡으로 간 건만 알림톡 요금입니다.</li>
+      <li><strong>보내는 사람이 학원 이름</strong>으로 바뀝니다. 학부모님 입장에서는 본인 번호 문자보다 "학원에서 온 공식 안내"로 보입니다. 학원 전화 문의가 늘 수 있으니 원장님께 미리 말씀드리는 게 좋습니다.</li>
+      <li><strong>모집·이벤트·할인 안내</strong>는 카카오톡 알림으로 못 보냅니다(반려·중단). 문자로도 그런 내용은 광고 문자 규정(표기·야간 금지)이 적용되니 mathdesk에서는 수업 안내만 보내 주세요.</li>
+      <li><strong>문구 틀을 바꾸고 싶으면</strong> 다시 심사(2~5영업일)를 받습니다. 자주 바뀔 부분은 빈칸(변수)으로 두는 게 요령입니다.</li>
+      <li><strong>두 분 설정은 서로 독립</strong>입니다. 한 분이 카카오톡을 켜도 다른 분 서버는 그대로 문자입니다. 채널도 각자 학원 명의로 따로 만듭니다.</li>
+      <li>"친구톡"(채널 친구에게 보내는 광고성 메시지)은 2025년 12월 31일에 끝나고 "브랜드 메시지"로 바뀌었습니다. mathdesk는 쓰지 않습니다.</li>
+      <li><strong>제 접근을 끊고 싶으실 때:</strong> 알리고에서 발신프로필을 삭제하거나 API 키를 재발급하면 서버의 카카오톡 발송은 그 순간 멈춥니다. 카카오 채널 자체는 두 분(과 원장님)의 것이라 제가 손댈 수 없습니다.</li>
+    </ul>
+  </section>
+
+  <section id="trouble">
+    <h2><span class="n">7</span>막힐 때</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>증상</th><th>해결</th></tr></thead>
+        <tbody>
+          <tr><td>비즈니스 인증 신청 화면에 "직원" 유형이 없어요</td><td>파트너센터 개편 뒤 문구가 바뀌었을 수 있습니다. "대표가 아닌 담당자" 같은 뜻의 항목을 고르거나, 화면을 캡처해서 보내 주세요.</td></tr>
+          <tr><td>전자증명서 단계에서 어떤 서류를 내야 하는지 모르겠어요</td><td>화면이 요구하는 증명서 이름을 그대로 캡처해 보내 주세요. 4대 보험 미가입이면 원장님께 재직증명서를 받아 올리는 경로가 있는지 같이 봅니다.</td></tr>
+          <tr><td>인증이 반려됐어요</td><td>반려 사유를 캡처해 보내 주세요. 서류 흐림·잘림, 채널 이름과 상호 불일치, 개인 고유번호 미가림이 대부분입니다. 고쳐서 재신청하면 됩니다.</td></tr>
+          <tr><td>알리고 발신프로필 등록에서 인증번호가 안 와요</td><td>④ 인증이 끝났는지, ⑤ 고객센터 정보가 들어갔는지, 입력한 번호가 채널 관리자 본인 번호인지 확인하세요. 카카오톡 알림 설정에서 채널 메시지를 막아 두었으면 풉니다.</td></tr>
+          <tr><td>알리고에 카카오톡 메뉴가 안 보여요</td><td>사업자 인증이 승인된 뒤에 보입니다. PC 화면 왼쪽 메뉴에서 찾으세요(모바일 화면에는 없습니다).</td></tr>
+          <tr><td>문구 틀이 반려됐어요</td><td>사유를 캡처해 보내 주세요. 제가 고쳐서 다시 검수 요청합니다. 보통 광고로 읽히는 한 줄이 문제입니다.</td></tr>
+          <tr><td>시험 알림이 문자로 왔어요</td><td>그 번호의 카카오톡이 3일 넘게 안 열렸거나, 채널을 차단했거나, 문구가 승인 틀과 달랐을 수 있습니다. 제가 알리고 내역에서 사유를 봅니다.</td></tr>
+          <tr><td>학부모님이 "학원에서 카카오톡이 왔는데 뭐냐"고 물어요</td><td>학원 채널 이름으로 가는 수업 안내라고 말씀드리면 됩니다. 원치 않는 분은 mathdesk 학생 정보에서 알림 대상에서 빼 주세요.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p class="muted">이 안내는 2026년 10월 12일 기준 카카오비즈니스 가이드(채널 만들기·비즈니스 인증 신청인별 서류, 알림톡 심사 가이드, 2026-01 알림톡 발송 기준 변경), 알리고(알림톡 API 안내·발신프로필 등록 절차·요금, 요금은 2026-09 확인값), 솔라피(알림톡 FAQ), 비즈고(2026 비즈니스 채널 가이드·알림톡 안내)를 확인해 정리했습니다. 요금과 심사 기간은 바뀔 수 있으니 결제 직전 화면의 금액을 믿어 주세요. 화면 문구가 다르게 보이면 같은 뜻의 메뉴를 누르시거나 캡처를 보내 주세요. 체크 표시는 이 브라우저에만 저장됩니다.</p>
+    <p class="sign">용스 드림</p>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var KEY = 'mathdesk-kakao-checks';
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('ul.check input[type="checkbox"]'));
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+    function count(scope, el, label) {
+      var list = boxes.filter(function (b) { return b.closest(scope); });
+      var done = list.filter(function (b) { return b.checked; }).length;
+      document.getElementById(el).innerHTML = label + ' <b>' + done + '</b> / ' + list.length;
+    }
+    function render() {
+      count('#client', 'progress-client', '진행');
+      count('#dev', 'progress-dev', '진행');
+    }
+    boxes.forEach(function (box) {
+      box.checked = !!saved[box.id];
+      box.addEventListener('change', function () {
+        saved[box.id] = box.checked;
+        try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { /* 저장이 막혀도 화면은 동작한다 */ }
+        render();
+      });
+    });
+    render();
+
+    Array.prototype.forEach.call(document.querySelectorAll('.copy'), function (button) {
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        var target = document.getElementById(button.getAttribute('data-copy'));
+        var text = target.innerText;
+        function selectText() {
+          var range = document.createRange();
+          range.selectNodeContents(target);
+          var selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          button.textContent = '선택됨';
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { button.textContent = '복사됨'; }, selectText);
+        } else {
+          selectText();
+        }
+        setTimeout(function () { button.textContent = '복사'; }, 1800);
+      });
+    });
+  })();
+</script>
