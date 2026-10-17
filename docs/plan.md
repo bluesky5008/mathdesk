@@ -3,7 +3,7 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v27`
+> 기준선: `v28`
 > 작성일: `2026-09-22`
 > 최종 갱신: `2026-10-17`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
@@ -120,8 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (36/44)
-   ├─ [▶] TASK-97 배포 파이프라인 설계 (ADR-015) ....... in-progress
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (37/44)
+   ├─ [✓] TASK-97 배포 파이프라인 설계 (ADR-015) ....... 2026-10-17 16:45
    ├─ [ ] TASK-96 문자 발송 연결 테스트 (TASK-55) ...... pending
    ├─ [✓] TASK-95 형제 연결 확인·같은 번호 안내 (DCR-026) 2026-10-11 23:48
    ├─ [✓] TASK-94 포털 기록 달력·추이 그래프 (DCR-025) .. 2026-10-11 23:25
@@ -313,7 +313,7 @@ flowchart TD
     C3 --> T95["TASK-95 형제 연결 확인·같은 번호 안내 (DCR-026)"]:::done
     C3 --> T96["TASK-96 문자 발송 연결 테스트"]:::todo
     T55 -. depends .-> T96
-    C3 --> T97["TASK-97 배포 파이프라인 설계 (ADR-015)"]:::active
+    C3 --> T97["TASK-97 배포 파이프라인 설계 (ADR-015)"]:::done
     T97 -. depends .-> T57
     T93 -. depends .-> T95
     T93 -. depends .-> T94
@@ -1119,7 +1119,7 @@ flowchart TD
 
 ### TASK-97: 배포 파이프라인 설계 (ADR)
 
-- 상태: in-progress
+- 상태: completed (2026-10-17 16:45)
 - 상위: 없음
 - 목표: 개발(로컬) → 스테이징(맥미니 `mathdesk.yongs-wiki.com`) → 운영(밤·핑수 각자의 Lightsail) 흐름에서 **어디서 빌드하고, 무엇을 자동화하고, 사람이 어디서 승격을 누르며, 어떻게 되돌리는지**를 결정한다. [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) 결정 3(서버에서 clone해 빌드)의 재검토를 포함한다.
 - 관련 요구사항과 설계: [NFR-08·NFR-11·NFR-17·NFR-20](./requirements.md#비기능-요구사항), [DES-25](./design.md#컴포넌트와-책임), ADR-008·ADR-013
@@ -1127,7 +1127,7 @@ flowchart TD
 - 의존성: 없음. TASK-57이 이 결과에 의존한다
 - 위험: 공개 저장소라 CI 비밀값(서버 접근 키)을 GitHub에 두면 공격 표면이 넓어진다 — 승격은 사용자 장비에서 수동 실행하는 쪽을 기본으로 검토. 2GB 서버 빌드의 메모리·시간
 - 검증 방법: wf-design 승인 관문(대안 비교·사용자 결정 기록)
-- 완료 조건: ADR-015 `approved`(필요 시 DCR과 새 기준선), TASK-57 계획이 결정에 맞게 갱신됨
+- 완료 조건: ADR-015 `approved`(필요 시 DCR과 새 기준선), TASK-57 계획이 결정에 맞게 갱신됨 — 충족([ADR-015](../work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)·[DCR-027](../work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md) 승인, 기준선 `v28`, 2026-10-17)
 
 ### TASK-96: 문자 발송 연결 테스트 (클라이언트 2명)
 
@@ -1607,13 +1607,13 @@ flowchart TD
 
 - 상태: pending
 - 상위: 없음
-- 목표: 운영 서버에 올릴 구성을 코드·설정·문서로 준비한다(클라이언트 2명 공통, [DES-25 상세](./design.md#des-25-상세)).
-- 관련 요구사항과 설계: [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)(기준선 `v23`), [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [NFR-08·NFR-11·NFR-17·NFR-20](./requirements.md#비기능-요구사항), [AC-48](./requirements.md#인수-조건)
-- 변경 대상: `compose.prod.yaml`(postgres·app·cloudflared 토큰 터널, 포트 없음, 시드 없음, `MATHDESK_LLM_*`·LLM 키 전달), `ops/backup.sh`·`ops/restore.sh` 프로필 인자(프로젝트·compose 파일), 백업 cron 스크립트(매일 04:00, 14일 보관, 결과 로그), `ops/README.md` 운영 절(서버 준비·배포·롤백·복원·접근 회수, 클라이언트 2명 반복 템플릿), `.env.example` 운영 항목
-- 의존성: TASK-56(완료)
-- 위험: 서버에서 이미지를 빌드하므로 교차 빌드는 필요 없으나 2GB 서버의 빌드 메모리(스왑 2GB 전제)를 확인해야 한다
-- 검증 방법: 로컬에서 `linux/amd64` 이미지 기동·전체 스모크, 백업·복원 스크립트를 운영 프로필로 1회 수행
-- 완료 조건: 절차서만 보고 빈 서버에 올릴 수 있음
+- 목표: 운영 서버에 올릴 구성과 배포 파이프라인을 코드·설정·문서로 준비한다(클라이언트 2명 공통, [DES-25 상세](./design.md#des-25-상세), [ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)).
+- 관련 요구사항과 설계: [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)(기준선 `v23`), [DCR-027](../work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md)·[ADR-015](../work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)(기준선 `v28`), [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [NFR-08·NFR-11·NFR-17·NFR-20](./requirements.md#비기능-요구사항), [AC-48](./requirements.md#인수-조건)
+- 변경 대상: `.github/workflows/ci.yml`(테스트·빌드 검증), `release.yml`(태그 → amd64 이미지 GHCR 게시 → 이미지 스모크 → `-verified`), `deploy.yml`(`workflow_dispatch` → 환경 승인 → SSH → 서버 `deploy.sh`); `compose.prod.yaml`(postgres·`app`=GHCR 이미지·cloudflared 토큰 터널, 포트 없음, 시드 없음, `MATHDESK_LLM_*`·LLM 키 전달); 서버용 `ops/deploy.sh`(`-verified` 확인 → 백업 → pull → up → health, 실패 시 이전 태그 출력); `ops/backup.sh`·`ops/restore.sh` 프로필 인자(프로젝트·compose 파일); 백업 cron 스크립트(매일 04:00, 14일 보관, 결과 로그); `ops/README.md` 운영 절(서버 준비·`deploy` 계정·GitHub 환경·릴리스·배포·롤백·복원·접근 회수, 클라이언트 2명 반복 템플릿); `.env.example` 운영 항목(`MATHDESK_IMAGE_TAG` 포함). GitHub 환경 `bam`·`pingsu`와 비밀값 등록은 서버 키가 생기는 TASK-59에서
+- 의존성: TASK-56(완료), TASK-97(완료)
+- 위험: 워크플로는 서드파티 액션 없이 GitHub 소유 액션 SHA 고정으로만 쓴다(ADR-015 결정 10). 이미지 스모크가 CI 러너에서 Chromium 포함 이미지를 띄우므로 러너 디스크·시간 확인. 맥미니(arm64)에서 amd64 이미지 리허설은 에뮬레이션이라 느릴 수 있다
+- 검증 방법: `ci.yml`이 main push에서 전체 테스트 통과 / 태그 1개로 `release.yml`이 이미지 게시·스모크 통과·`-verified` / 맥미니에서 `compose.prod.yaml`로 그 amd64 이미지 기동 → health·로그인(로컬 리허설) / 백업·복원 1회 / `deploy.yml` 환경 승인 흐름 확인(서버 접속 단계는 TASK-59 빈 서버에서 리허설)
+- 완료 조건: 절차서만 보고 빈 서버에 올릴 수 있고, 릴리스 태그 1개가 `-verified`까지 통과함
 
 ### TASK-58: ★ 클라이언트 인수 승인
 

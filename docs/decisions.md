@@ -11,7 +11,7 @@
 ## 요약
 
 - 목적: 저장소 전역의 ADR·DCR을 한곳에서 조망하고 다음 일련번호를 발행할 기준을 제공한다.
-- 현재 결론 또는 상태: ADR 14건과 DCR 26건이 모두 `approved`, ADR-015·DCR-027은 `awaiting-approval`이다. 유효 기준선은 `v27`이며 마지막 발행 번호는 ADR-015, DCR-027.
+- 현재 결론 또는 상태: ADR 15건과 DCR 27건이 모두 `approved`다(ADR-013은 결정 3만 ADR-015로 대체). 유효 기준선은 `v28`이며 마지막 발행 번호는 ADR-015, DCR-027.
 - 다음 행동: 없음. 새 ADR·DCR이 생기면 이 등록부를 같은 변경에서 갱신한다.
 
 ## 문서 연결
@@ -37,9 +37,9 @@
 | ADR-010 | adr | 웹 UI 디자인 시스템 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/ADR-010](./work/20260922-mathdesk-baseline/ADR-010-웹-UI-디자인-시스템.md) | ADR-011 관련, DCR-003 |
 | ADR-011 | adr | 리포트 카드 HTML 렌더링 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/ADR-011](./work/20260922-mathdesk-baseline/ADR-011-리포트-카드-HTML-렌더링.md) | ADR-010 관련, DCR-003 |
 | ADR-012 | adr | 테마 팔레트와 적용 방식 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md) | ADR-010·ADR-011 관련, DCR-004 |
-| ADR-013 | adr | 운영 배포처 — 클라이언트별 AWS Lightsail 단일 서버 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | ADR-001 Phase B 구체화, ADR-008 적용, DCR-022 |
+| ADR-013 | adr | 운영 배포처 — 클라이언트별 AWS Lightsail 단일 서버 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | ADR-001 Phase B 구체화, ADR-008 적용, DCR-022. 결정 3은 ADR-015로 대체(2026-10-17) |
 | ADR-014 | adr | 포털 권한 모델 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md) | ADR-007 보완, DCR-024 |
-| ADR-015 | adr | 배포 파이프라인 — CI 이미지와 Actions 승격 | awaiting-approval | 2026-10-17 | [work/20260922-mathdesk-baseline/ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md) | ADR-013 결정 3 대체 제안, DCR-027, TASK-97 |
+| ADR-015 | adr | 배포 파이프라인 — CI 이미지와 Actions 승격 | approved | 2026-10-17 | [work/20260922-mathdesk-baseline/ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md) | ADR-013 결정 3 대체, DCR-027, 기준선 v28 |
 | DCR-001 | dcr | 테스트 운영 환경 노출 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) | ADR-008 |
 | DCR-002 | dcr | M6 LLM 공급자 중립화와 Claude 연결 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) | ADR-009 |
 | DCR-003 | dcr | 브랜드 자산으로서의 시각 설계 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) | ADR-010, ADR-011 |
@@ -66,7 +66,7 @@
 | DCR-024 | dcr | 학생·학부모 포털 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md) | ADR-014, FR-48·FR-49·AC-50~52 신설, FR-02·03·05·39·NFR-07 수정, DES-03·04·26, 기준선 v25 |
 | DCR-025 | dcr | 포털 기록 달력과 추이 그래프 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-025](./work/20260922-mathdesk-baseline/DCR-025-포털-기록-달력과-추이-그래프.md) | DCR-024 보강, FR-49 상세 ②·③, AC-51 ⑧, 포털 REST 1건, 기준선 v26 |
 | DCR-026 | dcr | 형제 연결 확인과 같은 학부모 번호 안내 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/DCR-026](./work/20260922-mathdesk-baseline/DCR-026-형제-연결-확인과-같은-학부모-번호-안내.md) | DCR-024 보강, FR-48 상세·FR-06, AC-50 ④·AC-53, 기준선 v27 |
-| DCR-027 | dcr | 배포 파이프라인 — CI 이미지와 Actions 승격 | awaiting-approval | 2026-10-17 | [work/20260922-mathdesk-baseline/DCR-027](./work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md) | ADR-015, DES-25·전환 절차 개정, 요구사항 변경 없음 |
+| DCR-027 | dcr | 배포 파이프라인 — CI 이미지와 Actions 승격 | approved | 2026-10-17 | [work/20260922-mathdesk-baseline/DCR-027](./work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md) | ADR-015, DES-25·전환 절차 개정, 요구사항 변경 없음, 기준선 v28 |
 
 ## 번호 발행 규칙
 
