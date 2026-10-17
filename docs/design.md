@@ -3,9 +3,9 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v27`
+> 기준선: `v28`
 > 작성일: `2026-09-22`
-> 최종 갱신: `2026-10-11`
+> 최종 갱신: `2026-10-17`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
 
 ## 요약
@@ -122,7 +122,7 @@
 | DES-21 | 스키마 마이그레이션 | Alembic 리비전과 시드 데이터 스크립트 |
 | DES-22 | 내보내기 | 통계·시험 결과 엑셀 생성, 난이도 분석표·리포트 이미지 파일 생성 |
 | DES-24 | 디자인 시스템 | 디자인 토큰 단일 소스(`tokens.css`), 테마 팔레트 5벌, 공통 컴포넌트(버튼·폼·표·카드·대화상자·월 달력), 표 기반 입력 컴포넌트. 웹과 리포트 카드가 같은 토큰 파일의 스케일을 공유하고 색은 각자의 팔레트를 따른다. 상세는 [DES-24 상세](#des-24-상세) |
-| DES-25 | 운영 서빙(클라이언트별 서버) | 클라이언트 명의 AWS 계정의 Lightsail 단일 서버에 `compose.prod.yaml`(postgres·app·cloudflared 토큰 터널)로 기동. 호스트 포트 없음, 방화벽 SSH만, 서버에서 이미지 빌드, `.env` 한 벌, 자동 일일 백업(14일)+스냅샷(7개), 테스트 운영은 스테이징. 상세는 [DES-25 상세](#des-25-상세)([ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)) |
+| DES-25 | 운영 서빙(클라이언트별 서버) | 클라이언트 명의 AWS 계정의 Lightsail 단일 서버에 `compose.prod.yaml`(postgres·app·cloudflared 토큰 터널)로 기동. 호스트 포트 없음, 방화벽 SSH만, 이미지는 GitHub Actions가 게시한 GHCR 이미지를 pull(서버 빌드 없음), 운영 반영은 Actions `workflow_dispatch`로 사용자 명령일 때만([ADR-015](../work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md), [DCR-027](../work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md)), `.env` 한 벌, 자동 일일 백업(14일)+스냅샷(7개), 테스트 운영은 스테이징(로컬 빌드). 상세는 [DES-25 상세](#des-25-상세)([ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)) |
 | DES-23 | 테스트 운영 서빙 | 웹 정적 빌드를 API가 SPA fallback으로 서빙하고, `Secure` 쿠키와 노출 표면 축소를 설정으로 제어한다. 외부 경로는 cloudflared 터널 하나다 |
 | DES-26 | 포털 조회 서비스 | 학생·학부모 포털 전용 REST(`/api/portal/*`). 기존 이력·통계·메시지 렌더의 내부 함수를 재사용하되 응답 모델을 포털 전용으로 좁혀 다른 학생·연락처 정보를 담지 않는다. 상세는 [DES-26 상세](#des-26-상세) ([DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md)) |
 
@@ -175,17 +175,19 @@
 
 #### DES-25 상세
 
-운영 배포처는 [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) 결정 1~6을 따른다. 요소별 책임은 다음과 같다([DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)).
+운영 배포처는 [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) 결정 1·2·4·5·6과, 결정 3을 대체한 [ADR-015](../work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)(배포 파이프라인)를 따른다. 요소별 책임은 다음과 같다([DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md), [DCR-027](../work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md)).
 
 | 요소 | 내용 |
 |---|---|
-| `compose.prod.yaml` | `postgres`(볼륨 `pgdata`), `app`(테스트 운영과 같은 Dockerfile, 정적 빌드 서빙, 볼륨 `files`), `cloudflared`(`tunnel --no-autoupdate run`, `TUNNEL_TOKEN`). 호스트 포트 없음, 시드 없음, `restart: unless-stopped` |
+| `compose.prod.yaml` | `postgres`(볼륨 `pgdata`), `app`(`image: ghcr.io/bluesky5008/mathdesk:${MATHDESK_IMAGE_TAG}` — 빌드 없음, 테스트 운영과 같은 Dockerfile로 CI가 만든 이미지, 정적 빌드 서빙, 볼륨 `files`), `cloudflared`(`tunnel --no-autoupdate run`, `TUNNEL_TOKEN`). 호스트 포트 없음, 시드 없음, `restart: unless-stopped` |
+| CI(`.github/workflows/`) | `ci.yml`(main push·PR: pytest + Postgres 서비스, vitest, `tsc -b`) · `release.yml`(태그 `YYYY.MM.DD[-n]` push: amd64 이미지 빌드·GHCR 게시 → 이미지 스모크(Postgres와 기동, `alembic upgrade head`·`/api/health`·초기 원장 로그인) → `:<태그>-verified`) · `deploy.yml`(`workflow_dispatch`만: 대상 `bam`·`pingsu`·`both`, 태그 → 환경 승인 → SSH → 서버 `deploy.sh`). 서드파티 액션 금지, GitHub 소유 액션 SHA 고정, `pull_request_target` 금지, `GITHUB_TOKEN` 최소 권한 |
+| GitHub 환경 | `bam`, `pingsu`: 필수 승인자 = 사용자, 환경 비밀값 = 그 서버의 배포 전용 SSH 키(ed25519, 환경마다 별도) |
 | `.env`(서버, 600) | `POSTGRES_PASSWORD`, `MATHDESK_INITIAL_ADMIN_*`, `MATHDESK_COOKIE_SECURE=true`, `CLOUDFLARE_TUNNEL_TOKEN`, `MATHDESK_MESSAGING_MODE`·`ALIGO_*`, `MATHDESK_LLM_*`·LLM 키. 서버당 한 벌 |
-| 서버 | Lightsail 서울 2GB·2vCPU, Ubuntu LTS, Docker, 스왑 2GB, 고정 IP(알리고 발송 서버 IP), 자동 보안 업데이트, 자동 스냅샷 7개. 방화벽 SSH만 |
-| 배포 | 스테이징(맥미니 테스트 운영) 확인 → 같은 커밋으로 `git pull` → `ops/backup.sh`(운영 프로필) → `docker compose -f compose.prod.yaml up -d --build` → `/api/health`·로그인 스모크 |
+| 서버 | Lightsail 서울 2GB·2vCPU, Ubuntu LTS, Docker, 고정 IP(알리고 발송 서버 IP), 자동 보안 업데이트, 자동 스냅샷 7개. 방화벽 SSH만. 배포 전용 계정 `deploy`(docker 그룹, `authorized_keys`에 `command="~/mathdesk/ops/deploy.sh",no-pty,no-port-forwarding,no-agent-forwarding`). 소스 저장소 clone 없음 — 서버에는 `compose.prod.yaml`·`.env`·`ops/` 사본만. 빌드를 하지 않으므로 스왑은 선택 |
+| 배포 | 스테이징(맥미니 로컬 빌드) 확인 → 그 커밋에 태그 push → `release.yml` 통과(`-verified`) → `deploy.yml` 실행(대상·태그) → 환경 승인 → 서버 `deploy.sh`: `-verified` 확인 → `ops/backup.sh` → `docker compose pull` → `up -d`(기동 시 `alembic upgrade head`) → `/api/health`·이미지 태그 확인. 실패 시 잡 실패·이전 태그 로그. 두 서버는 같은 태그 |
 | 백업 | `ops/backup.sh` 운영 프로필을 cron(매일 04:00)으로 → `/var/backups/mathdesk/<일시>/`, 14일 지난 폴더 삭제, 결과 로그. 확인 절차는 운영 안정화(TASK-60) |
-| 복원·롤백 | `ops/restore.sh` 운영 프로필. 앱은 이전 커밋 재빌드, 스키마는 `alembic downgrade` 또는 백업 복원, 서버 전체는 스냅샷 복원(복원 뒤 고정 IP 재부착) |
-| 접근 | 클라이언트가 발급한 IAM 사용자(Lightsail 정책, MFA) + SSH 키. 인계 시 키 교체·IAM 비활성화로 회수 |
+| 복원·롤백 | 앱은 `deploy.yml`을 이전 태그로 실행(재빌드 없음). 스키마는 `alembic downgrade` 또는 배포 전 백업 복원(`ops/restore.sh` 운영 프로필). 되돌릴 수 없는 마이그레이션이 든 릴리스는 태그 메모에 표시. 서버 전체는 스냅샷 복원(복원 뒤 고정 IP 재부착) |
+| 접근 | 클라이언트가 발급한 IAM 사용자(Lightsail 정책, MFA) + SSH 키. 인계 시 키 교체·IAM 비활성화로 회수. 배포 경로는 서버에서 `deploy` 계정 공개키를 지워 회수 |
 
 #### DES-14 상세
 
@@ -428,7 +430,7 @@ class OmrReader(Protocol):
 - 신규 시스템이므로 이관할 기존 데이터가 없다. 초기 데이터는 학생·반 등록 화면 또는 시드 스크립트로 투입한다.
 - 스키마는 Alembic 리비전으로만 변경하며 빈 DB에서 `alembic upgrade head`로 전체 재현이 가능해야 한다(NFR-09).
 - 각 리비전은 `downgrade`를 제공한다. 파괴적 변경(컬럼 삭제)은 두 단계(사용 중단 → 삭제)로 나눈다.
-- Phase A→B 전환: 테스트 운영 데이터(합성)는 옮기지 않고 운영 DB는 빈 상태 + 초기 원장 계정으로 시작한다(`alembic upgrade head`). 설정은 `.env` 한 벌로 교체하고 애플리케이션 이미지는 동일하다(DCR-022). 이후 서버 간 이동이 필요하면 `pg_dump`/`pg_restore`와 파일 볼륨 복사로 수행한다.
+- Phase A→B 전환: 테스트 운영 데이터(합성)는 옮기지 않고 운영 DB는 빈 상태 + 초기 원장 계정으로 시작한다(`alembic upgrade head`). 설정은 `.env` 한 벌로 교체하고 애플리케이션 이미지는 GHCR의 같은 태그·다이제스트다(DCR-022, DCR-027). 이후 서버 간 이동이 필요하면 `pg_dump`/`pg_restore`와 파일 볼륨 복사로 수행한다.
 - 롤백: 애플리케이션은 이전 이미지 태그로 되돌리고, 스키마는 해당 리비전으로 `downgrade` 후 복원한다.
 - 테스트 운영(Phase A′) 기동: 테스트 운영 compose로 빌드·기동 → `cloudflared tunnel create mathdesk` → DNS 라우트 → launchd 등록. 기존 `homewiki` 터널 설정은 수정하지 않는다.
 - 테스트 운영 롤백: launchd 서비스 해제 → DNS 레코드 삭제 → 컨테이너 중지. 배포처를 옮길 때도 이 3개만 제거하면 된다.
@@ -564,6 +566,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v26` (2026-10-11): [DCR-025](./work/20260922-mathdesk-baseline/DCR-025-포털-기록-달력과-추이-그래프.md) 재승인으로 DES-26 상세에 포털 달력 REST와 `sessions?on=` 질의, 기록·추이 탭 화면 구성, `TrendChart` 공유가 더해졌다.
 
+기준선 `v28` (2026-10-17): [DCR-027](../work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md) 재승인으로 DES-25의 빌드 위치가 서버 빌드에서 GitHub Actions 게시 이미지(GHCR, amd64, 스모크 통과 태그) pull로 바뀌고, 운영 반영이 Actions `workflow_dispatch`(환경 승인, 명령 제한 SSH 키)로 정해졌으며, 롤백이 이전 태그 재배포로 바뀌었다. [ADR-015](../work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)가 ADR-013 결정 3을 대체한다. 스테이징(DES-23)은 변경 없다.
+
 기준선 `v27` (2026-10-11): [DCR-026](./work/20260922-mathdesk-baseline/DCR-026-형제-연결-확인과-같은-학부모-번호-안내.md) 승인으로 DES-26 상세 발급 계약에 `confirm_link`·`existing`이, 학생 응답에 `guardian_phone_shared_with`가 더해졌다.
 
 기준선 `v18` (2026-10-11): [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) 재승인으로 `student_daily_record.comment`가 추가되고(마이그레이션 1건) 일일 기록 입출력에 `comment`가 더해졌으며(하위 호환), 메시지 렌더러가 공통 → 개별 순서로 바뀌고 강사 첨언·학생 코멘트가 본문·리포트 카드·알림톡 변수(`teacher_note`·`student_comment`)에 들어갔다. 리포트 카드의 요약 우선 레이아웃(ADR-011)은 그대로다.
@@ -615,6 +619,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-10-11 | DES-03 포털 역할 기본 거부·발급 만료, DES-04 발급 REST 3건·고아 계정 정리, DES-26 신설(포털 REST 8건), 데이터 모델 3건 | [DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md), [ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md) | approved 유지, 기준선 v24 → v25 | Claude / 사용자 |
 | 2026-10-11 | DES-26 포털 달력 REST·`sessions?on=`, 기록·추이 탭 구성, `TrendChart` 공유 | [DCR-025](./work/20260922-mathdesk-baseline/DCR-025-포털-기록-달력과-추이-그래프.md) | approved 유지, 기준선 v25 → v26 | Claude / 사용자 |
 | 2026-10-11 | 발급 REST `confirm_link`·`existing`, `StudentOut.guardian_phone_shared_with` | [DCR-026](./work/20260922-mathdesk-baseline/DCR-026-형제-연결-확인과-같은-학부모-번호-안내.md) | approved 유지, 기준선 v26 → v27 | Claude / 사용자 |
+| 2026-10-17 | DES-25 빌드·배포·롤백·접근 개정(CI 이미지 pull, Actions 승격, `deploy` 계정), CI·GitHub 환경 요소 추가, 전환 절차 문구 | [DCR-027](../work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md), [ADR-015](../work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md) | approved 유지, 기준선 v27 → v28 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |
