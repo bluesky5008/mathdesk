@@ -5,13 +5,13 @@
 > 상태: `in-progress`
 > 기준선: `N/A — 등록부는 기준선을 발행하지 않음`
 > 작성일: `2026-09-22`
-> 최종 갱신: `2026-10-11`
+> 최종 갱신: `2026-10-17`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md)
 
 ## 요약
 
 - 목적: 저장소 전역의 ADR·DCR을 한곳에서 조망하고 다음 일련번호를 발행할 기준을 제공한다.
-- 현재 결론 또는 상태: ADR 13건과 DCR 23건이 모두 `approved`다. 유효 기준선은 `v24`이며 마지막 발행 번호는 ADR-013, DCR-023.
+- 현재 결론 또는 상태: ADR 14건과 DCR 26건이 모두 `approved`, ADR-015는 `proposed`다. 유효 기준선은 `v27`이며 마지막 발행 번호는 ADR-015, DCR-026.
 - 다음 행동: 없음. 새 ADR·DCR이 생기면 이 등록부를 같은 변경에서 갱신한다.
 
 ## 문서 연결
@@ -39,6 +39,7 @@
 | ADR-012 | adr | 테마 팔레트와 적용 방식 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/ADR-012](./work/20260922-mathdesk-baseline/ADR-012-테마-팔레트와-적용-방식.md) | ADR-010·ADR-011 관련, DCR-004 |
 | ADR-013 | adr | 운영 배포처 — 클라이언트별 AWS Lightsail 단일 서버 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | ADR-001 Phase B 구체화, ADR-008 적용, DCR-022 |
 | ADR-014 | adr | 포털 권한 모델 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md) | ADR-007 보완, DCR-024 |
+| ADR-015 | adr | 배포 파이프라인 — CI 빌드 이미지와 수동 승격 | proposed | 2026-10-17 | [work/20260922-mathdesk-baseline/ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md) | ADR-013 결정 3 대체 제안, TASK-97 |
 | DCR-001 | dcr | 테스트 운영 환경 노출 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) | ADR-008 |
 | DCR-002 | dcr | M6 LLM 공급자 중립화와 Claude 연결 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) | ADR-009 |
 | DCR-003 | dcr | 브랜드 자산으로서의 시각 설계 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) | ADR-010, ADR-011 |
@@ -69,7 +70,7 @@
 ## 번호 발행 규칙
 
 - ADR·DCR 번호는 저장소 전역 일련번호다. 새 번호는 이 등록부의 마지막 번호 다음 번호로 발행한다.
-- 다음 ADR 번호: `ADR-015`. 다음 DCR 번호: `DCR-027`.
+- 다음 ADR 번호: `ADR-016`. 다음 DCR 번호: `DCR-027`.
 - 개별 ADR·DCR 파일이 정본이며 이 등록부는 목록이다. 불일치하면 파일에 맞춰 등록부를 수정한다.
 
 ## 아웃라인 결정 항목과의 대응
