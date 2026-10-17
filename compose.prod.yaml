@@ -1,0 +1,62 @@
+# 운영 스택(DES-25, ADR-013·ADR-015). 클라이언트마다 Lightsail 서버 1대에서 이 파일 하나로 기동한다.
+#   .env 에 MATHDESK_IMAGE_TAG 등을 채우고   docker compose -f compose.prod.yaml up -d
+# 이미지는 서버에서 빌드하지 않고 GitHub Actions 가 게시한 GHCR 이미지를 pull 한다(ADR-015).
+# 배포는 ops/deploy.sh(검증 태그 확인 → 백업 → pull → up → 헬스)가 한다. 호스트 포트 없음(NFR-17), 시드 없음.
+name: mathdesk
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: mathdesk
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD를 .env에 설정하세요}
+      POSTGRES_DB: mathdesk
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mathdesk"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    image: ghcr.io/bluesky5008/mathdesk:${MATHDESK_IMAGE_TAG:?MATHDESK_IMAGE_TAG를 .env에 설정하세요(ops/deploy.sh가 채운다)}
+    environment:
+      DATABASE_URL: postgresql+asyncpg://mathdesk:${POSTGRES_PASSWORD}@postgres:5432/mathdesk
+      MATHDESK_COOKIE_SECURE: "true"
+      MATHDESK_INITIAL_ADMIN_ID: ${MATHDESK_INITIAL_ADMIN_ID:?초기 원장 아이디를 .env에 설정하세요}
+      MATHDESK_INITIAL_ADMIN_PASSWORD: ${MATHDESK_INITIAL_ADMIN_PASSWORD:?초기 원장 비밀번호를 .env에 설정하세요}
+      # 업로드 파일은 DB가 아니라 파일시스템에 있다(DES-10). 볼륨이 없으면 재배포 때 사라진다.
+      MATHDESK_STORAGE_ROOT: /var/lib/mathdesk/files
+      # 문자·알림톡(ops/messaging-setup.md). 비워 두면 테스트 모드로 외부 발송이 없다
+      MATHDESK_MESSAGING_MODE: ${MATHDESK_MESSAGING_MODE:-test}
+      ALIGO_API_KEY: ${ALIGO_API_KEY:-}
+      ALIGO_USER_ID: ${ALIGO_USER_ID:-}
+      ALIGO_SENDER: ${ALIGO_SENDER:-}
+      ALIGO_SENDER_KEY: ${ALIGO_SENDER_KEY:-}
+      # 시험지 분석 LLM(DES-14). 비워 두면 test 구현체(외부 호출 0)
+      MATHDESK_LLM_PROVIDER: ${MATHDESK_LLM_PROVIDER:-}
+      MATHDESK_LLM_MODEL: ${MATHDESK_LLM_MODEL:-}
+      MATHDESK_LLM_API_KEY: ${MATHDESK_LLM_API_KEY:-}
+      MATHDESK_LLM_BASE_URL: ${MATHDESK_LLM_BASE_URL:-}
+    volumes:
+      - files:/var/lib/mathdesk/files
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 외부 경로는 클라이언트 Cloudflare 계정의 원격 관리형 터널 하나다(ADR-013 결정 2). 토큰은 .env 에만 둔다
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN을 .env에 설정하세요}
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  files:

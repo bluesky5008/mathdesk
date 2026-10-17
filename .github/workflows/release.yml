@@ -1,0 +1,66 @@
+# 릴리스(ADR-015 결정 1·2·5): 날짜형 태그(YYYY.MM.DD[-n])를 push 하면
+# amd64 이미지를 GHCR 에 게시하고, 그 이미지를 Postgres 와 함께 띄워 마이그레이션·헬스·로그인을 확인한 뒤
+# `<태그>-verified` 꼬리표를 단다. 서버의 ops/deploy.sh 는 이 꼬리표가 있는 태그만 받는다.
+# 서드파티 액션을 쓰지 않는다(ADR-015 결정 10). GitHub 소유 액션은 커밋 SHA 로 고정한다.
+name: release
+
+on:
+  push:
+    tags:
+      - "20[0-9][0-9].[0-9][0-9].[0-9][0-9]*"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: GHCR 로그인
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: 이미지 빌드·게시 (amd64)
+        run: |
+          docker buildx create --use --name release
+          docker buildx build \
+            --platform linux/amd64 \
+            -f Dockerfile.testops \
+            -t "$IMAGE:$GITHUB_REF_NAME" \
+            --cache-from "type=registry,ref=$IMAGE:buildcache" \
+            --cache-to "type=registry,ref=$IMAGE:buildcache,mode=max" \
+            --push .
+
+  smoke:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Postgres 와 앱 기동
+        run: |
+          docker network create smoke
+          docker run -d --name pg --network smoke \
+            -e POSTGRES_USER=mathdesk -e POSTGRES_PASSWORD=smoke -e POSTGRES_DB=mathdesk postgres:17-alpine
+          for i in $(seq 1 30); do docker exec pg pg_isready -U mathdesk && break; sleep 1; done
+          docker run -d --name app --network smoke -p 8000:8000 \
+            -e DATABASE_URL=postgresql+asyncpg://mathdesk:smoke@pg:5432/mathdesk \
+            -e MATHDESK_INITIAL_ADMIN_ID=smoke -e MATHDESK_INITIAL_ADMIN_PASSWORD=smoke-pass-1234 \
+            -e MATHDESK_STORAGE_ROOT=/tmp/files \
+            "$IMAGE:$GITHUB_REF_NAME"
+      - name: 마이그레이션·헬스·로그인 확인
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8000/api/health && ok=1 && break
+            sleep 2
+          done
+          [ "${ok:-}" = 1 ] || { echo "::error::헬스 실패"; docker logs app; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8000/api/auth/login \
+            -H 'content-type: application/json' -d '{"login_id":"smoke","password":"smoke-pass-1234"}')
+          [ "$code" = 200 ] || { echo "::error::로그인 $code"; docker logs app; exit 1; }
+          echo "스모크 통과: $IMAGE:$GITHUB_REF_NAME"
+      - name: verified 꼬리표
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker buildx imagetools create -t "$IMAGE:$GITHUB_REF_NAME-verified" "$IMAGE:$GITHUB_REF_NAME"
