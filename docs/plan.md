@@ -121,6 +121,7 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
 └─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (37/44)
+   ├─ [▶] TASK-57 운영 구성 준비 (ADR-015·DCR-027) ..... in-progress
    ├─ [✓] TASK-97 배포 파이프라인 설계 (ADR-015) ....... 2026-10-17 16:45
    ├─ [ ] TASK-96 문자 발송 연결 테스트 (TASK-55) ...... pending
    ├─ [✓] TASK-95 형제 연결 확인·같은 번호 안내 (DCR-026) 2026-10-11 23:48
@@ -161,7 +162,6 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
    ├─ [ ] TASK-54 클라이언트 피드백 반영 (반복) ...... 현재 테스트 운영
    ├─ [ ] TASK-55 외부 계정·도메인 준비 (병행) ....... 클라이언트·사용자
    ├─ [✓] TASK-56 운영 배포처 DCR (DCR-022·ADR-013) .... 2026-10-11 19:30
-   ├─ [ ] TASK-57 운영 구성 준비 ..................... depends: TASK-56
    ├─ [ ] TASK-58 ★ 클라이언트 인수 승인 ............. depends: TASK-54
    ├─ [ ] TASK-59 운영 이관 실행과 검증 .............. depends: TASK-55, 57, 58 (TASK-43 흡수)
    └─ [ ] TASK-60 운영 안정화 ........................ depends: TASK-59
@@ -333,7 +333,7 @@ flowchart TD
     C3 --> T54["TASK-54 클라이언트 피드백 반영"]:::todo
     C3 --> T55["TASK-55 외부 계정·도메인 준비"]:::todo
     C3 --> T56[["TASK-56 운영 배포처 DCR (DCR-022·ADR-013)"]]:::done
-    C3 --> T57["TASK-57 운영 구성 준비"]:::todo
+    C3 --> T57["TASK-57 운영 구성 준비"]:::active
     C3 --> T58[["★ TASK-58 클라이언트 인수 승인"]]:::gate
     C3 --> T59["TASK-59 운영 이관 실행·검증"]:::todo
     C3 --> T60["TASK-60 운영 안정화"]:::todo
@@ -1127,7 +1127,7 @@ flowchart TD
 - 의존성: 없음. TASK-57이 이 결과에 의존한다
 - 위험: 공개 저장소라 CI 비밀값(서버 접근 키)을 GitHub에 두면 공격 표면이 넓어진다 — 승격은 사용자 장비에서 수동 실행하는 쪽을 기본으로 검토. 2GB 서버 빌드의 메모리·시간
 - 검증 방법: wf-design 승인 관문(대안 비교·사용자 결정 기록)
-- 완료 조건: ADR-015 `approved`(필요 시 DCR과 새 기준선), TASK-57 계획이 결정에 맞게 갱신됨 — 충족([ADR-015](../work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)·[DCR-027](../work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md) 승인, 기준선 `v28`, 2026-10-17)
+- 완료 조건: ADR-015 `approved`(필요 시 DCR과 새 기준선), TASK-57 계획이 결정에 맞게 갱신됨 — 충족([ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)·[DCR-027](./work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md) 승인, 기준선 `v28`, 2026-10-17)
 
 ### TASK-96: 문자 발송 연결 테스트 (클라이언트 2명)
 
@@ -1605,10 +1605,10 @@ flowchart TD
 
 ### TASK-57: 운영 구성 준비
 
-- 상태: pending
+- 상태: in-progress
 - 상위: 없음
 - 목표: 운영 서버에 올릴 구성과 배포 파이프라인을 코드·설정·문서로 준비한다(클라이언트 2명 공통, [DES-25 상세](./design.md#des-25-상세), [ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)).
-- 관련 요구사항과 설계: [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)(기준선 `v23`), [DCR-027](../work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md)·[ADR-015](../work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)(기준선 `v28`), [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [NFR-08·NFR-11·NFR-17·NFR-20](./requirements.md#비기능-요구사항), [AC-48](./requirements.md#인수-조건)
+- 관련 요구사항과 설계: [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)(기준선 `v23`), [DCR-027](./work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md)·[ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)(기준선 `v28`), [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [NFR-08·NFR-11·NFR-17·NFR-20](./requirements.md#비기능-요구사항), [AC-48](./requirements.md#인수-조건)
 - 변경 대상: `.github/workflows/ci.yml`(테스트·빌드 검증), `release.yml`(태그 → amd64 이미지 GHCR 게시 → 이미지 스모크 → `-verified`), `deploy.yml`(`workflow_dispatch` → 환경 승인 → SSH → 서버 `deploy.sh`); `compose.prod.yaml`(postgres·`app`=GHCR 이미지·cloudflared 토큰 터널, 포트 없음, 시드 없음, `MATHDESK_LLM_*`·LLM 키 전달); 서버용 `ops/deploy.sh`(`-verified` 확인 → 백업 → pull → up → health, 실패 시 이전 태그 출력); `ops/backup.sh`·`ops/restore.sh` 프로필 인자(프로젝트·compose 파일); 백업 cron 스크립트(매일 04:00, 14일 보관, 결과 로그); `ops/README.md` 운영 절(서버 준비·`deploy` 계정·GitHub 환경·릴리스·배포·롤백·복원·접근 회수, 클라이언트 2명 반복 템플릿); `.env.example` 운영 항목(`MATHDESK_IMAGE_TAG` 포함). GitHub 환경 `bam`·`pingsu`와 비밀값 등록은 서버 키가 생기는 TASK-59에서
 - 의존성: TASK-56(완료), TASK-97(완료)
 - 위험: 워크플로는 서드파티 액션 없이 GitHub 소유 액션 SHA 고정으로만 쓴다(ADR-015 결정 10). 이미지 스모크가 CI 러너에서 Chromium 포함 이미지를 띄우므로 러너 디스크·시간 확인. 맥미니(arm64)에서 amd64 이미지 리허설은 에뮬레이션이라 느릴 수 있다

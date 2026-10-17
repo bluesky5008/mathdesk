@@ -3,6 +3,7 @@
 #
 #   ops/restore.sh <백업 폴더>                             # 테스트 운영에 복원(확인 질문)
 #   PROJECT=mathdesk-restorecheck ops/restore.sh <폴더>    # 다른 compose 프로젝트에 복원
+#   PROJECT=mathdesk MATHDESK_COMPOSE=compose.prod.yaml ops/restore.sh <폴더>   # 운영 프로필
 #
 # 앱을 멈춘 채 복원하고 다시 올린다. 기동 시 alembic이 스키마를 최신으로 맞춘다.
 set -euo pipefail
@@ -10,7 +11,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 SOURCE="${1:?백업 폴더를 지정하세요}"
 PROJECT="${PROJECT:-mathdesk-testops}"
-COMPOSE=(docker compose -p "$PROJECT" -f compose.testops.yaml)
+MATHDESK_COMPOSE="${MATHDESK_COMPOSE:-compose.testops.yaml}"
+COMPOSE=(docker compose -p "$PROJECT" -f "$MATHDESK_COMPOSE")
 
 (cd "$SOURCE" && shasum -a 256 -c SHA256SUMS)
 
