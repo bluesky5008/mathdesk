@@ -120,8 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (37/44)
-   ├─ [▶] TASK-57 운영 구성 준비 (ADR-015·DCR-027) ..... in-progress
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (38/44)
+   ├─ [✓] TASK-57 운영 구성 준비 (ADR-015·DCR-027) ..... 2026-10-17 17:18
    ├─ [✓] TASK-97 배포 파이프라인 설계 (ADR-015) ....... 2026-10-17 16:45
    ├─ [ ] TASK-96 문자 발송 연결 테스트 (TASK-55) ...... pending
    ├─ [✓] TASK-95 형제 연결 확인·같은 번호 안내 (DCR-026) 2026-10-11 23:48
@@ -333,7 +333,7 @@ flowchart TD
     C3 --> T54["TASK-54 클라이언트 피드백 반영"]:::todo
     C3 --> T55["TASK-55 외부 계정·도메인 준비"]:::todo
     C3 --> T56[["TASK-56 운영 배포처 DCR (DCR-022·ADR-013)"]]:::done
-    C3 --> T57["TASK-57 운영 구성 준비"]:::active
+    C3 --> T57["TASK-57 운영 구성 준비"]:::done
     C3 --> T58[["★ TASK-58 클라이언트 인수 승인"]]:::gate
     C3 --> T59["TASK-59 운영 이관 실행·검증"]:::todo
     C3 --> T60["TASK-60 운영 안정화"]:::todo
@@ -1605,7 +1605,7 @@ flowchart TD
 
 ### TASK-57: 운영 구성 준비
 
-- 상태: in-progress
+- 상태: completed (2026-10-17 17:18)
 - 상위: 없음
 - 목표: 운영 서버에 올릴 구성과 배포 파이프라인을 코드·설정·문서로 준비한다(클라이언트 2명 공통, [DES-25 상세](./design.md#des-25-상세), [ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)).
 - 관련 요구사항과 설계: [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)(기준선 `v23`), [DCR-027](./work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md)·[ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)(기준선 `v28`), [ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [NFR-08·NFR-11·NFR-17·NFR-20](./requirements.md#비기능-요구사항), [AC-48](./requirements.md#인수-조건)
@@ -1613,7 +1613,7 @@ flowchart TD
 - 의존성: TASK-56(완료), TASK-97(완료)
 - 위험: 워크플로는 서드파티 액션 없이 GitHub 소유 액션 SHA 고정으로만 쓴다(ADR-015 결정 10). 이미지 스모크가 CI 러너에서 Chromium 포함 이미지를 띄우므로 러너 디스크·시간 확인. 맥미니(arm64)에서 amd64 이미지 리허설은 에뮬레이션이라 느릴 수 있다
 - 검증 방법: `ci.yml`이 main push에서 전체 테스트 통과 / 태그 1개로 `release.yml`이 이미지 게시·스모크 통과·`-verified` / 맥미니에서 `compose.prod.yaml`로 그 amd64 이미지 기동 → health·로그인(로컬 리허설) / 백업·복원 1회 / `deploy.yml` 환경 승인 흐름 확인(서버 접속 단계는 TASK-59 빈 서버에서 리허설)
-- 완료 조건: 절차서만 보고 빈 서버에 올릴 수 있고, 릴리스 태그 1개가 `-verified`까지 통과함
+- 완료 조건: 절차서만 보고 빈 서버에 올릴 수 있고, 릴리스 태그 1개가 `-verified`까지 통과함 — 충족(태그 `2026.10.17` build·smoke 통과·`-verified`, CI 통과, 맥미니 amd64 리허설·백업·복원 통과). `deploy.yml`의 서버 접속·환경 승인 단계는 TASK-59에서 빈 서버로 리허설
 
 ### TASK-58: ★ 클라이언트 인수 승인
 
