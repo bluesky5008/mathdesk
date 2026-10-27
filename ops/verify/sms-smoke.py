@@ -4,7 +4,7 @@
 
     cd apps/api
     ALIGO_API_KEY=… ALIGO_USER_ID=… ALIGO_SENDER=01012345678 uv run python ../../ops/verify/sms-smoke.py balance
-    ALIGO_API_KEY=… ALIGO_USER_ID=… ALIGO_SENDER=01012345678 uv run python ../../ops/verify/sms-smoke.py send 01012345678
+    ALIGO_API_KEY=… ALIGO_USER_ID=… ALIGO_SENDER=01012345678 uv run python ../../ops/verify/sms-smoke.py send 01012345678 [본문]
 
 balance: /remain/ 원본 응답(result_code·message·잔여 건수). 비용 없음. 키·아이디·IP 등록이 틀리면 여기서 드러난다.
 send:    받는 번호 1개에 SMS 1건(건당 8.4원+VAT). 제품 코드의 AligoMessaging.send 를 그대로 탄다.
@@ -37,8 +37,8 @@ async def balance(aligo: AligoMessaging) -> int:
     return 0 if ok else 1
 
 
-async def send(aligo: AligoMessaging, phone: str) -> int:
-    body = f"[mathdesk] 문자 연결 확인 {datetime.now():%m-%d %H:%M}. 이 문자가 보이면 연결이 끝난 것입니다."
+async def send(aligo: AligoMessaging, phone: str, body: str | None = None) -> int:
+    body = body or f"[mathdesk] 문자 연결 확인 {datetime.now():%m-%d %H:%M}. 이 문자가 보이면 연결이 끝난 것입니다."
     results = await aligo.send("sms", [Recipient(phone=phone, kind="student")], body)
     for r in results:
         print(f"{r.recipient_phone} {r.status} code={r.result_code} error={r.error}")
@@ -49,6 +49,6 @@ if __name__ == "__main__":
     aligo = credentials()
     if len(sys.argv) >= 2 and sys.argv[1] == "balance":
         sys.exit(asyncio.run(balance(aligo)))
-    if len(sys.argv) == 3 and sys.argv[1] == "send":
-        sys.exit(asyncio.run(send(aligo, sys.argv[2])))
+    if len(sys.argv) in (3, 4) and sys.argv[1] == "send":
+        sys.exit(asyncio.run(send(aligo, sys.argv[2], sys.argv[3] if len(sys.argv) == 4 else None)))
     sys.exit(__doc__)
