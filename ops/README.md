@@ -94,34 +94,27 @@ ops/restore.sh <백업 폴더>          # 테스트 운영을 백업 시점으�
 ### 1. 서버 준비 (서버마다 1회, 사용자 SSH 키로)
 
 ```bash
-# Ubuntu 24.04 (Lightsail 기본 ubuntu 계정)
-sudo timedatectl set-timezone Asia/Seoul
-sudo apt update && sudo apt -y upgrade
-curl -fsSL https://get.docker.com | sudo sh
+# ① 서버 만들기 — 클라이언트 AWS 계정의 IAM 사용자 yongs(lightsail:*) 액세스 키를 프로필로. 키는 ~/.aws 에만 둔다
+aws configure --profile bam                                    # 리전 ap-northeast-2
+AWS_PROFILE=bam ops/lightsail-create.sh bam                    # 서울 2GB Ubuntu 24.04, 고정 IP, 방화벽 22만, 자동 스냅샷
+#   → DEPLOY_HOST·DEPLOY_HOST_KEY 와 알리고에 등록할 발송 서버 IP 를 출력한다. 콘솔에서 만들었다면 같은 설정으로 맞춘다
 
-# 배포 전용 계정. docker 그룹이면 sudo 없이 compose 를 돌린다
-sudo useradd -m -s /bin/bash -G docker deploy
-sudo install -d -o deploy -g deploy -m 700 /var/backups/mathdesk /var/log/mathdesk
-sudo -u deploy mkdir -p /home/deploy/mathdesk/ops
+# ② 배포 키: 환경마다 새로 만든다. 공개키는 서버에서 command= 로 deploy.sh 만 실행되게 묶인다
+ssh-keygen -t ed25519 -N '' -C mathdesk-deploy-bam -f ~/.ssh/mathdesk-deploy-bam
 
-# 저장소에서 compose·ops 만 복사(소스 없음). 갱신도 이 방법으로만 한다 — 배포 키로는 불가
+# ③ 서버 초기화 — 시간대·apt·Docker·스왑 2G·deploy 계정·compose/ops 사본·배포 키·백업 cron(04:00). 다시 돌려도 안전
 scp compose.prod.yaml ubuntu@<서버>:/tmp/ && scp -r ops ubuntu@<서버>:/tmp/
-ssh ubuntu@<서버> 'sudo cp /tmp/compose.prod.yaml /home/deploy/mathdesk/ && sudo cp -r /tmp/ops/. /home/deploy/mathdesk/ops/ && sudo chown -R deploy:deploy /home/deploy/mathdesk && sudo chmod +x /home/deploy/mathdesk/ops/*.sh'
+ssh ubuntu@<서버> "sudo bash /tmp/ops/server-bootstrap.sh '$(cat ~/.ssh/mathdesk-deploy-bam.pub)'"
+#   compose·ops 갱신도 이 방법(③)으로만 한다 — 배포 키로는 불가
 
-# .env: 서버에서 직접 채운다(.env.example 의 운영 절). 비밀번호는 openssl rand -base64 24
+# ④ .env: 서버에서 직접 채운다(.env.example 의 운영 절). 비밀번호는 openssl rand -base64 24
 ssh ubuntu@<서버> 'sudo -u deploy install -m 600 /dev/null /home/deploy/mathdesk/.env && sudo -u deploy nano /home/deploy/mathdesk/.env'
 
-# 배포 키: 환경마다 새로 만든다. 공개키는 command= 로 deploy.sh 만 실행되게 묶는다
-ssh-keygen -t ed25519 -N '' -C mathdesk-deploy-<클라이언트> -f ~/.ssh/mathdesk-deploy-<클라이언트>
-PUB=$(cat ~/.ssh/mathdesk-deploy-<클라이언트>.pub)
-ssh ubuntu@<서버> "sudo -u deploy install -d -m 700 /home/deploy/.ssh && echo 'command=\"/home/deploy/mathdesk/ops/deploy.sh\",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding $PUB' | sudo -u deploy tee -a /home/deploy/.ssh/authorized_keys > /dev/null && sudo chmod 600 /home/deploy/.ssh/authorized_keys"
-
-# 일일 백업 cron(매일 04:00, 14일 보관, 로그 /var/log/mathdesk/backup.log)
-ssh ubuntu@<서버> 'echo "0 4 * * * /home/deploy/mathdesk/ops/backup-cron.sh" | sudo -u deploy crontab -'
-
-# 첫 기동: 태그를 손으로 넣고 deploy.sh 로 올린다(DB 가 없으면 백업은 건너뛴다)
+# ⑤ 첫 기동: 태그를 손으로 넣고 deploy.sh 로 올린다(DB 가 없으면 백업은 건너뛴다)
 ssh ubuntu@<서버> 'sudo -u deploy bash -lc "cd ~/mathdesk && ops/deploy.sh 2026.10.17"'
 ```
+
+스크립트 검사: `ops/verify/lightsail-create.test.sh`, `ops/verify/server-bootstrap.test.sh`(가짜 aws·시스템 명령).
 
 ### 2. GitHub 환경 (클라이언트마다 1회)
 
@@ -129,7 +122,17 @@ ssh ubuntu@<서버> 'sudo -u deploy bash -lc "cd ~/mathdesk && ops/deploy.sh 202
 
 - **Deployment protection rules → Required reviewers**: 사용자 본인.
 - **Environment secrets**: `DEPLOY_SSH_KEY` = `~/.ssh/mathdesk-deploy-<클라이언트>` 파일 내용(개인키).
-- **Environment variables**: `DEPLOY_HOST` = 고정 IP, `DEPLOY_HOST_KEY` = `ssh-keyscan -t ed25519 <고정 IP>` 출력 한 줄.
+- **Environment variables**: `DEPLOY_HOST` = 고정 IP, `DEPLOY_HOST_KEY` = `ssh-keyscan -t ed25519 <고정 IP>` 출력 한 줄(`lightsail-create.sh` 가 둘 다 출력한다).
+
+`gh` 로도 된다. 환경은 보호 규칙까지 API 로 만든다(참조만 하면 보호 규칙 없는 환경이 자동 생성되므로 먼저 만든다):
+
+```bash
+gh api -X PUT repos/bluesky5008/mathdesk/environments/bam \
+  --input - <<< '{"reviewers":[{"type":"User","id":<사용자 id: gh api user --jq .id>}],"prevent_self_review":false}'
+gh secret set DEPLOY_SSH_KEY --env bam < ~/.ssh/mathdesk-deploy-bam
+gh variable set DEPLOY_HOST --env bam --body "<고정 IP>"
+gh variable set DEPLOY_HOST_KEY --env bam --body "$(ssh-keyscan -t ed25519 <고정 IP> 2>/dev/null | head -1)"
+```
 
 ### 3. 릴리스 (스테이징에서 확인한 커밋에)
 
