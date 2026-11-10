@@ -1131,7 +1131,7 @@ flowchart TD
 
 ### TASK-96: 문자 발송 연결 테스트 (클라이언트 2명)
 
-- 상태: in-progress — **밤 완료(2026-11-10)**: 알리고 `(문자 아이디)`, 발신 010-5356-****, 시험 문자 수신 확인 → TASK-55 알리고 항목(밤) "문자 연결 준비 완료". 핑수는 알리고 값 대기
+- 상태: in-progress — **밤 완료(2026-11-10)**: 시험 문자 수신 확인 → TASK-55 알리고 항목(밤) "문자 연결 준비 완료". 핑수는 알리고 값 대기. 계정별 상세는 비공개 운영 기록([ADR-016](./work/20260922-mathdesk-baseline/ADR-016-운영-기록-분리.md))
 - 상위: [TASK-55](#task-55-외부-계정도메인-준비) (알리고 항목)
 - 목표: 밤·핑수 각자의 알리고 계정으로 **본인 휴대폰에 시험 문자 1건**을 보내 정상 수신을 확인하고, 계정마다 "문자 연결 준비 완료"를 기록한다. 테스트 운영 `.env`는 바꾸지 않는다(가짜 학부모 번호로 실발송될 위험).
 - 관련 요구사항과 설계: [FR-23 상세](./requirements.md#fr-23-상세), [Q-02](./requirements.md#가정과-미해결-질문), DES-09, [`ops/messaging-setup.md`](../ops/messaging-setup.md) 1·3장
@@ -1629,7 +1629,7 @@ flowchart TD
 
 ### TASK-59: 운영 이관 실행과 검증
 
-- 상태: in-progress (2026-11-10 착수, 밤 먼저) — 로컬 준비 완료: GitHub 환경 `bam`(필수 승인자) + `DEPLOY_SSH_KEY`, SSH 키 2벌, AWS CLI, [`ops/lightsail-create.sh`](../ops/lightsail-create.sh)·[`ops/server-bootstrap.sh`](../ops/server-bootstrap.sh)(검사 통과). 밤 서버 `mathdesk-bam`(밤 계정 `(계정 ID 비공개)`, 2026-11-11 재구축 — 전날 핑수 계정에 잘못 생성) `(운영 주소)` 기동·백업·복원 통과. 대기: `deploy.yml` 승인, 터널 토큰 교체, 알리고 클라우드 IP 검수, 원장 아이디 확정
+- 상태: in-progress (2026-11-10 착수, 밤 먼저) — 밤 운영 서버 가동(2026-11-11, 태그 `2026.11.11`): 기동·백업·복원 리허설·`deploy.yml` 환경 승인 배포 통과. 남은 것: 문자 실발송(외부 검수 대기), 원장 계정 확정·인계, 핑수 서버. 준비물: [`ops/lightsail-create.sh`](../ops/lightsail-create.sh)·[`ops/server-bootstrap.sh`](../ops/server-bootstrap.sh)(검사 통과). 클라이언트별 상태와 다음 할 일은 비공개 운영 기록([ADR-016](./work/20260922-mathdesk-baseline/ADR-016-운영-기록-분리.md))
 - 상위: 없음
 - 목표: 클라이언트 2명(밤·핑수) 각자의 AWS 계정에 서버를 열고 운영을 시작한다(클라이언트당 1회 반복).
 - 관련 요구사항과 설계: [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)(기준선 `v23`), [AC-48](./requirements.md#인수-조건), [TASK-43](#task-43-claude-실호출-검증)(Claude 실호출 — 운영에서 함께 검증)

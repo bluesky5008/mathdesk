@@ -11,7 +11,7 @@
 ## 요약
 
 - 목적: 저장소 전역의 ADR·DCR을 한곳에서 조망하고 다음 일련번호를 발행할 기준을 제공한다.
-- 현재 결론 또는 상태: ADR 15건과 DCR 27건이 모두 `approved`다(ADR-013은 결정 3만 ADR-015로 대체). 유효 기준선은 `v28`이며 마지막 발행 번호는 ADR-015, DCR-027.
+- 현재 결론 또는 상태: ADR 16건과 DCR 27건이 모두 `approved`다(ADR-013은 결정 3만 ADR-015로 대체). 유효 기준선은 `v28`이며 마지막 발행 번호는 ADR-016, DCR-027.
 - 다음 행동: 없음. 새 ADR·DCR이 생기면 이 등록부를 같은 변경에서 갱신한다.
 
 ## 문서 연결
@@ -40,6 +40,7 @@
 | ADR-013 | adr | 운영 배포처 — 클라이언트별 AWS Lightsail 단일 서버 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md) | ADR-001 Phase B 구체화, ADR-008 적용, DCR-022. 결정 3은 ADR-015로 대체(2026-10-17) |
 | ADR-014 | adr | 포털 권한 모델 | approved | 2026-10-11 | [work/20260922-mathdesk-baseline/ADR-014](./work/20260922-mathdesk-baseline/ADR-014-포털-권한-모델.md) | ADR-007 보완, DCR-024 |
 | ADR-015 | adr | 배포 파이프라인 — CI 이미지와 Actions 승격 | approved | 2026-10-17 | [work/20260922-mathdesk-baseline/ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md) | ADR-013 결정 3 대체, DCR-027, 기준선 v28 |
+| ADR-016 | adr | 운영 기록 분리 — 클라이언트 운영 기록은 비공개 저장소에 | approved | 2026-11-11 | [work/20260922-mathdesk-baseline/ADR-016](./work/20260922-mathdesk-baseline/ADR-016-운영-기록-분리.md) | 기준선 변화 없음. 2026-10-20 전화번호 이력 유지 결정 대체 |
 | DCR-001 | dcr | 테스트 운영 환경 노출 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-001](./work/20260922-mathdesk-baseline/DCR-001-테스트-운영-환경-노출.md) | ADR-008 |
 | DCR-002 | dcr | M6 LLM 공급자 중립화와 Claude 연결 | approved | 2026-09-22 | [work/20260922-mathdesk-baseline/DCR-002](./work/20260922-mathdesk-baseline/DCR-002-M6-LLM-공급자-중립화와-Claude-연결.md) | ADR-009 |
 | DCR-003 | dcr | 브랜드 자산으로서의 시각 설계 | approved | 2026-09-23 | [work/20260922-mathdesk-baseline/DCR-003](./work/20260922-mathdesk-baseline/DCR-003-브랜드-자산으로서의-시각-설계.md) | ADR-010, ADR-011 |
