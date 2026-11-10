@@ -10,10 +10,11 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .db import get_session
-from .models import PORTAL_ROLES, AppUser, AuditLog, UserSession
+from .models import PORTAL_ROLES, AppUser, AppUserCampus, AuditLog, Campus, UserSession
 from .security import UNUSABLE_PASSWORD, hash_password, verify_password
 
 SESSION_COOKIE = "mathdesk_session"
+INITIAL_CAMPUS_NAME = "학원"  # 시드 없는 첫 기동의 기본 캠퍼스 이름. 학원 설정에서 바꾼다
 IDLE_TIMEOUT = timedelta(hours=12)
 
 
@@ -219,7 +220,12 @@ async def change_password(
 async def ensure_initial_director(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
-    """최초 기동 시 환경변수로 원장 계정을 준비한다. 사용 중인 비밀번호는 덮어쓰지 않는다."""
+    """최초 기동 시 환경변수로 원장 계정을 준비한다. 사용 중인 비밀번호는 덮어쓰지 않는다.
+
+    원장이 어느 캠퍼스에도 속하지 않으면 모든 API가 403이다(`scope.current_scope`). 시드가 없는
+    운영 DB에서도 바로 쓸 수 있게 캠퍼스 소속을 보장한다 — 캠퍼스가 없으면 하나 만든다
+    (이름은 학원 설정에서 바꾼다).
+    """
     login_id = os.environ.get("MATHDESK_INITIAL_ADMIN_ID")
     password = os.environ.get("MATHDESK_INITIAL_ADMIN_PASSWORD")
     if not login_id or not password:
@@ -228,17 +234,25 @@ async def ensure_initial_director(
     async with session_factory() as session:
         user = await session.scalar(select(AppUser).where(AppUser.login_id == login_id))
         if user is None:
-            session.add(
-                AppUser(
-                    login_id=login_id,
-                    password_hash=hash_password(password),
-                    display_name="원장",
-                    role="director",
-                    must_change_password=True,
-                )
+            user = AppUser(
+                login_id=login_id,
+                password_hash=hash_password(password),
+                display_name="원장",
+                role="director",
+                must_change_password=True,
             )
+            session.add(user)
+            await session.flush()
         elif user.password_hash == UNUSABLE_PASSWORD:
             user.password_hash = hash_password(password)
-        else:
-            return
+
+        if user.role == "director" and not await session.scalar(
+            select(AppUserCampus.campus_id).where(AppUserCampus.user_id == user.id).limit(1)
+        ):
+            campus = await session.scalar(select(Campus).order_by(Campus.id).limit(1))
+            if campus is None:
+                campus = Campus(name=INITIAL_CAMPUS_NAME)
+                session.add(campus)
+                await session.flush()
+            session.add(AppUserCampus(user_id=user.id, campus_id=campus.id))
         await session.commit()

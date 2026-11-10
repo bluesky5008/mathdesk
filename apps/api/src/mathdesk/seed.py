@@ -44,11 +44,16 @@ async def seed(database_url: str) -> None:
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     try:
         async with session_factory() as session:
-            if await session.scalar(select(Campus.id).limit(1)) is not None:
+            if await session.scalar(select(Klass.id).limit(1)) is not None:
                 raise RuntimeError("이미 시드된 데이터베이스다. 먼저 비우고 실행하라.")
 
-            campus = Campus(name=CAMPUS_NAME)
-            session.add(campus)
+            # 기동 시 초기 원장에게 만들어 준 빈 캠퍼스가 있으면 그것을 쓴다
+            campus = await session.scalar(select(Campus).order_by(Campus.id).limit(1))
+            if campus is None:
+                campus = Campus(name=CAMPUS_NAME)
+                session.add(campus)
+            else:
+                campus.name = CAMPUS_NAME
             await session.flush()
 
             # 초기 원장 계정이 이미 만들어져 있을 수 있다(기동 시 환경변수로 생성).
@@ -64,7 +69,12 @@ async def seed(database_url: str) -> None:
                 )
                 session.add(director)
                 await session.flush()
-            session.add(AppUserCampus(user_id=director.id, campus_id=campus.id))
+            if not await session.scalar(
+                select(AppUserCampus.user_id).where(
+                    AppUserCampus.user_id == director.id, AppUserCampus.campus_id == campus.id
+                )
+            ):
+                session.add(AppUserCampus(user_id=director.id, campus_id=campus.id))
 
             sequence = 0
             schools: dict[str, School] = {}

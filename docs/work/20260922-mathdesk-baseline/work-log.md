@@ -1630,6 +1630,15 @@ AC-28~AC-35(기준선 v2~v6 추가분)는 각 작업에서 판정했다: AC-28·
 - 남은 위험: CI api 잡이 7분대라 PR마다 기다린다(Chromium 설치 캐시로 줄일 수 있음, 후순위). GitHub 계정 보안(2단계 인증)은 사용자 확인 대상. 공개 패키지라 비공개 전환 시 pull 토큰 필요.
 - 배포: 앱 코드 변경 없음(워크플로·compose·ops) → 테스트 운영 배포 생략.
 
+### 2026-11-11 — 버그 수정: 시드 없는 운영에서 초기 원장이 모든 기능 403 (경량 경로)
+
+- 증상(밤, `(운영 주소)`): 원장으로 로그인해 반 등록 → "접근 권한이 없습니다." 서버 로그에 `/api/classes`·`/api/students`·`/api/users` 등 전부 403.
+- 원인: `scope.current_scope`는 사용자가 속한 캠퍼스가 없으면 403이다. 캠퍼스와 소속(`app_user_campus`)은 지금까지 `seed`만 만들었고, 운영은 시드 없이 `ensure_initial_director`로 원장만 만든다 → 운영 DB에 `campus` 0행, 원장 소속 없음. 테스트 운영·개발은 항상 시드를 돌려서 드러나지 않았다.
+- 놓친 이유: 릴리스 스모크와 첫 기동 검증이 로그인까지만 봤다. 2026-11-10 검증에서 `/api/students` 403을 "비밀번호 변경 전이라 의도한 동작"으로 잘못 해석했다(그 경우 문구는 "비밀번호를 먼저 바꿔 주세요.").
+- 수정(TDD): 재현 테스트 2건 Red(`test_the_initial_director_on_an_empty_database_gets_a_campus`, `test_an_existing_initial_director_without_a_campus_is_repaired_once`) → `auth.ensure_initial_director`가 초기 원장의 캠퍼스 소속을 보장(없으면 첫 캠퍼스에 연결, 캠퍼스가 없으면 "학원" 생성 — 이름은 학원 설정에서 변경). 이미 캠퍼스 없이 만들어진 원장도 다음 기동에서 고쳐지고 반복 기동에 늘지 않으며 사용 중 비밀번호는 건드리지 않는다. `seed`는 그 빈 캠퍼스를 재사용하도록(가드를 캠퍼스 유무 → 반 유무로, 테스트 `test_seed_reuses_the_campus_made_for_the_initial_director`).
+- 재발 방지: `release.yml` 스모크에 초기 원장 비밀번호 변경(204) → `/api/classes` 200 추가.
+- 검증: API 전체 328 passed·1 skipped.
+
 ## 설계와 달라진 점
 
 | 항목 | 내용 | 처리 |

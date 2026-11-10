@@ -1,5 +1,5 @@
 # 릴리스(ADR-015 결정 1·2·5): 날짜형 태그(YYYY.MM.DD[-n])를 push 하면
-# amd64 이미지를 GHCR 에 게시하고, 그 이미지를 Postgres 와 함께 띄워 마이그레이션·헬스·로그인을 확인한 뒤
+# amd64 이미지를 GHCR 에 게시하고, 그 이미지를 Postgres 와 함께 띄워 마이그레이션·헬스·로그인·초기 원장의 기능 사용을 확인한 뒤
 # `<태그>-verified` 꼬리표를 단다. 서버의 ops/deploy.sh 는 이 꼬리표가 있는 태그만 받는다.
 # 서드파티 액션을 쓰지 않는다(ADR-015 결정 10). GitHub 소유 액션은 커밋 SHA 로 고정한다.
 name: release
@@ -56,9 +56,16 @@ jobs:
             sleep 2
           done
           [ "${ok:-}" = 1 ] || { echo "::error::헬스 실패"; docker logs app; exit 1; }
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8000/api/auth/login \
+          code=$(curl -s -o /dev/null -w '%{http_code}' -c jar -X POST http://localhost:8000/api/auth/login \
             -H 'content-type: application/json' -d '{"login_id":"smoke","password":"smoke-pass-1234"}')
           [ "$code" = 200 ] || { echo "::error::로그인 $code"; docker logs app; exit 1; }
+          # 시드 없는 빈 DB의 초기 원장이 실제로 기능을 쓸 수 있는지(캠퍼스 소속) — 2026-11-11 운영 403 재발 방지
+          code=$(curl -s -o /dev/null -w '%{http_code}' -b jar -X POST http://localhost:8000/api/auth/password \
+            -H 'content-type: application/json' \
+            -d '{"current_password":"smoke-pass-1234","new_password":"smoke-pass-5678"}')
+          [ "$code" = 204 ] || { echo "::error::비밀번호 변경 $code"; docker logs app; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -b jar http://localhost:8000/api/classes)
+          [ "$code" = 200 ] || { echo "::error::초기 원장의 반 목록 $code"; docker logs app; exit 1; }
           echo "스모크 통과: $IMAGE:$GITHUB_REF_NAME"
       - name: verified 꼬리표
         run: |

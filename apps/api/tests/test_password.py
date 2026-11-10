@@ -208,6 +208,59 @@ def test_a_newly_created_initial_director_must_change_its_password(
     assert scalar("SELECT must_change_password FROM app_user WHERE login_id = 'owner'") is True
 
 
+def _ensure_initial_director(database_url):
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from mathdesk.auth import ensure_initial_director
+
+    async def run():
+        engine = create_async_engine(database_url)
+        await ensure_initial_director(async_sessionmaker(engine))
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_the_initial_director_on_an_empty_database_gets_a_campus(
+    empty_database, scalar, alembic, monkeypatch
+):
+    """운영 첫 기동(시드 없음): 캠퍼스가 없으면 원장이 모든 API에서 403을 받는다(2026-11-11 밤 운영)."""
+    alembic(empty_database, "upgrade", "head")
+    monkeypatch.setenv("MATHDESK_INITIAL_ADMIN_ID", "owner")
+    monkeypatch.setenv("MATHDESK_INITIAL_ADMIN_PASSWORD", TEMP_PASSWORD)
+
+    _ensure_initial_director(empty_database)
+
+    assert scalar("SELECT count(*) FROM campus") == 1
+    assert (
+        scalar(
+            "SELECT count(*) FROM app_user_campus uc JOIN app_user u ON u.id = uc.user_id "
+            "WHERE u.login_id = 'owner'"
+        )
+        == 1
+    )
+
+
+def test_an_existing_initial_director_without_a_campus_is_repaired_once(
+    empty_database, scalar, alembic, monkeypatch
+):
+    """이미 캠퍼스 없이 만들어진 원장(비밀번호 변경 뒤)도 다음 기동에서 고쳐지고, 반복 기동에 늘지 않는다."""
+    alembic(empty_database, "upgrade", "head")
+    monkeypatch.setenv("MATHDESK_INITIAL_ADMIN_ID", "owner")
+    monkeypatch.setenv("MATHDESK_INITIAL_ADMIN_PASSWORD", TEMP_PASSWORD)
+    _ensure_initial_director(empty_database)
+    scalar("DELETE FROM app_user_campus RETURNING 1")
+    scalar("DELETE FROM campus RETURNING 1")
+    scalar("UPDATE app_user SET password_hash = 'in-use', must_change_password = false RETURNING 1")
+
+    _ensure_initial_director(empty_database)
+    _ensure_initial_director(empty_database)
+
+    assert scalar("SELECT count(*) FROM campus") == 1
+    assert scalar("SELECT count(*) FROM app_user_campus") == 1
+    assert scalar("SELECT password_hash FROM app_user WHERE login_id = 'owner'") == "in-use"
+
+
 def test_the_last_active_director_cannot_be_demoted_or_deactivated(api):
     api.sign_in("director_a")
     me = api.ids["director_a"]
