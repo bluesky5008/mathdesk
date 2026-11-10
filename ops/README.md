@@ -103,7 +103,8 @@ AWS_PROFILE=bam ops/lightsail-create.sh bam                    # 서울 2GB Ubun
 ssh-keygen -t ed25519 -N '' -C mathdesk-deploy-bam -f ~/.ssh/mathdesk-deploy-bam
 
 # ③ 서버 초기화 — 시간대·apt·Docker·스왑 2G·deploy 계정·compose/ops 사본·배포 키·백업 cron(04:00). 다시 돌려도 안전
-scp compose.prod.yaml ubuntu@<서버>:/tmp/ && scp -r ops ubuntu@<서버>:/tmp/
+ssh ubuntu@<서버> 'mkdir -p /tmp/ops' && scp compose.prod.yaml ubuntu@<서버>:/tmp/ \
+  && scp ops/{deploy,backup,restore,backup-cron,server-bootstrap}.sh ubuntu@<서버>:/tmp/ops/      # 운영에 필요한 스크립트만
 ssh ubuntu@<서버> "sudo bash /tmp/ops/server-bootstrap.sh '$(cat ~/.ssh/mathdesk-deploy-bam.pub)'"
 #   compose·ops 갱신도 이 방법(③)으로만 한다 — 배포 키로는 불가
 

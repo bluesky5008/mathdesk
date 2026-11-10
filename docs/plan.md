@@ -1629,7 +1629,7 @@ flowchart TD
 
 ### TASK-59: 운영 이관 실행과 검증
 
-- 상태: in-progress (2026-11-10 착수, 밤 먼저) — 로컬 준비 완료: GitHub 환경 `bam`(필수 승인자) + `DEPLOY_SSH_KEY`, SSH 키 2벌, AWS CLI, [`ops/lightsail-create.sh`](../ops/lightsail-create.sh)·[`ops/server-bootstrap.sh`](../ops/server-bootstrap.sh)(검사 통과). 대기: 밤 AWS 액세스 키(또는 콘솔 생성), Cloudflare 도메인·터널 토큰, 원장 계정 아이디
+- 상태: in-progress (2026-11-10 착수, 밤 먼저) — 로컬 준비 완료: GitHub 환경 `bam`(필수 승인자) + `DEPLOY_SSH_KEY`, SSH 키 2벌, AWS CLI, [`ops/lightsail-create.sh`](../ops/lightsail-create.sh)·[`ops/server-bootstrap.sh`](../ops/server-bootstrap.sh)(검사 통과). 밤 서버 `mathdesk-bam` 생성(콘솔)·초기화·환경 변수 등록 완료(2026-11-10). 첫 기동 대기: Cloudflare 터널 토큰, 원장 계정 아이디, 알리고 서버 IP 등록
 - 상위: 없음
 - 목표: 클라이언트 2명(밤·핑수) 각자의 AWS 계정에 서버를 열고 운영을 시작한다(클라이언트당 1회 반복).
 - 관련 요구사항과 설계: [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)(기준선 `v23`), [AC-48](./requirements.md#인수-조건), [TASK-43](#task-43-claude-실호출-검증)(Claude 실호출 — 운영에서 함께 검증)
