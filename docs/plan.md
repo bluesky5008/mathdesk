@@ -1629,7 +1629,7 @@ flowchart TD
 
 ### TASK-59: 운영 이관 실행과 검증
 
-- 상태: in-progress (2026-11-10 착수, 밤 먼저) — 밤 운영 서버 가동(2026-11-11, 태그 `2026.11.11`): 기동·백업·복원 리허설·`deploy.yml` 환경 승인 배포 통과. 남은 것: 문자 실발송(외부 검수 대기), 원장 계정 확정·인계, 핑수 서버. 준비물: [`ops/lightsail-create.sh`](../ops/lightsail-create.sh)·[`ops/server-bootstrap.sh`](../ops/server-bootstrap.sh)(검사 통과). 클라이언트별 상태와 다음 할 일은 비공개 운영 기록([ADR-016](./work/20260922-mathdesk-baseline/ADR-016-운영-기록-분리.md))
+- 상태: in-progress (2026-11-10 착수, 밤 먼저) — 밤 운영 서버 가동(2026-11-11, 태그 `2026.11.11`): 기동·백업·복원 리허설·`deploy.yml` 환경 승인 배포 통과, 문자 실발송 1건 수신 확인(2026-11-11, AC-48 ⑦). 남은 것: 원장 계정 확정·인계, 핑수 서버. 준비물: [`ops/lightsail-create.sh`](../ops/lightsail-create.sh)·[`ops/server-bootstrap.sh`](../ops/server-bootstrap.sh)(검사 통과). 클라이언트별 상태와 다음 할 일은 비공개 운영 기록([ADR-016](./work/20260922-mathdesk-baseline/ADR-016-운영-기록-분리.md))
 - 상위: 없음
 - 목표: 클라이언트 2명(밤·핑수) 각자의 AWS 계정에 서버를 열고 운영을 시작한다(클라이언트당 1회 반복).
 - 관련 요구사항과 설계: [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)(기준선 `v23`), [AC-48](./requirements.md#인수-조건), [TASK-43](#task-43-claude-실호출-검증)(Claude 실호출 — 운영에서 함께 검증)
