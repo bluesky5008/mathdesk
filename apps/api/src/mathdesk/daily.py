@@ -1,3 +1,4 @@
+import json
 import os
 import re
 from datetime import UTC, date, datetime
@@ -6,7 +7,7 @@ from typing import Annotated
 from fastapi import Query
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +18,7 @@ from .models import (
     ClassSession,
     ClassSessionProgress,
     Enrollment,
+    IntegrationSetting,
     Klass,
     Student,
     StudentDailyRecord,
@@ -27,12 +29,73 @@ from .scope import CurrentScope, Scope
 Db = Annotated[AsyncSession, Depends(get_session)]
 
 router = APIRouter(prefix="/api/daily", tags=["daily"])
+settings_router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 ATTENDING = ("present", "late", "early_leave")
 STATUS_PATTERN = "^(%s)$" % "|".join(ATTENDANCE_STATUS)
 # 재검사 대상 판정 기준 등급(FR-12). 이 등급 이하면 다음 수업에서 재검사 대상이다.
 RECHECK_THRESHOLD_GRADE = os.environ.get("MATHDESK_RECHECK_THRESHOLD_GRADE", "B")
 GRADE_PATTERN = "^(%s)$" % "|".join(re.escape(grade) for grade in HOMEWORK_GRADE)
+
+
+# ── 학원별 일일 기록 항목(FR-50, DES-27, DCR-028) ────────────────────
+
+FIELDS_KEY = "daily.fields"
+EXTRA_LIMIT = 5
+EXTRA_VALUE_MAX = 100
+
+
+class ExtraField(BaseModel):
+    id: str
+    label: str
+
+
+class DailyFields(BaseModel):
+    """어느 화면이든 이 값 하나로 재검사 표시 여부와 추가 항목을 정한다. 설정이 없으면 현행 화면."""
+
+    recheck: bool = True
+    extra: list[ExtraField] = Field(default_factory=list)
+
+
+class ExtraFieldIn(BaseModel):
+    id: str | None = None
+    label: str = Field(max_length=20)
+
+    @field_validator("label")
+    @classmethod
+    def label_is_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("항목 이름을 입력하세요.")
+        return value.strip()
+
+
+class DailyFieldsIn(BaseModel):
+    recheck: bool = True
+    extra: list[ExtraFieldIn] = Field(default_factory=list, max_length=EXTRA_LIMIT)
+
+    @model_validator(mode="after")
+    def labels_are_unique(self) -> "DailyFieldsIn":
+        labels = [item.label for item in self.extra]
+        if len(set(labels)) != len(labels):
+            raise ValueError("항목 이름이 겹칩니다.")
+        return self
+
+
+async def load_daily_fields(session: AsyncSession, campus_id: int) -> DailyFields:
+    row = await session.get(IntegrationSetting, (campus_id, FIELDS_KEY))
+    return DailyFields.model_validate_json(row.value_encrypted) if row else DailyFields()
+
+
+def visible_extra(fields: DailyFields, stored: dict[str, str] | None) -> dict[str, str]:
+    """설정에 남아 있는 항목의 값만. 삭제된 항목의 값은 DB에 남지만 보이지 않는다."""
+    stored = stored or {}
+    return {item.id: stored[item.id] for item in fields.extra if stored.get(item.id)}
+
+
+def labelled_extra(fields: DailyFields, stored: dict[str, str] | None) -> list[tuple[str, str]]:
+    """(항목 이름, 값) — 값이 있는 것만 설정 순서로. 문자·포털이 쓴다."""
+    values = visible_extra(fields, stored)
+    return [(item.label, values[item.id]) for item in fields.extra if item.id in values]
 
 
 class ProgressItem(BaseModel):
@@ -67,11 +130,18 @@ class RecordIn(BaseModel):
     test_score_num: Decimal | None = None
     test_score_text: str | None = None
     comment: str | None = Field(default=None, max_length=500)
+    # 학원별 추가 항목 {항목 id: 값}. 보낸 항목만 바꾸고 빈 값은 지운다(FR-50)
+    extra: dict[str, Annotated[str, Field(max_length=EXTRA_VALUE_MAX)]] | None = None
 
     @field_validator("comment")
     @classmethod
     def blank_comment_is_none(cls, value: str | None) -> str | None:
         return (value or "").strip() or None
+
+    @field_validator("extra")
+    @classmethod
+    def trim_extra(cls, value: dict[str, str] | None) -> dict[str, str] | None:
+        return None if value is None else {key: text.strip() for key, text in value.items()}
 
 
 class RecordsIn(BaseModel):
@@ -112,6 +182,7 @@ class RecordOut(BaseModel):
     test_score_num: Decimal | None
     test_score_text: str | None
     comment: str | None
+    extra: dict[str, str] = Field(default_factory=dict)
 
 
 class SummaryOut(BaseModel):
@@ -125,6 +196,7 @@ class DailyOut(BaseModel):
     session: SessionOut
     records: list[RecordOut]
     summary: SummaryOut
+    fields: DailyFields = Field(default_factory=DailyFields)
 
 
 class CalendarOut(BaseModel):
@@ -141,12 +213,14 @@ class HistoryRow(BaseModel):
     test_score_num: Decimal | None
     class_average: float | None
     comment: str | None
+    extra: dict[str, str] = Field(default_factory=dict)
 
 
 class HistoryOut(BaseModel):
     student: dict[str, str | int]
     klass: dict[str, str | int]
     rows: list[HistoryRow]
+    fields: DailyFields = Field(default_factory=DailyFields)
 
 
 def _forbidden() -> HTTPException:
@@ -262,6 +336,7 @@ async def _build_response(
     previous = await _previous_grades(
         session, klass.id, row.session_date, [student.id for student in students]
     )
+    fields = await load_daily_fields(session, klass.campus_id)
 
     records = []
     for student in students:
@@ -283,11 +358,13 @@ async def _build_response(
                 test_score_num=record.test_score_num if record else None,
                 test_score_text=record.test_score_text if record else None,
                 comment=record.comment if record else None,
+                extra=visible_extra(fields, record.extra if record else None),
             )
         )
 
     scores = [record.test_score_num for record in records if record.test_score_num is not None]
     return DailyOut(
+        fields=fields,
         session=SessionOut(
             id=row.id,
             class_id=row.class_id,
@@ -395,11 +472,15 @@ async def save_records(
     enrolled = {
         student.id for student in await _enrolled_students(session, row.class_id, row.session_date)
     }
+    known = {item.id for item in (await load_daily_fields(session, scope.campus_id)).extra}
 
     for item in payload.records:
         if item.student_id not in enrolled:
             raise _forbidden()
         fields = item.model_dump(exclude_unset=True, exclude={"student_id"})
+        extra = fields.pop("extra", None) or {}
+        if extra.keys() - known:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "없는 항목입니다.")
         if row.attendance_confirmed_at is not None and (
             {"attendance_status", "attendance_reason"} & fields.keys()
         ):
@@ -410,6 +491,9 @@ async def save_records(
         record = await _record_for(session, row.id, item.student_id)
         for field, value in fields.items():
             setattr(record, field, value)
+        if extra:
+            merged = {**(record.extra or {}), **extra}
+            record.extra = {key: value for key, value in merged.items() if value}
 
     await session.commit()
     klass = await session.get(Klass, row.class_id)
@@ -542,6 +626,7 @@ async def _history(
         )
     )
 
+    fields = await load_daily_fields(session, scope.campus_id)
     rows = []
     for row in sessions:
         record = mine.get(row.id)
@@ -565,9 +650,11 @@ async def _history(
                 test_score_num=record.test_score_num if record else None,
                 class_average=round(sum(averages) / len(averages), 1) if averages else None,
                 comment=record.comment if record else None,
+                extra=visible_extra(fields, record.extra if record else None),
             )
         )
     return HistoryOut(
+        fields=fields,
         student={"id": student.id, "name": student.name},
         klass={"id": klass.id, "name": klass.name},
         rows=rows,
@@ -611,3 +698,38 @@ async def read_history_image(
     html = render_history_html(history, anchor, campus.name, brand_colour=colour, logo_data_url=logo)
     png = await request.app.state.report_renderer.render_html(html, width=HISTORY_WIDTH)
     return Response(png, media_type="image/png")
+
+
+# ── 일일 기록 항목 설정(FR-50) ───────────────────────────────────────
+
+
+@settings_router.get("/daily-fields")
+async def read_daily_fields(scope: CurrentScope, session: Db) -> DailyFields:
+    return await load_daily_fields(session, scope.campus_id)
+
+
+@settings_router.put("/daily-fields")
+async def write_daily_fields(payload: DailyFieldsIn, scope: CurrentScope, session: Db) -> DailyFields:
+    scope.require_director()
+    row = await session.get(IntegrationSetting, (scope.campus_id, FIELDS_KEY))
+    stored = json.loads(row.value_encrypted) if row else {}
+    known = {item["id"] for item in stored.get("extra", [])}
+    # 삭제한 항목의 id를 다시 쓰면 옛 값이 새 항목 아래에 나타난다. 일련번호는 줄이지 않는다
+    next_id = stored.get("next_id", 1)
+    extra = []
+    for item in payload.extra:
+        if item.id is None:
+            item_id, next_id = f"x{next_id}", next_id + 1
+        elif item.id in known:
+            item_id = item.id
+        else:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "없는 항목입니다.")
+        extra.append(ExtraField(id=item_id, label=item.label))
+    fields = DailyFields(recheck=payload.recheck, extra=extra)
+    value = json.dumps({**fields.model_dump(), "next_id": next_id}, ensure_ascii=False)
+    if row is None:
+        session.add(IntegrationSetting(campus_id=scope.campus_id, key=FIELDS_KEY, value_encrypted=value))
+    else:
+        row.value_encrypted = value
+    await session.commit()
+    return fields

@@ -174,3 +174,15 @@ it('disables the image buttons when nobody is enrolled', async () => {
   expect(screen.getByRole('button', { name: '이미지 저장' })).toBeDisabled()
   expect(screen.getByRole('button', { name: '이미지 복사' })).toBeDisabled()
 })
+
+// DCR-028 / AC-54 ②③: 학생별 정보도 같은 항목 구성을 따른다
+it('shows the campus extra field instead of the recheck column', async () => {
+  history.fields = { recheck: false, extra: [{ id: 'x1', label: '수업태도' }] }
+  history.rows[0].extra = { x1: '집중 좋음' }
+  renderPage()
+
+  expect(await screen.findByText('집중 좋음')).toBeInTheDocument()
+  expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
+    '날짜', '출결', '수업태도', '과제피드백', '테스트', '코멘트',
+  ])
+})

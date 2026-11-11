@@ -22,7 +22,7 @@ from playwright.async_api import Browser, async_playwright
 from .messaging import ATTENDANCE_LABEL, MessageContext, WEEKDAYS
 
 if TYPE_CHECKING:  # daily → messaging → report 순환을 피한다
-    from .daily import HistoryOut, HistoryRow
+    from .daily import DailyFields, HistoryOut, HistoryRow
 
 # 레이아웃은 CSS 픽셀 760에 맞추고 2배로 촬영한다. 카톡으로 받은 카드를 폰에서
 # 확대해 보는 일이 흔해 1배는 흐리다.
@@ -238,7 +238,8 @@ def render_report_html(
     rows = "".join(
         f'<div class="row"><h2>{escape(head)}</h2><p>{escape(text)}</p></div>'
         # 개별 코멘트는 요약 바로 아래, 반 공통 상세 앞에 둔다(DCR-017)
-        for head, text in ([("개별 코멘트", context.student_comment)] if context.student_comment else [])
+        for head, text in context.extra
+        + ([("개별 코멘트", context.student_comment)] if context.student_comment else [])
         + _details(context)
     )
 
@@ -403,7 +404,7 @@ def _short(day: date) -> str:
     return f"{day.month:02d}/{day.day:02d}"
 
 
-def _history_row(row: HistoryRow) -> str:
+def _history_row(row: HistoryRow, fields: DailyFields) -> str:
     attendance = ATTENDANCE_LABEL.get(row.attendance_status)
     if attendance:
         status = f'<span class="badge {escape(row.attendance_status)}">{escape(attendance)}</span>'
@@ -412,8 +413,12 @@ def _history_row(row: HistoryRow) -> str:
     else:
         status = '<span class="muted">미확인</span>'
 
+    # 재검사 자리에 학원이 정한 항목이 온다(FR-50): 재검사(켬일 때) 다음에 추가 항목
+    extra_cells = "".join(f"<td>{escape(row.extra.get(item.id, ''))}</td>" for item in fields.extra)
     recheck = row.recheck
-    if recheck.target and recheck.prev_grade and recheck.prev_date:
+    if not fields.recheck:
+        recheck_cell = None
+    elif recheck.target and recheck.prev_grade and recheck.prev_date:
         result = RECHECK_RESULT.get(recheck.result or "")
         recheck_cell = (
             f'<span class="sub">직전 {escape(recheck.prev_grade)} · {_short(recheck.prev_date)}</span>'
@@ -432,7 +437,7 @@ def _history_row(row: HistoryRow) -> str:
 
     return (
         f'<tr><td class="date">{_short(row.date)}({WEEKDAYS[row.date.weekday()]})</td>'
-        f"<td>{status}</td><td>{recheck_cell}</td>"
+        f"<td>{status}</td>" + (f"<td>{recheck_cell}</td>" if recheck_cell is not None else "") + extra_cells +
         f"<td>{escape(row.homework_grade or '')}</td><td>{test}</td>"
         f"<td>{escape(row.comment or '')}</td></tr>"
     )
@@ -469,8 +474,13 @@ def render_history_html(
     if rows:
         table = (
             '<div class="table"><table><thead><tr>'
-            "<th>날짜</th><th>출결</th><th>이전 과제 재검사</th><th>과제피드백</th><th>테스트</th><th>코멘트</th>"
-            "</tr></thead><tbody>" + "".join(_history_row(row) for row in rows) + "</tbody></table></div>"
+            "<th>날짜</th><th>출결</th>"
+            + ("<th>이전 과제 재검사</th>" if history.fields.recheck else "")
+            + "".join(f"<th>{escape(item.label)}</th>" for item in history.fields.extra)
+            + "<th>과제피드백</th><th>테스트</th><th>코멘트</th>"
+            "</tr></thead><tbody>"
+            + "".join(_history_row(row, history.fields) for row in rows)
+            + "</tbody></table></div>"
         )
     else:
         table = '<div class="empty">선택한 날짜까지 기록이 있는 수업이 없습니다</div>'

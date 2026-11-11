@@ -119,6 +119,16 @@ describe('PortalApp', () => {
     expect(card.queryByText('테스트 점수')).not.toBeInTheDocument()
   })
 
+  // DCR-028 / AC-54 ③: 학원이 정한 추가 항목은 값이 있을 때 개별 코멘트 앞에 보인다
+  it('shows campus extra fields that have a value', async () => {
+    const extra = { ...SESSION, extra: [{ label: '수업태도', value: '집중 좋음' }] }
+    mount((url) => (url.includes('/sessions') ? Response.json([extra]) : routes(url)), '/portal/records')
+
+    const card = within(await screen.findByRole('article', { name: '9/18(금) 고2 윤B' }))
+    expect(card.getByText('수업태도')).toBeInTheDocument()
+    expect(card.getByText('집중 좋음')).toBeInTheDocument()
+  })
+
   // DCR-025: 달력 → 선택한 날의 기록 → 전체 기록 한 줄 표
   it('opens the calendar on the latest recorded day and switches days', async () => {
     mount(routes, '/portal/records')

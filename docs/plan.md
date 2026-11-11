@@ -3,9 +3,9 @@
 > 문서 유형: `plan`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `in-progress`
-> 기준선: `v28`
+> 기준선: `v29`
 > 작성일: `2026-09-22`
-> 최종 갱신: `2026-10-17`
+> 최종 갱신: `2026-11-12`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [DESIGN-mathdesk: 설계](./design.md), [결정 등록부](./decisions.md), [WORK-20260922-mathdesk-baseline: 작업 기록](./work/20260922-mathdesk-baseline/work-log.md)
 
 ## 요약
@@ -120,7 +120,8 @@ mathdesk 구현 (기준선 v6, 작업 20260922-mathdesk-baseline)     completed 
 │  ├─ [⏸] TASK-43 Claude 실호출 검증 ................. blocked: 사용자 보류(2026-09-24)
 │  └─ [✓] TASK-39 ★ 최종 사이클 완료 승인 ............ 2026-09-24 13:46
 │
-└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (38/44)
+└─ [ ] 사이클 3 — 운영 이관 (계획 2026-09-24) ......... in-progress (39/45)
+   ├─ [✓] TASK-98 일일 기록 항목 학원별 구성 (DCR-028) . 2026-11-12 01:19
    ├─ [✓] TASK-57 운영 구성 준비 (ADR-015·DCR-027) ..... 2026-10-17 17:18
    ├─ [✓] TASK-97 배포 파이프라인 설계 (ADR-015) ....... 2026-10-17 16:45
    ├─ [▶] TASK-96 문자 발송 연결 테스트 (TASK-55) ...... in-progress
@@ -314,6 +315,7 @@ flowchart TD
     C3 --> T96["TASK-96 문자 발송 연결 테스트"]:::active
     T55 -. depends .-> T96
     C3 --> T97["TASK-97 배포 파이프라인 설계 (ADR-015)"]:::done
+    C3 --> T98["TASK-98 일일 기록 항목의 학원별 구성 (DCR-028)"]:::done
     T97 -. depends .-> T57
     T93 -. depends .-> T95
     T93 -. depends .-> T94
@@ -1116,6 +1118,18 @@ flowchart TD
 ### 사이클 3 — 운영 이관 (2026-09-24 계획)
 
 사용자가 정한 순서: ① 클라이언트 추가 요구의 수정·테스트는 **현재 환경(맥미니 테스트 운영)** 유지 → ② 클라이언트 승인 뒤 **AWS 배포** → ③ 배포 때 **신규 도메인·문자 계정·(가능하면) 카카오 계정** 설정. 비용·방식 비교는 2026-09-24 조사(작업 기록)를 따르며, 권장안은 Lightsail 2GB 단일 서버 + 현행 compose + Cloudflare 터널이다. 이 결정은 TASK-56(DCR)에서 확정한다.
+
+### TASK-98: 일일 기록 항목의 학원별 구성
+
+- 상태: completed (2026-11-12 01:19)
+- 상위: 없음
+- 목표: 원장이 학원 설정에서 "이전 과제 재검사" 표시 여부와 학생별 한 줄 추가 항목(예: 수업태도)을 정하고, 그 구성이 일일 입력·학생별 정보·이미지·포털·문자·대시보드에 반영되게 한다. 설정이 없는 학원은 변경 전과 같다.
+- 관련 요구사항과 설계: [FR-50](./requirements.md#기능-요구사항), [AC-54](./requirements.md#인수-조건), [DES-27](./design.md#컴포넌트와-책임), [DCR-028](./work/20260922-mathdesk-baseline/DCR-028-일일-기록-항목의-학원별-구성.md), [ADR-017](./work/20260922-mathdesk-baseline/ADR-017-학원별-화면-차이는-학원-설정으로.md)(기준선 `v29`)
+- 변경 대상: API `models/daily.py`(`extra` JSONB)·마이그레이션 `a8e2b6d0f4c7`·`daily.py`(설정 조회·저장, 일일·이력 응답)·`report.py`(이력 이미지 열, 리포트 카드 구획)·`portal.py`·`messaging.py`·`stats.py`·`main.py`; 웹 `DailyFieldsSetting.tsx`(신규)·`SettingsPage`·`DailyPage`·`StudentDailyPage`·`DashboardPage`·`portal/pages.tsx`·`api.ts`
+- 의존성: 없음
+- 위험: 문자 본문이 길어져 SMS → LMS 전환이 늘 수 있다(값이 있을 때만 포함). 추가 항목 값은 학부모에게 보인다(설정 카드에 고지)
+- 검증 방법: 선행 테스트 `tests/test_daily_fields.py`(설정 기본값·저장·검증·id 재사용 금지, 일일 저장·이력, 이미지 열, 문자, 대시보드, 포털)·`test_migrations.py`, 웹 `DailyFieldsSetting.test.tsx`·`DailyPage`·`StudentDailyPage`·`DashboardPage`·`PortalApp` 테스트 추가 → API·웹 전체, 빌드, 테스트 운영 배포
+- 완료 조건: AC-54 ①~⑥이 자동 테스트로 확인되고 테스트 운영에 배포됨 — 충족. 사용자 화면 확인과 운영 서버 반영(릴리스 태그·배포 승인)은 후속
 
 ### TASK-97: 배포 파이프라인 설계 (ADR)
 

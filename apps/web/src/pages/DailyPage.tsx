@@ -19,6 +19,7 @@ import {
 } from '../components/ui/table'
 import { Toggle } from '../components/ui/toggle'
 import {
+  DEFAULT_DAILY_FIELDS,
   fetchDaily,
   saveDailyNotes,
   saveDailyRecords,
@@ -120,6 +121,7 @@ export function DailyPage() {
   }
 
   const locked = Boolean(session?.attendance_confirmed_at)
+  const fields = daily.data?.fields ?? DEFAULT_DAILY_FIELDS
   const [nudge, setNudge] = useState(0)
 
   return (
@@ -155,7 +157,10 @@ export function DailyPage() {
                 <TableRow>
                   <TableHeaderCell className="w-28">학생</TableHeaderCell>
                   <TableHeaderCell>{locked ? '출결 상태 🔒' : '출결 상태'}</TableHeaderCell>
-                  <TableHeaderCell>이전 과제 재검사</TableHeaderCell>
+                  {fields.recheck && <TableHeaderCell>이전 과제 재검사</TableHeaderCell>}
+                  {fields.extra.map((item) => (
+                    <TableHeaderCell key={item.id}>{item.label}</TableHeaderCell>
+                  ))}
                   <TableHeaderCell>과제피드백</TableHeaderCell>
                   <TableHeaderCell className="w-24">테스트</TableHeaderCell>
                   <TableHeaderCell>코멘트</TableHeaderCell>
@@ -180,6 +185,7 @@ export function DailyPage() {
                         }
                       />
                     </TableCell>
+                    {fields.recheck && (
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span className="text-xs whitespace-nowrap text-muted-fg">
@@ -208,6 +214,23 @@ export function DailyPage() {
                           ))}
                       </div>
                     </TableCell>
+                    )}
+                    {/* 학원이 정한 추가 항목 — 코멘트처럼 [표 저장]으로 저장한다(FR-50) */}
+                    {fields.extra.map((item) => (
+                      <TableCell key={item.id}>
+                        <Input
+                          aria-label={`${record.name} ${item.label}`}
+                          maxLength={100}
+                          className="h-7 min-w-40"
+                          value={drafts[record.student_id]?.extra?.[item.id] ?? record.extra?.[item.id] ?? ''}
+                          onChange={(event) =>
+                            patch(record.student_id, {
+                              extra: { ...drafts[record.student_id]?.extra, [item.id]: event.target.value },
+                            })
+                          }
+                        />
+                      </TableCell>
+                    ))}
                     <TableCell>
                       <div className="flex gap-1">
                         {GRADES.map((grade) => (

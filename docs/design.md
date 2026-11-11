@@ -3,9 +3,9 @@
 > 문서 유형: `design`
 > 작업 ID: `20260922-mathdesk-baseline`
 > 상태: `approved`
-> 기준선: `v28`
+> 기준선: `v29`
 > 작성일: `2026-09-22`
-> 최종 갱신: `2026-10-17`
+> 최종 갱신: `2026-11-12`
 > 관련 문서: [REQ-mathdesk: 요구사항](./requirements.md), [결정 등록부](./decisions.md), [SPEC-mathdesk-outline: 구현 아웃라인](./SPEC-mathdesk-outline.md)
 
 ## 요약
@@ -125,6 +125,7 @@
 | DES-25 | 운영 서빙(클라이언트별 서버) | 클라이언트 명의 AWS 계정의 Lightsail 단일 서버에 `compose.prod.yaml`(postgres·app·cloudflared 토큰 터널)로 기동. 호스트 포트 없음, 방화벽 SSH만, 이미지는 GitHub Actions가 게시한 GHCR 이미지를 pull(서버 빌드 없음), 운영 반영은 Actions `workflow_dispatch`로 사용자 명령일 때만([ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md), [DCR-027](./work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md)), `.env` 한 벌, 자동 일일 백업(14일)+스냅샷(7개), 테스트 운영은 스테이징(로컬 빌드). 상세는 [DES-25 상세](#des-25-상세)([ADR-013](./work/20260922-mathdesk-baseline/ADR-013-운영-배포처-클라이언트별-Lightsail-단일-서버.md), [DCR-022](./work/20260922-mathdesk-baseline/DCR-022-운영-배포처-클라이언트별-Lightsail.md)) |
 | DES-23 | 테스트 운영 서빙 | 웹 정적 빌드를 API가 SPA fallback으로 서빙하고, `Secure` 쿠키와 노출 표면 축소를 설정으로 제어한다. 외부 경로는 cloudflared 터널 하나다 |
 | DES-26 | 포털 조회 서비스 | 학생·학부모 포털 전용 REST(`/api/portal/*`). 기존 이력·통계·메시지 렌더의 내부 함수를 재사용하되 응답 모델을 포털 전용으로 좁혀 다른 학생·연락처 정보를 담지 않는다. 상세는 [DES-26 상세](#des-26-상세) ([DCR-024](./work/20260922-mathdesk-baseline/DCR-024-학생-학부모-포털.md)) |
+| DES-27 | 일일 기록 항목 구성 | 학원별 설정 `integration_setting["daily.fields"]` = `{recheck, extra: [{id, label}], next_id}`(없으면 재검사 켬·추가 항목 없음). 항목 id는 서버가 `x<일련번호>`로 발급하고 재사용하지 않는다. 값은 `student_daily_record.extra`(JSONB `{id: 값}`, 빈 값은 키 삭제). `GET/PUT /api/settings/daily-fields`(읽기 직원 전원, 쓰기 원장). 표시 규칙은 `daily.load_daily_fields` 한 곳에서 읽어 일일 응답(`fields`, 행의 `extra`)·이력 이미지·포털(`recheck` null, `extra: [{label, value}]`)·문자 문맥(`extra`)·대시보드(`recheck_targets` null)에 적용한다. 재검사 저장 API는 숨김과 무관하게 동작한다([DCR-028](./work/20260922-mathdesk-baseline/DCR-028-일일-기록-항목의-학원별-구성.md), [ADR-017](./work/20260922-mathdesk-baseline/ADR-017-학원별-화면-차이는-학원-설정으로.md)) | FR-50, FR-12, FR-18, FR-45, FR-49 |
 
 #### DES-03 상세
 
@@ -568,6 +569,8 @@ ADR로 분리하지 않은 설계 판단
 
 기준선 `v28` (2026-10-17): [DCR-027](./work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md) 재승인으로 DES-25의 빌드 위치가 서버 빌드에서 GitHub Actions 게시 이미지(GHCR, amd64, 스모크 통과 태그) pull로 바뀌고, 운영 반영이 Actions `workflow_dispatch`(환경 승인, 명령 제한 SSH 키)로 정해졌으며, 롤백이 이전 태그 재배포로 바뀌었다. [ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md)가 ADR-013 결정 3을 대체한다. 스테이징(DES-23)은 변경 없다.
 
+기준선 `v29` (2026-11-12): [DCR-028](./work/20260922-mathdesk-baseline/DCR-028-일일-기록-항목의-학원별-구성.md)·[ADR-017](./work/20260922-mathdesk-baseline/ADR-017-학원별-화면-차이는-학원-설정으로.md) 승인으로 DES-27(일일 기록 항목 구성)이 신설되었다. `student_daily_record.extra` 열과 `integration_setting`의 `daily.fields` 키, `GET/PUT /settings/daily-fields`가 추가되고 일일·이력·포털·대시보드 응답에 필드가 늘었다. 학원별 화면 차이는 같은 이미지의 학원 설정으로 흡수한다(ADR-017).
+
 기준선 `v27` (2026-10-11): [DCR-026](./work/20260922-mathdesk-baseline/DCR-026-형제-연결-확인과-같은-학부모-번호-안내.md) 승인으로 DES-26 상세 발급 계약에 `confirm_link`·`existing`이, 학생 응답에 `guardian_phone_shared_with`가 더해졌다.
 
 기준선 `v18` (2026-10-11): [DCR-017](./work/20260922-mathdesk-baseline/DCR-017-학생별-코멘트와-문자-공통-개별-구조.md) 재승인으로 `student_daily_record.comment`가 추가되고(마이그레이션 1건) 일일 기록 입출력에 `comment`가 더해졌으며(하위 호환), 메시지 렌더러가 공통 → 개별 순서로 바뀌고 강사 첨언·학생 코멘트가 본문·리포트 카드·알림톡 변수(`teacher_note`·`student_comment`)에 들어갔다. 리포트 카드의 요약 우선 레이아웃(ADR-011)은 그대로다.
@@ -620,6 +623,7 @@ ADR로 분리하지 않은 설계 판단
 | 2026-10-11 | DES-26 포털 달력 REST·`sessions?on=`, 기록·추이 탭 구성, `TrendChart` 공유 | [DCR-025](./work/20260922-mathdesk-baseline/DCR-025-포털-기록-달력과-추이-그래프.md) | approved 유지, 기준선 v25 → v26 | Claude / 사용자 |
 | 2026-10-11 | 발급 REST `confirm_link`·`existing`, `StudentOut.guardian_phone_shared_with` | [DCR-026](./work/20260922-mathdesk-baseline/DCR-026-형제-연결-확인과-같은-학부모-번호-안내.md) | approved 유지, 기준선 v26 → v27 | Claude / 사용자 |
 | 2026-10-17 | DES-25 빌드·배포·롤백·접근 개정(CI 이미지 pull, Actions 승격, `deploy` 계정), CI·GitHub 환경 요소 추가, 전환 절차 문구 | [DCR-027](./work/20260922-mathdesk-baseline/DCR-027-배포-파이프라인-CI-이미지와-Actions-승격.md), [ADR-015](./work/20260922-mathdesk-baseline/ADR-015-배포-파이프라인.md) | approved 유지, 기준선 v27 → v28 | Claude / 사용자 |
+| 2026-11-12 | DES-27 일일 기록 항목 구성 신설 — `student_daily_record.extra`, `daily.fields` 설정, 설정 REST, 응답 필드 | [DCR-028](./work/20260922-mathdesk-baseline/DCR-028-일일-기록-항목의-학원별-구성.md), [ADR-017](./work/20260922-mathdesk-baseline/ADR-017-학원별-화면-차이는-학원-설정으로.md) | v28 → v29 | Claude / 사용자 |
 | 2026-09-24 | `class_minutes` 기본값 120 → 240 | [DCR-010](./work/20260922-mathdesk-baseline/DCR-010-수업-길이-4시간.md) | approved 유지, 기준선 v10 → v11 | Claude / 사용자 |
 | 2026-09-24 | 비밀번호 변경·재설정 REST 2개, `app_user.must_change_password`, 변경 강제 규칙 | [DCR-009](./work/20260922-mathdesk-baseline/DCR-009-비밀번호-변경과-재설정.md) | approved 유지, 기준선 v9 → v10 | Claude / 사용자 |
 | 2026-09-24 | 주간 시간표 REST 2개와 수업 길이 설정 키 신설 | [DCR-008](./work/20260922-mathdesk-baseline/DCR-008-주간-시간표.md) | approved 유지, 기준선 v8 → v9 | Claude / 사용자 |

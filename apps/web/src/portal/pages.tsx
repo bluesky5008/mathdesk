@@ -117,6 +117,11 @@ export function SessionCard({ row }: { row: PortalSession }) {
               {row.class_average !== null && <div className="text-muted-fg">반평균 {row.class_average}점</div>}
             </Section>
           )}
+          {row.extra?.map((item) => (
+            <Section key={item.label} title={item.label}>
+              {item.value}
+            </Section>
+          ))}
           {row.comment && <Section title="개별 코멘트">{row.comment}</Section>}
         </article>
       </CardContent>

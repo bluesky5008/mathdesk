@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .daily import _is_recheck_target, has_records
+from .daily import _is_recheck_target, has_records, labelled_extra, load_daily_fields
 from .db import get_session
 from .messaging import _format_score
 from .models import (
@@ -71,6 +71,11 @@ class Recheck(BaseModel):
     result: str | None
 
 
+class Extra(BaseModel):
+    label: str
+    value: str
+
+
 class SessionRow(BaseModel):
     """문자 본문(FR-18 상세)과 같은 구획 구성 — 반 공통 다음에 본인 개별."""
 
@@ -89,6 +94,7 @@ class SessionRow(BaseModel):
     test_score: str | None
     class_average: float | None
     comment: str | None
+    extra: list[Extra]  # 학원별 추가 항목 중 값이 있는 것(FR-50)
 
 
 class AttendanceCount(BaseModel):
@@ -255,13 +261,14 @@ async def _session_rows(
         )
     ).all()
 
+    fields = await load_daily_fields(session, scope.campus_id)
     out = []
     for row, klass in rows:
         record = mine.get(row.id)
         prev = next(((g, on) for cid, on, g in graded if cid == row.class_id and on < row.session_date), None)
         recheck = (
             Recheck(prev_grade=prev[0], prev_date=prev[1], result=record.recheck_result if record else None)
-            if prev and _is_recheck_target(prev[0])
+            if fields.recheck and prev and _is_recheck_target(prev[0])
             else None
         )
         averages = scores.get(row.id)
@@ -281,6 +288,10 @@ async def _session_rows(
             test_score=_format_score(record.test_score_num, record.test_score_text) if record else None,
             class_average=round(sum(averages) / len(averages), 1) if averages else None,
             comment=record.comment if record else None,
+            extra=[
+                Extra(label=label, value=value)
+                for label, value in labelled_extra(fields, record.extra if record else None)
+            ],
         ))
     return out
 

@@ -13,6 +13,7 @@ from .consult import router as consult_router
 from .deletion import router as deletion_router
 from .branding import router as branding_router
 from .daily import router as daily_router
+from .daily import settings_router as daily_settings_router
 from .db import create_engine
 from .exams import router as exams_router
 from .files import router as files_router
@@ -90,6 +91,7 @@ def create_app(web_dist: Path | str | None = None) -> FastAPI:
     app.include_router(portal_accounts_router)
     app.include_router(portal_router)
     app.include_router(daily_router)
+    app.include_router(daily_settings_router)
     app.include_router(stats_router)
     app.include_router(messaging_router)
     app.include_router(files_router)

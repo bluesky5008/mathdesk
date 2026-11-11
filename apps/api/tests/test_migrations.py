@@ -71,6 +71,15 @@ def test_daily_record_has_a_comment_column(empty_database, column_names, alembic
     assert "comment" not in column_names("student_daily_record")
 
 
+def test_daily_record_has_an_extra_column(empty_database, column_names, alembic):
+    """DCR-028 — 학원별 추가 항목 값. 다운그레이드하면 열이 사라진다."""
+    alembic(empty_database, "upgrade", "head")
+    assert "extra" in column_names("student_daily_record")
+
+    alembic(empty_database, "downgrade", "a1c3e5f7b9d2")  # extra 리비전 바로 앞
+    assert "extra" not in column_names("student_daily_record")
+
+
 def test_message_log_has_a_session_column(empty_database, column_names, alembic):
     """DCR-023 — 일괄 발송의 중복 판정·재개에 쓰는 message_log.session_id."""
     alembic(empty_database, "upgrade", "head")

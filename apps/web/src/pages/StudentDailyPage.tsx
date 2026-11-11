@@ -17,7 +17,13 @@ import {
   TableRow,
 } from '../components/ui/table'
 import { TONE } from '../components/ui/toggle'
-import { dailyHistoryImageUrl, fetchDaily, fetchDailyHistory, type DailyHistoryRow } from '../api'
+import {
+  DEFAULT_DAILY_FIELDS,
+  dailyHistoryImageUrl,
+  fetchDaily,
+  fetchDailyHistory,
+  type DailyHistoryRow,
+} from '../api'
 import { copyImage, downloadImage } from '../clipboard'
 import { EmptyRosterNotice, useDailySelection } from './DailyLayout'
 
@@ -75,6 +81,7 @@ export function StudentDailyPage() {
     enabled: classId !== null && activeStudentId !== null,
   })
   const rows = history.data?.rows ?? []
+  const fields = history.data?.fields ?? DEFAULT_DAILY_FIELDS
   const attending = rows.filter((row) => ATTENDING.includes(row.attendance_status)).length
   const scores = rows.map((row) => row.test_score_num).filter((score) => score != null).map(Number)
   const average = scores.length ? Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10 : null
@@ -129,7 +136,10 @@ export function StudentDailyPage() {
                   <TableRow>
                     <TableHeaderCell className="w-28">날짜</TableHeaderCell>
                     <TableHeaderCell>출결</TableHeaderCell>
-                    <TableHeaderCell>이전 과제 재검사</TableHeaderCell>
+                    {fields.recheck && <TableHeaderCell>이전 과제 재검사</TableHeaderCell>}
+                    {fields.extra.map((item) => (
+                      <TableHeaderCell key={item.id}>{item.label}</TableHeaderCell>
+                    ))}
                     <TableHeaderCell className="w-24">과제피드백</TableHeaderCell>
                     <TableHeaderCell>테스트</TableHeaderCell>
                     <TableHeaderCell>코멘트</TableHeaderCell>
@@ -149,9 +159,16 @@ export function StudentDailyPage() {
                       <TableCell>
                         <AttendanceBadge row={row} />
                       </TableCell>
-                      <TableCell>
-                        <RecheckCell row={row} />
-                      </TableCell>
+                      {fields.recheck && (
+                        <TableCell>
+                          <RecheckCell row={row} />
+                        </TableCell>
+                      )}
+                      {fields.extra.map((item) => (
+                        <TableCell key={item.id} className="break-keep">
+                          {row.extra?.[item.id]}
+                        </TableCell>
+                      ))}
                       <TableCell className="tabular-nums">{row.homework_grade}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         {row.test_name && <div className="text-xs text-muted-fg">{row.test_name}</div>}

@@ -75,7 +75,7 @@ def test_session_rows_carry_the_same_values_as_the_message_and_nothing_about_oth
         "progress": [{"period": 1, "content": "미적분 1단원"}], "homework": "기출 풀어오기",
         "video_url": "https://example.com/v", "teacher_note": "다들 수고", "test_name": "9월 3주 테스트",
         "attendance": "late", "attendance_reason": "버스", "homework_grade": "A", "grade_comment": "아주 잘했어요",
-        "recheck": None, "test_score": "80", "class_average": 70.0, "comment": "집중력 좋음",
+        "recheck": None, "test_score": "80", "class_average": 70.0, "comment": "집중력 좋음", "extra": [],
     }
     assert "김정현" not in response.text and "60" not in response.text.replace("70.0", "")
 

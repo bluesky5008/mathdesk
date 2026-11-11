@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .daily import ProgressItem, _previous_grades, _visible_class, _is_recheck_target
+from .daily import ProgressItem, _previous_grades, _visible_class, _is_recheck_target, load_daily_fields
 from .db import get_session
 from .models import (
     ClassSession,
@@ -58,7 +58,7 @@ class HomeworkSummary(BaseModel):
     completion_rate: float | None
     delta_points: float | None
     missing: int
-    recheck_targets: int
+    recheck_targets: int | None  # 재검사를 끈 학원은 null(FR-50)
 
 
 class TestSummary(BaseModel):
@@ -224,7 +224,11 @@ async def dashboard(
                 else None
             ),
             missing=missing,
-            recheck_targets=len(recheck_targets),
+            recheck_targets=(
+                len(recheck_targets)
+                if (await load_daily_fields(session, scope.campus_id)).recheck
+                else None
+            ),
         ),
         test=TestSummary(
             average=round(sum(scores) / len(scores), 1) if scores else None,

@@ -10,6 +10,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, enum_column
@@ -65,3 +66,5 @@ class StudentDailyRecord(Base):
     test_score_text: Mapped[str | None] = mapped_column(String(200))
     # 학생별 코멘트. 문자 본문의 개별 구획 끝에 붙는다(FR-44, DCR-017)
     comment: Mapped[str | None] = mapped_column(Text)
+    # 학원별 추가 항목 값 {항목 id: 한 줄 텍스트}(FR-50, DCR-028)
+    extra: Mapped[dict[str, str]] = mapped_column(JSONB, default=dict, server_default="{}")

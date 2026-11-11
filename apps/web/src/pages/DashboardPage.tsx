@@ -157,7 +157,10 @@ export function DashboardPage() {
             {kpi.homework.delta_points !== null && (
               <span>{`전주 대비 ${signed(kpi.homework.delta_points)}%p`}</span>
             )}
-            <span>{`미제출 ${kpi.homework.missing}건 · 재검사 대상 ${kpi.homework.recheck_targets}명`}</span>
+            <span>
+              {`미제출 ${kpi.homework.missing}건`}
+              {kpi.homework.recheck_targets !== null && ` · 재검사 대상 ${kpi.homework.recheck_targets}명`}
+            </span>
           </Stat>
           <Stat
             to={weekLink}

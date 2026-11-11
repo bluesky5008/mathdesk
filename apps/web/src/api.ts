@@ -258,6 +258,19 @@ export type Recheck = {
   result: string | null
 }
 
+/** 학원이 정한 일일 기록 항목(FR-50). 응답에 없으면 현행 화면(재검사 표시, 추가 항목 없음) */
+export type DailyFields = { recheck: boolean; extra: { id: string; label: string }[] }
+export type DailyFieldsPayload = { recheck: boolean; extra: { id?: string; label: string }[] }
+export const DEFAULT_DAILY_FIELDS: DailyFields = { recheck: true, extra: [] }
+
+export function fetchDailyFields(): Promise<DailyFields> {
+  return request<DailyFields>('/settings/daily-fields')
+}
+
+export function saveDailyFields(payload: DailyFieldsPayload): Promise<DailyFields> {
+  return request<DailyFields>('/settings/daily-fields', { method: 'PUT', body: JSON.stringify(payload) })
+}
+
 export type DailyRecord = {
   student_id: number
   name: string
@@ -268,6 +281,7 @@ export type DailyRecord = {
   test_score_num: string | number | null
   test_score_text: string | null
   comment: string | null
+  extra?: Record<string, string>
 }
 
 export type DailySession = {
@@ -287,6 +301,7 @@ export type Daily = {
   session: DailySession
   records: DailyRecord[]
   summary: { enrolled: number; attending: number; test_average: number | null; test_count: number }
+  fields?: DailyFields
 }
 
 export type RecordPatch = {
@@ -296,6 +311,7 @@ export type RecordPatch = {
   homework_grade?: string | null
   test_score_num?: number | null
   comment?: string | null
+  extra?: Record<string, string>
 }
 
 export type NotesPatch = Partial<{
@@ -359,6 +375,7 @@ export type DailyHistoryRow = {
   test_score_num: string | number | null
   class_average: number | null
   comment: string | null
+  extra?: Record<string, string>
 }
 
 /** 한 학생의 날짜별 기록(FR-45) — `to`까지 기록이 있는 수업 최근 `limit`회, 최신 순 */
@@ -366,6 +383,7 @@ export type DailyHistory = {
   student: { id: number; name: string }
   klass: { id: number; name: string }
   rows: DailyHistoryRow[]
+  fields?: DailyFields
 }
 
 /** 학생별 정보 카드 PNG(FR-45 상세, DCR-021). 내려받기·복사는 주소를 직접 쓴다 */
@@ -396,7 +414,7 @@ export type Dashboard = {
     completion_rate: number | null
     delta_points: number | null
     missing: number
-    recheck_targets: number
+    recheck_targets: number | null
   }
   test: {
     average: number | null
@@ -918,6 +936,7 @@ export type PortalSession = {
   test_score: string | null
   class_average: number | null
   comment: string | null
+  extra?: { label: string; value: string }[]
 }
 
 export type PortalSummary = {

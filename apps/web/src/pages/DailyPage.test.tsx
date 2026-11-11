@@ -299,3 +299,32 @@ it('keeps the date when the unsaved-input warning is declined', async () => {
   expect(screen.getByLabelText('날짜')).toHaveTextContent('2026-09-18')
   expect(vi.mocked(fetch)).not.toHaveBeenCalledWith('/api/daily?class_id=1&date=2026-09-21', expect.anything())
 })
+
+// DCR-028 / AC-54 ②③: 학원이 정한 항목 — 재검사 자리에 추가 항목 열, [표 저장]으로 저장
+it('replaces the recheck column with the campus extra field and saves it with the table', async () => {
+  daily.fields = { recheck: false, extra: [{ id: 'x1', label: '수업태도' }] }
+  daily.records[2].extra = { x1: '지난 태도' }
+  renderPage()
+
+  expect(await screen.findByLabelText('학생3 수업태도')).toHaveValue('지난 태도')
+  expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
+    '학생', '출결 상태', '수업태도', '과제피드백', '테스트', '코멘트',
+  ])
+
+  await userEvent.type(screen.getByLabelText('학생1 수업태도'), '집중 좋음')
+  await userEvent.click(screen.getByRole('button', { name: '표 저장' }))
+
+  expect(calls).toEqual([
+    { url: '/api/daily/9/records', body: { records: [{ student_id: 1, extra: { x1: '집중 좋음' } }] } },
+  ])
+})
+
+// AC-54 ①: 설정이 없는 학원은 열이 그대로다
+it('keeps the current columns without campus settings', async () => {
+  renderPage()
+
+  await screen.findByRole('row', { name: /학생1\b/ })
+  expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
+    '학생', '출결 상태', '이전 과제 재검사', '과제피드백', '테스트', '코멘트',
+  ])
+})

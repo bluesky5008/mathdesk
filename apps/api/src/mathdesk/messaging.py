@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .daily import _session_for_write, _enrolled_students
+from .daily import _session_for_write, _enrolled_students, labelled_extra, load_daily_fields
 from .db import get_session
 from .messaging_adapter import Recipient, SendResult, build_adapter, choose_channel
 from .models import (
@@ -62,6 +62,7 @@ class MessageContext(BaseModel):
     video_url: str | None = None
     teacher_note: str | None = None  # 반 공통 선생님 코멘트(강사 첨언)
     student_comment: str | None = None  # 학생별 코멘트
+    extra: list[tuple[str, str]] = Field(default_factory=list)  # 학원별 추가 항목 (이름, 값) — FR-50
 
 
 def render_daily_message(context: MessageContext) -> str:
@@ -105,6 +106,8 @@ def render_daily_message(context: MessageContext) -> str:
         if context.class_average is not None:
             test += f"\n   반평균: {context.class_average}점"
         blocks.append(test)
+
+    blocks += [f"■ {label}\n{value}" for label, value in context.extra]
 
     if context.student_comment:
         blocks.append(f"■ 개별 코멘트\n{context.student_comment}")
@@ -368,6 +371,9 @@ async def _context(
         video_url=row.video_url,
         teacher_note=row.teacher_note,
         student_comment=record.comment if record else None,
+        extra=labelled_extra(
+            await load_daily_fields(session, scope.campus_id), record.extra if record else None
+        ),
     )
     return context
 

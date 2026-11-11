@@ -166,3 +166,12 @@ it('confirms attendance and locks the buttons until unlocked', async () => {
   await userEvent.click(screen.getAllByRole('button', { name: '확정 해제' })[0])
   expect(calls).toContain('POST /api/daily/9/attendance/unlock')
 })
+
+// DCR-028 / AC-54 ②: 재검사를 끈 학원은 과제 KPI에 재검사 문구가 없다
+it('drops the recheck target count when the campus hides the recheck', async () => {
+  dashboard.homework.recheck_targets = null
+  renderPage()
+
+  expect(await screen.findByText('미제출 5건')).toBeInTheDocument()
+  expect(screen.queryByText(/재검사/)).not.toBeInTheDocument()
+})
